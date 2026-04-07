@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Busy March Madness</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="panel hero">
+        <p class="eyebrow">2026 Busy March Madness</p>
+        <h1>Live pool standings with real max paths.</h1>
+        <p>
+          Current score, expected finish, and true max possible are calculated
+          from team ownership, game results, and seed-based scoring.
+        </p>
+      </section>
+
+      <section class="grid">
+        <div class="panel">
+          <div class="section-title">
+            <h2>Standings</h2>
+            <p>Current points, realistic ceiling, and expected finish.</p>
+          </div>
+          <div id="standings"></div>
+        </div>
+
+        <div class="panel">
+          <div class="section-title">
+            <h2>Championship Paths</h2>
+            <p>Only one remaining title outcome can be counted.</p>
+          </div>
+          <div id="paths"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">
+          <h2>Scoring Matrix</h2>
+          <p>Current sheet scoring plus a probability-based redesign target.</p>
+        </div>
+        <div id="matrix"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">
+          <h2>Owned Teams</h2>
+          <p>Grouped by owner, with points and remaining expected value.</p>
+        </div>
+        <div id="teams"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">
+          <h2>Team Detail</h2>
+          <p>Sortable data model next; raw table for now.</p>
+        </div>
+        <div id="team-table"></div>
+      </section>
+    </main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
