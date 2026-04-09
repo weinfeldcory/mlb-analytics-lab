@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hitter Projection Engine 2025</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">MLB Analytics Lab</p>
+          <h1>Hitter Projections vs 2026 Current</h1>
+          <p class="lede">
+            Local viewer for preseason projections, current season-to-date stats, and 162-game pace.
+          </p>
+        </div>
+        <div class="hero-note">
+          <span class="hero-note-label">Default sort</span>
+          <strong>Projected WAR Proxy</strong>
+        </div>
+      </section>
+
+      <section class="controls">
+        <label>
+          <span>Team</span>
+          <select id="team-filter">
+            <option value="ALL">All Teams</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Player Search</span>
+          <input id="search-filter" type="search" placeholder="Judge, Soto, Raleigh..." />
+        </label>
+
+        <label>
+          <span>Minimum PA</span>
+          <input id="min-pa-filter" type="number" min="0" step="10" value="0" placeholder="0" />
+        </label>
+
+        <label>
+          <span>Sort By</span>
+          <select id="sort-key">
+            <option value="projected_value_war_proxy">Projected WAR Proxy</option>
+            <option value="current_woba">Current wOBA</option>
+            <option value="pace_home_runs_162">162G HR Pace</option>
+            <option value="pace_stolen_bases_162">162G SB Pace</option>
+            <option value="pace_pa_162">162G PA Pace</option>
+            <option value="projected_home_runs">Projected HR</option>
+            <option value="projected_stolen_bases">Projected SB</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="summary" id="summary-cards"></section>
+
+      <section class="team-panel" id="team-panel">
+        <div class="team-panel-header compact-header">
+          <div>
+            <p class="eyebrow">Team Snapshot</p>
+            <h2 id="team-title">All Teams</h2>
+          </div>
+          <p class="team-panel-copy" id="team-copy">
+            Select a team to see aggregate projected output and the top projected bats.
+          </p>
+        </div>
+
+        <div class="team-metrics" id="team-metrics"></div>
+
+        <div class="team-leaders">
+          <h3>Top Bats</h3>
+          <div class="team-leaders-list" id="team-leaders-list"></div>
+        </div>
+      </section>
+
+      <section class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Team</th>
+              <th>Pos</th>
+              <th>Proj WAR</th>
+              <th>Curr G</th>
+              <th>Curr PA</th>
+              <th>Curr wOBA</th>
+              <th>162G PA</th>
+              <th>Proj PA</th>
+              <th>PA Diff</th>
+              <th>162G HR</th>
+              <th>Proj HR</th>
+              <th>HR Diff</th>
+              <th>162G SB</th>
+              <th>Proj SB</th>
+              <th>SB Diff</th>
+            </tr>
+          </thead>
+          <tbody id="projection-rows"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="./main.js"></script>
+  </body>
+</html>

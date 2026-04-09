@@ -9,6 +9,9 @@ SQL_FILES = [
     Path("sql/hitter_features.sql"),
     Path("sql/woba_xwoba_diff.sql"),
     Path("sql/aging_curves.sql"),
+    Path("sql/hitter_model_2025.sql"),
+    Path("sql/hitter_projection_engine_2025.sql"),
+    Path("sql/hitter_projection_engine_2026.sql"),
 ]
 
 
@@ -28,6 +31,9 @@ def main():
         "player_age_performance",
         "age_group_performance",
         "aging_curve_by_age",
+        "hitter_model_2025",
+        "hitter_projection_engine_2025",
+        "hitter_projection_engine_2026",
     ]
 
     print("Created modeling tables:")
