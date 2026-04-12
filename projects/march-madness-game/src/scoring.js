@@ -1,4 +1,21 @@
-import { currentScoring, owners, roundOrder, rounds, seedProbabilities } from "./data.js";
+import { currentScoring, owners as defaultOwners, roundOrder, rounds, seedProbabilities } from "./data.js";
+
+export function deriveOwners(teams, ownerList = null) {
+  if (Array.isArray(ownerList) && ownerList.length) {
+    return ownerList.filter(Boolean);
+  }
+
+  const derived = [];
+  const seen = new Set();
+
+  for (const team of teams) {
+    if (!team.owner || seen.has(team.owner)) continue;
+    seen.add(team.owner);
+    derived.push(team.owner);
+  }
+
+  return derived.length ? derived : defaultOwners;
+}
 
 export function teamMap(teams) {
   return new Map(teams.map((team) => [team.name, team]));
@@ -26,7 +43,8 @@ export function earnedPointsByTeam(teams, games, scoring = currentScoring) {
   return totals;
 }
 
-export function standings(teams, games, scoring = currentScoring) {
+export function standings(teams, games, scoring = currentScoring, ownerList = null) {
+  const owners = deriveOwners(teams, ownerList);
   const earned = earnedPointsByTeam(teams, games, scoring);
   const ownerTotals = new Map(owners.map((owner) => [owner, 0]));
 
@@ -58,8 +76,9 @@ export function remainingOutcomesForGame(game, teams, scoring = currentScoring) 
   });
 }
 
-export function trueMaxStandings(teams, games, scoring = currentScoring) {
-  const current = new Map(standings(teams, games, scoring).map((row) => [row.owner, row.points]));
+export function trueMaxStandings(teams, games, scoring = currentScoring, ownerList = null) {
+  const owners = deriveOwners(teams, ownerList);
+  const current = new Map(standings(teams, games, scoring, owners).map((row) => [row.owner, row.points]));
   const unresolved = unresolvedGames(games);
 
   for (const game of unresolved) {
@@ -96,8 +115,9 @@ export function expectedRemainingByTeam(teams, games, scoring = currentScoring, 
   return remaining;
 }
 
-export function expectedStandings(teams, games, scoring = currentScoring, probabilities = seedProbabilities) {
-  const current = new Map(standings(teams, games, scoring).map((row) => [row.owner, row.points]));
+export function expectedStandings(teams, games, scoring = currentScoring, probabilities = seedProbabilities, ownerList = null) {
+  const owners = deriveOwners(teams, ownerList);
+  const current = new Map(standings(teams, games, scoring, owners).map((row) => [row.owner, row.points]));
   const remaining = expectedRemainingByTeam(teams, games, scoring, probabilities);
 
   for (const team of teams) {
@@ -284,9 +304,11 @@ export function ownerWinOdds(
   scoring = currentScoring,
   probabilities = seedProbabilities,
   simulations = 12000,
-  seed = 42
+  seed = 42,
+  ownerList = null
 ) {
-  const currentStandings = standings(teams, games, scoring);
+  const owners = deriveOwners(teams, ownerList);
+  const currentStandings = standings(teams, games, scoring, owners);
   const unresolved = unresolvedGames(games);
 
   if (!unresolved.length) {
@@ -346,9 +368,11 @@ export function ownerWinningPaths(
   scoring = currentScoring,
   probabilities = seedProbabilities,
   simulations = 12000,
-  seed = 42
+  seed = 42,
+  ownerList = null
 ) {
-  const currentStandings = standings(teams, games, scoring);
+  const owners = deriveOwners(teams, ownerList);
+  const currentStandings = standings(teams, games, scoring, owners);
   const currentByOwner = new Map(currentStandings.map((row) => [row.owner, row.points]));
   const unresolved = unresolvedGames(games);
 

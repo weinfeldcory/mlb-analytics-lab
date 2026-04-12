@@ -2,6 +2,7 @@
 venv/
 .env
 .DS_Store
+node_modules/
 
 __pycache__/
 *.py[cod]
@@ -9,5 +10,5 @@ __pycache__/
 .ipynb_checkpoints/
 
 *.duckdb
-projects/mlb-analytics-projections/data/raw/*.csv
-projects/mlb-analytics-projections/data/processed/*.csv
+projects/baseball-analytics-app/data/raw/*.csv
+projects/baseball-analytics-app/data/processed/*.csv

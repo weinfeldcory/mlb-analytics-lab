@@ -36,7 +36,7 @@ body {
 }
 
 .app {
-  width: min(1180px, calc(100% - 32px));
+  width: min(1380px, calc(100% - 32px));
   margin: 0 auto;
   padding: 28px 0 56px;
 }
@@ -118,6 +118,18 @@ body {
   margin: 20px 0;
 }
 
+.draft-stage,
+.summary-grid {
+  margin: 20px 0;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.5fr);
+  gap: 20px;
+  align-items: start;
+}
+
 .quick-nav {
   display: flex;
   flex-wrap: wrap;
@@ -147,7 +159,7 @@ body {
 }
 
 .focus-strip {
-  margin-bottom: 20px;
+  min-height: 100%;
 }
 
 .focus-grid,
@@ -155,6 +167,10 @@ body {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
+}
+
+.summary-grid .focus-grid {
+  grid-template-columns: 1fr;
 }
 
 .focus-card,
@@ -278,6 +294,10 @@ table {
   margin-bottom: 18px;
 }
 
+.standings-stage {
+  min-height: 100%;
+}
+
 .rank-card {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
@@ -386,7 +406,7 @@ td span {
 }
 
 .draft-commissioner {
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
   margin-bottom: 18px;
 }
 
@@ -468,7 +488,7 @@ td span {
 }
 
 .draft-grid {
-  grid-template-columns: 1.6fr 1fr;
+  grid-template-columns: minmax(0, 1.85fr) minmax(320px, 0.95fr);
   align-items: start;
 }
 
@@ -499,7 +519,7 @@ td span {
 }
 
 .seed-grid {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .seed-column,
@@ -531,7 +551,7 @@ td span {
 }
 
 .draft-team {
-  padding: 10px 12px;
+  padding: 12px 14px;
   text-align: left;
 }
 
@@ -903,13 +923,19 @@ td span {
 }
 
 @media (max-width: 1180px) {
+  .summary-grid,
   .draft-commissioner,
   .draft-grid {
     grid-template-columns: 1fr;
   }
+
+  .summary-grid .focus-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 820px) {
+  .summary-grid,
   .grid,
   .draft-commissioner,
   .standings-cards,
@@ -929,6 +955,10 @@ td span {
   }
 
   .grid {
+    margin: 18px 0;
+  }
+
+  .summary-grid {
     margin: 18px 0;
   }
 

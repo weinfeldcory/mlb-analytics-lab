@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f1720" />
+    <title>Busy Picks</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero panel">
+        <div class="hero-layout">
+          <div class="hero-copy-block">
+            <p class="eyebrow">Busy Picks NFL</p>
+            <h1>Fast to read. Easy to run. Ready for next season.</h1>
+            <p class="hero-copy">
+              The sheet is now a migration source, not the product. This app is organized around the weekly decisions a commissioner and player actually need to make.
+            </p>
+            <div class="hero-actions">
+              <a class="hero-action primary" href="#lines">View Current Lines</a>
+              <a class="hero-action" href="#weeks">Open Weekly Board</a>
+            </div>
+            <p id="data-status" class="hero-status">Loading season state…</p>
+          </div>
+          <aside class="hero-aside">
+            <div class="hero-stat">
+              <span class="label">Focus</span>
+              <strong>Week-to-week picks</strong>
+            </div>
+            <div class="hero-stat">
+              <span class="label">Default Use</span>
+              <strong>See leader, lines, and this week’s board first</strong>
+            </div>
+            <div class="hero-stat">
+              <span class="label">Commissioner Mode</span>
+              <strong>Season setup stays tucked below the live view</strong>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <nav class="nav-strip panel" aria-label="Sections">
+        <a href="#overview">Standings</a>
+        <a href="#lines">Current Week</a>
+        <a href="#weeks">Weekly Board</a>
+        <a href="#results">Results</a>
+        <a href="#admin">Commissioner</a>
+      </nav>
+
+      <section id="overview" class="panel">
+        <div class="section-head">
+          <h2>Standings</h2>
+          <p>Imported from the 2025 scoreboard and ready to become the app-native leaderboard.</p>
+        </div>
+        <div id="overview-content"></div>
+      </section>
+
+      <section id="weeks" class="panel">
+        <div class="section-head">
+          <h2>Weekly Board</h2>
+          <p>Week-by-week POTD, totals picks, and DOTD selections.</p>
+        </div>
+        <div id="weekly-board"></div>
+      </section>
+
+      <section id="lines" class="panel">
+        <div class="section-head">
+          <h2>Current Week Lines</h2>
+          <p>The imported week 18 slate from the spreadsheet’s available-lines tab.</p>
+        </div>
+        <div id="lines-board"></div>
+      </section>
+
+      <section id="results" class="panel">
+        <div class="section-head">
+          <h2>Recent Results</h2>
+          <p>Recent finals from the source workbook, useful as a migration check and UI baseline.</p>
+        </div>
+        <div id="results-board"></div>
+      </section>
+
+      <section id="admin" class="panel admin-panel">
+        <div class="section-head">
+          <h2>Commissioner Setup</h2>
+          <p>Season metadata is already app-backed so next season can start here instead of in Sheets.</p>
+        </div>
+        <div id="admin-board"></div>
+      </section>
+    </main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

@@ -4,24 +4,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  expectedStandings,
-  ownerWinningPaths,
-  ownerWinOdds,
-  standings,
-  teamRows,
-  trueMaxStandings,
-  unresolvedGames
-} from "../src/scoring.js";
-import {
   assignTeam,
   draftPick,
-  readState,
   resetDraft,
   unassignTeam,
   undoDraftPick,
-  updateDraftSettings,
-  updateSeasonConfig
-} from "./store.js";
+  updateDraftSettings
+} from "./services/draft.js";
+import { loadSeasonState, updateSeasonConfig } from "./services/seasons.js";
+import { summarizeState } from "./services/standings.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,42 +45,6 @@ async function readBody(request) {
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
-function summarizeState(state) {
-  const current = standings(state.teams, state.games, state.currentScoring);
-  const max = trueMaxStandings(state.teams, state.games, state.currentScoring);
-  const expected = expectedStandings(state.teams, state.games, state.currentScoring);
-  const odds = ownerWinOdds(state.teams, state.games, state.currentScoring);
-  const paths = ownerWinningPaths(state.teams, state.games, state.currentScoring);
-  const maxByOwner = new Map(max.map((row) => [row.owner, row.max]));
-  const expectedByOwner = new Map(expected.map((row) => [row.owner, row.expected]));
-  const oddsByOwner = new Map(odds.map((row) => [row.owner, row.odds]));
-
-  return {
-    season: state.season,
-    updatedAt: state.updatedAt,
-    owners: state.owners,
-    rounds: state.rounds,
-    currentScoring: state.currentScoring,
-    teams: state.teams,
-    games: state.games,
-    draft: {
-      ...state.draft,
-      currentOwner: state.draft.order[state.draft.currentPickIndex] ?? null
-    },
-    standings: current.map((row, index) => ({
-      owner: row.owner,
-      points: row.points,
-      max: maxByOwner.get(row.owner),
-      expected: expectedByOwner.get(row.owner),
-      winOdds: oddsByOwner.get(row.owner) ?? 0,
-      place: index + 1
-    })),
-    paths,
-    teamRows: teamRows(state.teams, state.games, state.currentScoring),
-    unresolvedGames: unresolvedGames(state.games)
-  };
-}
-
 async function serveFile(response, urlPathname) {
   const normalizedPath = urlPathname === "/" ? "/index.html" : urlPathname;
   const filePath = path.join(ROOT_DIR, normalizedPath);
@@ -113,7 +68,7 @@ async function handleApi(request, response, pathname) {
     }
 
     if (request.method === "GET" && pathname === "/api/state") {
-      const state = await readState();
+      const state = await loadSeasonState();
       return json(response, 200, summarizeState(state));
     }
 

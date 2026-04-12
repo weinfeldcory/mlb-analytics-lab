@@ -1,0 +1,10 @@
+{
+  "name": "nfl-pick-em-game",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server/server.js",
+    "test": "node tests/state.test.mjs"
+  }
+}

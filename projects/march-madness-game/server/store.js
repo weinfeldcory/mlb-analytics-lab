@@ -15,11 +15,11 @@ const __dirname = path.dirname(__filename);
 const DATA_DIR = path.join(__dirname, "..", "data");
 const STORE_PATH = path.join(DATA_DIR, "season-state.json");
 
-function clone(value) {
+export function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function sanitizeOwners(nextOwners) {
+export function sanitizeOwners(nextOwners) {
   const ownersList = nextOwners
     .map((owner) => String(owner).trim())
     .filter(Boolean);
@@ -31,7 +31,7 @@ function sanitizeOwners(nextOwners) {
   return [...new Set(ownersList)];
 }
 
-function sanitizeTeams(nextTeams) {
+export function sanitizeTeams(nextTeams) {
   const normalizedTeams = nextTeams
     .map((team) => ({
       seed: Number(team.seed),
@@ -47,7 +47,7 @@ function sanitizeTeams(nextTeams) {
   return normalizedTeams;
 }
 
-function sanitizeScoring(nextScoring) {
+export function sanitizeScoring(nextScoring) {
   const scoring = {};
 
   for (const [seed, values] of Object.entries(nextScoring || {})) {
@@ -67,13 +67,13 @@ function sanitizeScoring(nextScoring) {
   return scoring;
 }
 
-function computeCurrentOwner(state) {
+export function computeCurrentOwner(state) {
   const order = state.draft.order;
   if (!order.length) return null;
   return order[state.draft.currentPickIndex % order.length];
 }
 
-function createDraftState(nextOwners = owners) {
+export function createDraftState(nextOwners = owners) {
   return {
     order: clone(nextOwners),
     snake: true,
@@ -84,7 +84,7 @@ function createDraftState(nextOwners = owners) {
   };
 }
 
-function createInitialState() {
+export function createInitialState() {
   return {
     season: 2026,
     updatedAt: new Date().toISOString(),
@@ -97,7 +97,7 @@ function createInitialState() {
   };
 }
 
-function advanceDraft(state) {
+export function advanceDraft(state) {
   const orderLength = state.draft.order.length;
   if (!orderLength) return;
 
@@ -120,7 +120,7 @@ function advanceDraft(state) {
   }
 }
 
-function rebuildDraftPositionFromHistory(state) {
+export function rebuildDraftPositionFromHistory(state) {
   state.draft.currentPickNumber = 1;
   state.draft.currentPickIndex = 0;
 
@@ -161,134 +161,4 @@ export async function writeState(nextState) {
   await ensureStoreFile();
   await writeFile(STORE_PATH, JSON.stringify(state, null, 2));
   return state;
-}
-
-export async function assignTeam(teamName, owner) {
-  const state = await readState();
-  const team = state.teams.find((entry) => entry.name === teamName);
-
-  if (!team) throw new Error(`Unknown team: ${teamName}`);
-  if (!state.owners.includes(owner)) throw new Error(`Unknown owner: ${owner}`);
-
-  team.owner = owner;
-  return writeState(state);
-}
-
-export async function draftPick(teamName) {
-  const state = await readState();
-  const team = state.teams.find((entry) => entry.name === teamName);
-  const currentOwner = computeCurrentOwner(state);
-
-  if (state.draft.locked) throw new Error("Draft is locked.");
-  if (!team) throw new Error(`Unknown team: ${teamName}`);
-  if (!currentOwner) throw new Error("Draft order is empty.");
-  if (team.owner) throw new Error(`${teamName} has already been drafted.`);
-
-  team.owner = currentOwner;
-  state.draft.history.push({
-    pickNumber: state.draft.currentPickNumber,
-    teamName,
-    owner: currentOwner
-  });
-  advanceDraft(state);
-
-  return writeState(state);
-}
-
-export async function undoDraftPick() {
-  const state = await readState();
-  const lastPick = state.draft.history.pop();
-
-  if (!lastPick) throw new Error("No draft picks to undo.");
-
-  const team = state.teams.find((entry) => entry.name === lastPick.teamName);
-  if (team) {
-    team.owner = null;
-  }
-  rebuildDraftPositionFromHistory(state);
-
-  return writeState(state);
-}
-
-export async function unassignTeam(teamName) {
-  const state = await readState();
-  const team = state.teams.find((entry) => entry.name === teamName);
-
-  if (!team) throw new Error(`Unknown team: ${teamName}`);
-
-  team.owner = null;
-  state.draft.history = state.draft.history.filter((entry) => entry.teamName !== teamName);
-  rebuildDraftPositionFromHistory(state);
-
-  return writeState(state);
-}
-
-export async function resetDraft(mode = "empty") {
-  const initialState = createInitialState();
-
-  if (mode === "sheet") {
-    return writeState(initialState);
-  }
-  if (mode !== "empty") {
-    throw new Error(`Unsupported reset mode: ${mode}`);
-  }
-
-  initialState.teams = initialState.teams.map((team) => ({
-    ...team,
-    owner: null
-  }));
-
-  return writeState(initialState);
-}
-
-export async function updateDraftSettings({ order, snake, locked }) {
-  const state = await readState();
-
-  if (order) {
-    state.owners = sanitizeOwners(order);
-    state.draft.order = clone(state.owners);
-    const validOwners = new Set(state.owners);
-    state.teams = state.teams.map((team) => ({
-      ...team,
-      owner: validOwners.has(team.owner) ? team.owner : null
-    }));
-    state.draft.history = state.draft.history.filter((entry) => validOwners.has(entry.owner));
-  }
-  if (typeof snake === "boolean") {
-    state.draft.snake = snake;
-  }
-  if (typeof locked === "boolean") {
-    state.draft.locked = locked;
-  }
-
-  rebuildDraftPositionFromHistory(state);
-  return writeState(state);
-}
-
-export async function updateSeasonConfig({ season, owners: nextOwners, teams: nextTeams, currentScoring: nextScoring }) {
-  const state = await readState();
-
-  if (!Number.isInteger(Number(season))) {
-    throw new Error("Season must be a year.");
-  }
-
-  const ownersList = sanitizeOwners(nextOwners);
-  const teamsList = sanitizeTeams(nextTeams);
-  const scoring = sanitizeScoring(nextScoring);
-  const ownerSet = new Set(ownersList);
-
-  for (const team of teamsList) {
-    if (team.owner && !ownerSet.has(team.owner)) {
-      throw new Error(`Unknown owner on team ${team.name}: ${team.owner}`);
-    }
-  }
-
-  state.season = Number(season);
-  state.owners = ownersList;
-  state.teams = teamsList;
-  state.currentScoring = scoring;
-  state.games = [];
-  state.draft = createDraftState(ownersList);
-
-  return writeState(state);
 }

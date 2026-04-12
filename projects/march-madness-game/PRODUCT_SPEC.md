@@ -12,6 +12,17 @@ Replace the spreadsheet workflow with a web app that can run the pool end to end
 
 The app should become the source of truth. The spreadsheet is only a migration aid.
 
+## 2027 Product Standard
+
+For the 2027 tournament, the app should be:
+
+- reliable enough to run draft night without fallback tabs
+- clean enough to evolve safely during the season
+- polished enough that participants treat it as the primary interface
+- structured enough to support multiple seasons and user roles
+
+The working product target is now broader than spreadsheet replacement. The app should become a durable tournament system with commissioner controls, participant views, live tournament tracking, and historical season continuity.
+
 ## Core Users
 
 - Commissioner: configures the season, runs the draft, resolves mistakes, updates rules
@@ -25,6 +36,9 @@ The app should become the source of truth. The spreadsheet is only a migration a
 - Scoring logic should be inspectable, not hidden behind spreadsheet formulas
 - Every season should be reproducible from backend data
 - Public views should be readable on phones without requiring multiple tabs
+- The default experience should feel calm, minimal, and high-trust under pressure
+- Advanced controls should be progressively disclosed instead of always visible
+- Architecture should favor modular services and season-scoped domain data
 
 ## Must-Have Functionality
 
@@ -60,6 +74,16 @@ The app should become the source of truth. The spreadsheet is only a migration a
 - Explicit API for draft actions and season config
 - Clear yearly reset workflow
 - Safe handling of unassigned teams and changed owner lists
+- Auditability for commissioner overrides
+- Safer confirmation flows for destructive actions
+
+### UX / Experience
+
+- Clear navigation between live views and admin tools
+- Full mobile readability for participants
+- Draft-night presentation mode
+- Public read-only mode for non-admin viewers
+- Cleaner visual hierarchy with less dashboard clutter
 
 ## Next Critical Functionality
 
@@ -90,6 +114,8 @@ The app should become the source of truth. The spreadsheet is only a migration a
 - Historical comparisons across years
 - Playoff / upset probability visualizations
 - “What if” scoring sandbox
+- Personalized participant landing pages
+- Apple-style polished motion and transitions
 
 ## Current Build Status
 
@@ -126,9 +152,10 @@ The spreadsheet can be retired when all of the following are true:
 
 ## Recommended Near-Term Roadmap
 
-1. Improve UI clarity and navigation
-2. Finalize a usable constrained scoring model
-3. Add backend game ingestion and normalized live game state
-4. Move from JSON-file persistence to a real database
-5. Add authentication and commissioner/public role separation
-6. Introduce multi-season support
+1. Refactor the frontend and backend into clearer modules and services
+2. Move from JSON-file persistence to SQLite with a multi-season schema
+3. Redesign the shell into focused product surfaces with calmer UI hierarchy
+4. Finalize a usable constrained scoring model
+5. Add backend game ingestion and normalized live game state
+6. Add authentication and commissioner/public role separation
+7. Introduce public display mode and historical season browsing

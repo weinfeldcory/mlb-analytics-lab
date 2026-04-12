@@ -1,0 +1,405 @@
+export const seedState = {
+  title: "Busy Picks",
+  season: 2025,
+  currentWeek: 18,
+  notes: "Imported from the Busy Picks 2025 spreadsheet on April 12, 2026. This is the migration baseline for the next-season web app.",
+  updatedAt: "2026-04-12T12:00:00.000Z",
+  source: {
+    sheetTitle: "Busy Picks 2025 Season",
+    spreadsheetUrl: "https://docs.google.com/spreadsheets/d/1jV5kmQBMXtmWVnMyztz54Mw0GY6LWiOz3YPCbAs51e8/edit",
+    snapshotDate: "2026-04-12"
+  },
+  owners: ["Cory", "Jeremy", "Evan", "Zach", "Franco"],
+  standings: [
+    { owner: "Cory", points: 29.36, rank: 1, expectedPoints: 30.54, liveOdds: "+270", breakdown: { potd: 13, overUnder: 7, dotd: 9.36 } },
+    { owner: "Franco", points: 29.11, rank: 2, expectedPoints: 30.82, liveOdds: "+230", breakdown: { potd: 10, overUnder: 8, dotd: 11.11 } },
+    { owner: "Jeremy", points: 27.35, rank: 3, expectedPoints: 28.96, liveOdds: "+640", breakdown: { potd: 8, overUnder: 12, dotd: 7.35 } },
+    { owner: "Zach", points: 25.51, rank: 4, expectedPoints: 27.01, liveOdds: "+2400", breakdown: { potd: 6, overUnder: 10, dotd: 9.51 } },
+    { owner: "Evan", points: 23.4, rank: 5, expectedPoints: 24.78, liveOdds: "+20000", breakdown: { potd: 9, overUnder: 8, dotd: 6.4 } }
+  ],
+  weeklyPicks: [
+    {
+      week: 1,
+      label: "Week 1",
+      status: "Finalized",
+      potd: { Cory: "SF -2.5", Jeremy: "SF -2.5", Evan: "ATL +1.5", Zach: "CAR +4.5", Franco: "TB -1.5" },
+      overUnder: {
+        Cory: { game: "PIT/NYJ", line: "38.5", pick: "U" },
+        Jeremy: { game: "HOU/LAR", line: "43.5", pick: "O" },
+        Evan: { game: "CLE/CIN", line: "47.5", pick: "O" },
+        Zach: { game: "MIA/IND", line: "46.5", pick: "U" },
+        Franco: { game: "CLE/CIN", line: "47.5", pick: "O" }
+      },
+      dotd: {
+        Cory: { team: "HOU", line: "140" },
+        Jeremy: { team: "LV", line: "120" },
+        Evan: { team: "NYJ", line: "130" },
+        Zach: { team: "HOU", line: "140" },
+        Franco: { team: "NYJ", line: "140" }
+      }
+    },
+    {
+      week: 2,
+      label: "Week 2",
+      status: "Finalized",
+      potd: { Cory: "BUF -5.5", Jeremy: "PHI -1.5", Evan: "DAL -5.5", Zach: "PIT -3", Franco: "LAC -3.5" },
+      overUnder: {
+        Cory: { game: "CHI/DET", line: "45.5", pick: "U" },
+        Jeremy: { game: "BAL/CLE", line: "46.5", pick: "U" },
+        Evan: { game: "ARI/CAR", line: "45.5", pick: "U" },
+        Zach: { game: "LAC/LV", line: "46.5", pick: "U" },
+        Franco: { game: "MIN/ATL", line: "44.5", pick: "O" }
+      },
+      dotd: {
+        Cory: { team: "NE", line: "110" },
+        Jeremy: { team: "NE", line: "110" },
+        Evan: { team: "KC", line: "105" },
+        Zach: { team: "TB", line: "126" },
+        Franco: { team: "NE", line: "110" }
+      }
+    },
+    {
+      week: 3,
+      label: "Week 3",
+      status: "Finalized",
+      potd: { Cory: "PHI -4.5", Jeremy: "ATL -4.5", Evan: "GB -7.5", Zach: "SEA -6.5", Franco: "ARI +1.5" },
+      overUnder: {
+        Cory: { game: "CHI/DAL", line: "50.5", pick: "U" },
+        Jeremy: { game: "WSH/LV", line: "44.5", pick: "O" },
+        Evan: { game: "ATL/CAR", line: "43.5", pick: "O" },
+        Zach: { game: "CHI/DAL", line: "50.5", pick: "O" },
+        Franco: { game: "BAL/DET", line: "53.5", pick: "U" }
+      },
+      dotd: {
+        Cory: { team: "DET", line: "198" },
+        Jeremy: { team: "NO", line: "315" },
+        Evan: { team: "LAR", line: "165" },
+        Zach: { team: "NYG", line: "240" },
+        Franco: { team: "HOU", line: "106" }
+      }
+    },
+    {
+      week: 4,
+      label: "Week 4",
+      status: "Finalized",
+      potd: { Cory: "LAR -3.5", Jeremy: "CHI +2.5", Evan: "SF -3.5", Zach: "BUF -15.5", Franco: "GB -6.5" },
+      overUnder: {
+        Cory: { game: "HOU/TEN", line: "39.5", pick: "O" },
+        Jeremy: { game: "PHI/TB", line: "44.5", pick: "O" },
+        Evan: { game: "DET/CLE", line: "44.5", pick: "O" },
+        Zach: { game: "NYG/LAC", line: "43.5", pick: "O" },
+        Franco: { game: "PHI/TB", line: "44.5", pick: "O" }
+      },
+      dotd: {
+        Cory: { team: "KC", line: "130" },
+        Jeremy: { team: "WSH", line: "112" },
+        Evan: { team: "CHI", line: "105" },
+        Zach: { team: "IND", line: "156" },
+        Franco: { team: "JAX", line: "144" }
+      }
+    },
+    {
+      week: 5,
+      label: "Week 5",
+      status: "Finalized",
+      potd: { Cory: "DAL +2.5", Jeremy: "MIN -3.5", Evan: "PHI -4.5", Zach: "ARI -7.5", Franco: "KC -3.5" },
+      overUnder: {
+        Cory: { game: "NYJ/DAL", line: "47.5", pick: "U" },
+        Jeremy: { game: "SEA/TB", line: "44.5", pick: "O" },
+        Evan: { game: "SEA/TB", line: "44.5", pick: "O" },
+        Zach: { game: "LAC/WSH", line: "48.5", pick: "U" },
+        Franco: { game: "SEA/TB", line: "44.5", pick: "O" }
+      },
+      dotd: {
+        Cory: { team: "NYG", line: "108" },
+        Jeremy: { team: "NYG", line: "108" },
+        Evan: { team: "NYJ", line: "105" },
+        Zach: { team: "TB", line: "165" },
+        Franco: { team: "WSH", line: "132" }
+      }
+    },
+    {
+      week: 6,
+      label: "Week 6",
+      status: "Finalized",
+      potd: { Cory: "SEA -1.5", Jeremy: "LV -3.5", Evan: "NE -3.5", Zach: "DAL -2.5", Franco: "WSH -5.5" },
+      overUnder: {
+        Cory: { game: "ARI/IND", line: "46.5", pick: "O" },
+        Jeremy: { game: "MIA/LAC", line: "45.5", pick: "O" },
+        Evan: { game: "DAL/CAR", line: "45.5", pick: "U" },
+        Zach: { game: "DET/KC", line: "51.5", pick: "U" },
+        Franco: { game: "CHI/WSH", line: "49.5", pick: "U" }
+      },
+      dotd: {
+        Cory: { team: "SF", line: "146" },
+        Jeremy: { team: "DET", line: "120" },
+        Evan: { team: "BAL", line: "290" },
+        Zach: { team: "SF", line: "146" },
+        Franco: { team: "CHI", line: "220" }
+      }
+    },
+    {
+      week: 7,
+      label: "Week 7",
+      status: "Finalized",
+      potd: { Cory: "PHI -2.5", Jeremy: "DAL -1.5", Evan: "LV +12.5", Zach: "CHI -3.5", Franco: "NYG +7.5" },
+      overUnder: {
+        Cory: { game: "DAL/WSH", line: "55.5", pick: "U" },
+        Jeremy: { game: "NYJ/CAR", line: "39.5", pick: "O" },
+        Evan: { game: "CLE/MIA", line: "34.5", pick: "U" },
+        Zach: { game: "NYJ/CAR", line: "39.5", pick: "O" },
+        Franco: { game: "CHI/NO", line: "43.5", pick: "U" }
+      },
+      dotd: {
+        Cory: { team: "HOU", line: "150" },
+        Jeremy: { team: "NYG", line: "340" },
+        Evan: { team: "IND", line: "120" },
+        Zach: { team: "MIN", line: "120" },
+        Franco: { team: "MIA", line: "128" }
+      }
+    },
+    {
+      week: 8,
+      label: "Week 8",
+      status: "Finalized",
+      potd: { Cory: "BUF -7.5", Jeremy: "SF +2.5", Evan: "TB -3.5", Zach: "TEN +14.5", Franco: "BUF -7.5" },
+      overUnder: {
+        Cory: { game: "DEN/DAL", line: "51.5", pick: "U" },
+        Jeremy: { game: "DEN/DAL", line: "51.5", pick: "O" },
+        Evan: { game: "NYG/PHI", line: "42.5", pick: "U" },
+        Zach: { game: "NYJ/CIN", line: "43.5", pick: "U" },
+        Franco: { game: "WSH/KC", line: "48.5", pick: "O" }
+      },
+      dotd: {
+        Cory: { team: "NYJ", line: "220" },
+        Jeremy: { team: "CHI", line: "130" },
+        Evan: { team: "TEN", line: "900" },
+        Zach: { team: "NYG", line: "310" },
+        Franco: { team: "NYJ", line: "220" }
+      }
+    },
+    {
+      week: 9,
+      label: "Week 9",
+      status: "Finalized",
+      potd: { Cory: "SF -2.5", Jeremy: "IND -3.5", Evan: "NE -5.5", Zach: "SF -2.5", Franco: "DEN +1.5" },
+      overUnder: {
+        Cory: { game: "BUF/KC", line: "52.5", pick: "U" },
+        Jeremy: { game: "DAL/AZ", line: "54.5", pick: "O" },
+        Evan: { game: "DEN/HOU", line: "40.5", pick: "O" },
+        Zach: { game: "DET/MIN", line: "48.5", pick: "O" },
+        Franco: { game: "DAL/AZ", line: "54.5", pick: "O" }
+      },
+      dotd: {
+        Cory: { team: "PIT", line: "160" },
+        Jeremy: { team: "LV", line: "124" },
+        Evan: { team: "PIT", line: "160" },
+        Zach: { team: "PIT", line: "145" },
+        Franco: { team: "WSH", line: "140" }
+      }
+    },
+    {
+      week: 10,
+      label: "Week 10",
+      status: "Finalized",
+      potd: { Cory: "BAL -4.5", Jeremy: "BUF -9.5", Evan: "LAC -2.5", Zach: "SEA -6.5", Franco: "BAL -4.5" },
+      overUnder: {
+        Cory: { game: "HOU/JAX", line: "37.5", pick: "O" },
+        Jeremy: { game: "BAL/MIN", line: "48.5", pick: "O" },
+        Evan: { game: "SEA/AZ", line: "45.5", pick: "O" },
+        Zach: { game: "LAC/PIT", line: "44.5", pick: "U" },
+        Franco: { game: "PHI/GB", line: "44.5", pick: "O" }
+      },
+      dotd: {
+        Cory: { team: "SF", line: "215" },
+        Jeremy: { team: "NE", line: "130" },
+        Evan: { team: "MIN", line: "200" },
+        Zach: { team: "SF", line: "215" },
+        Franco: { team: "NYG", line: "190" }
+      }
+    },
+    {
+      week: 11,
+      label: "Week 11",
+      status: "Finalized",
+      potd: { Cory: "BUF -5.5", Jeremy: "LAC -2.5", Evan: "MIN -2.5", Zach: "ATL -4", Franco: "TB +6.5" },
+      overUnder: {
+        Cory: { game: "CLE/BAL", line: "39.5", pick: "O" },
+        Jeremy: { game: "BUF/TB", line: "48.5", pick: "O" },
+        Evan: { game: "DEN/KC", line: "44.5", pick: "U" },
+        Zach: { game: "NYG/GB", line: "43.5", pick: "O" },
+        Franco: { game: "ARI/SF", line: "49.5", pick: "U" }
+      },
+      dotd: {
+        Cory: { team: "DET", line: "124" },
+        Jeremy: { team: "DET", line: "124" },
+        Evan: { team: "NYG", line: "280" },
+        Zach: { team: "SEA", line: "150" },
+        Franco: { team: "SEA", line: "152" }
+      }
+    },
+    {
+      week: 12,
+      label: "Week 12",
+      status: "Finalized",
+      potd: { Cory: "KC -4.5", Jeremy: "BAL -14.5", Evan: "CHI -2.5", Zach: "DET -14.5", Franco: "NE -7.5" },
+      overUnder: {
+        Cory: { game: "MIN/GB", line: "41.5", pick: "O" },
+        Jeremy: { game: "CIN/NE", line: "50.5", pick: "U" },
+        Evan: { game: "NYJ/BAL", line: "44.5", pick: "U" },
+        Zach: { game: "DET/NYG", line: "50.5", pick: "O" },
+        Franco: { game: "CAR/SF", line: "49.5", pick: "U" }
+      },
+      dotd: {
+        Cory: { team: "TB", line: "290" },
+        Jeremy: { team: "MIN", line: "240" },
+        Evan: { team: "DAL", line: "140" },
+        Zach: { team: "IND", line: "165" },
+        Franco: { team: "TB", line: "290" }
+      }
+    },
+    {
+      week: 13,
+      label: "Week 13",
+      status: "Finalized",
+      potd: { Cory: "BUF -2.5", Jeremy: "TB -3.5", Evan: "DAL +3.5", Zach: "CLE +5.5", Franco: "TB -3.5" },
+      overUnder: {
+        Cory: { game: "LAC/LV", line: "40.5", pick: "O" },
+        Jeremy: { game: "LV", line: "40.5", pick: "O" },
+        Evan: { game: "MIA/NO", line: "42.5", pick: "U" },
+        Zach: { game: "NYJ/ATL", line: "38.5", pick: "U" },
+        Franco: { game: "LAC", line: "40.5", pick: "O" }
+      },
+      dotd: {
+        Cory: { team: "NYG", line: "295" },
+        Jeremy: { team: "NYG", line: "295" },
+        Evan: { team: "TEN", line: "210" },
+        Zach: { team: "CLE", line: "215" },
+        Franco: { team: "HOU", line: "135" }
+      }
+    },
+    {
+      week: 14,
+      label: "Week 14",
+      status: "Finalized",
+      potd: { Cory: "BUF -6", Jeremy: "IND -1.5", Evan: "SEA -7", Zach: "KC -3.5", Franco: "SEA -7" },
+      overUnder: {
+        Cory: { game: "TB", line: "41.5", pick: "O" },
+        Jeremy: { game: "TB", line: "41.5", pick: "O" },
+        Evan: { game: "BUF/CIN", line: "54.5", pick: "U" },
+        Zach: { game: "ATL/SEA", line: "44.5", pick: "U" },
+        Franco: { game: "TB", line: "41.5", pick: "O" }
+      },
+      dotd: {
+        Cory: { team: "NYJ", line: "124" },
+        Jeremy: { team: "CHI", line: "250" },
+        Evan: { team: "JAX", line: "115" },
+        Zach: { team: "PIT", line: "220" },
+        Franco: { team: "NYJ", line: "124" }
+      }
+    },
+    {
+      week: 15,
+      label: "Week 15",
+      status: "Finalized",
+      potd: { Cory: "BUF -2.5", Jeremy: "CAR -2.5", Evan: "LAC +5.5", Zach: "IND +12.5", Franco: "LAC +5.5" },
+      overUnder: {
+        Cory: { game: "DEN/GB", line: "42.5", pick: "O" },
+        Jeremy: { game: "WSH/NYG", line: "45.5", pick: "O" },
+        Evan: { game: "BUF/NE", line: "49.5", pick: "O" },
+        Zach: { game: "DET/LAR", line: "54.5", pick: "O" },
+        Franco: { game: "CIN/BAL", line: "51.5", pick: "O" }
+      },
+      dotd: {
+        Cory: { team: "DET", line: "200" },
+        Jeremy: { team: "DEN", line: "100" },
+        Evan: { team: "CIN", line: "130" },
+        Zach: { team: "DET", line: "200" },
+        Franco: { team: "DET", line: "200" }
+      }
+    },
+    {
+      week: 16,
+      label: "Week 16",
+      status: "Finalized",
+      potd: { Cory: "TB -3", Jeremy: "LAC +1.5", Evan: "CIN -3.5", Zach: "KC -3", Franco: "MIN -2.5" },
+      overUnder: {
+        Cory: { game: "NYJ/NO", line: "39.5", pick: "O" },
+        Jeremy: { game: "BAL/NE", line: "47.5", pick: "O" },
+        Evan: { game: "LAC/DAL", line: "50.5", pick: "O" },
+        Zach: { game: "NYG/MIN", line: "41.5", pick: "O" },
+        Franco: { game: "IND", line: "46.5", pick: "U" }
+      },
+      dotd: {
+        Cory: { team: "NYG", line: "125" },
+        Jeremy: { team: "PIT", line: "275" },
+        Evan: { team: "LV", line: "850" },
+        Zach: { team: "CLE", line: "455" },
+        Franco: { team: "NE", line: "150" }
+      }
+    },
+    {
+      week: 17,
+      label: "Week 17",
+      status: "Finalized",
+      potd: { Cory: "TB -5.5", Jeremy: "NYG -3", Evan: "MIA +5.5", Zach: "ATL +7.5", Franco: "LAR -7.5" },
+      overUnder: {
+        Cory: { game: "HOU/LAC", line: "40.5", pick: "O" },
+        Jeremy: { game: "NYG/LV", line: "40.5", pick: "O" },
+        Evan: { game: "PIT/CLE", line: "34.5", pick: "U" },
+        Zach: { game: "ATL/LAR", line: "48.5", pick: "O" },
+        Franco: { game: "BUF/PHI", line: "45.5", pick: "U" }
+      },
+      dotd: {
+        Cory: { team: "PHI", line: "118" },
+        Jeremy: { team: "ARI", line: "290" },
+        Evan: { team: "NYJ", line: "675" },
+        Zach: { team: "ATL", line: "295" },
+        Franco: { team: "CHI", line: "154" }
+      }
+    }
+  ],
+  availableLines: {
+    week: 18,
+    games: [
+      { day: "Saturday", homeTeam: "Buccaneers", awayTeam: "Panthers", line: "TB -3", total: "42.5" },
+      { day: "Saturday", homeTeam: "49ers", awayTeam: "Seahawks", line: "SEA -2.5", total: "48.5" },
+      { day: "Sunday", homeTeam: "Falcons", awayTeam: "Saints", line: "ATL -4.5", total: "43.5" },
+      { day: "Sunday", homeTeam: "Bengals", awayTeam: "Browns", line: "CIN -9.5", total: "47.5" },
+      { day: "Sunday", homeTeam: "Vikings", awayTeam: "Packers", line: "MIN -12.5", total: "37.5" },
+      { day: "Sunday", homeTeam: "Giants", awayTeam: "Cowboys", line: "DAL -3", total: "50.5" },
+      { day: "Sunday", homeTeam: "Jaguars", awayTeam: "Titans", line: "JAX -13.5", total: "46.5" },
+      { day: "Sunday", homeTeam: "Texans", awayTeam: "Colts", line: "HOU -9.5", total: "37.5" },
+      { day: "Sunday", homeTeam: "Bills", awayTeam: "Jets", line: "BUF -12.5", total: "39.5" },
+      { day: "Sunday", homeTeam: "Bears", awayTeam: "Lions", line: "CHI -3", total: "51.5" },
+      { day: "Sunday", homeTeam: "Broncos", awayTeam: "Chargers", line: "DEN -15.5", total: "37.5" },
+      { day: "Sunday", homeTeam: "Raiders", awayTeam: "Chiefs", line: "KC -3.5", total: "35.5" },
+      { day: "Sunday", homeTeam: "Rams", awayTeam: "Cardinals", line: "LAR -14.5", total: "49.5" },
+      { day: "Sunday", homeTeam: "Patriots", awayTeam: "Dolphins", line: "NE -14.5", total: "44.5" },
+      { day: "Sunday", homeTeam: "Eagles", awayTeam: "Commanders", line: "PHI -3", total: "38.5" },
+      { day: "Sunday", homeTeam: "Steelers", awayTeam: "Ravens", line: "BAL -4.5", total: "41.5" }
+    ]
+  },
+  recentResults: [
+    { week: "Week 17", date: "Thu 12/25/2025", away: "Cowboys", home: "Commanders", score: "DAL 30 WSH 23", odds: "DAL -8.5", coveredBy: "WSH +8.5", totalPoints: 53, totalLine: 50.5, winner: "Cowboys" },
+    { week: "Week 17", date: "Thu 12/25/2025", away: "Lions", home: "Vikings", score: "DET 10 MIN 23", odds: "DET -7.5", coveredBy: "MIN +7.5", totalPoints: 33, totalLine: 45.5, winner: "Vikings" },
+    { week: "Week 17", date: "Thu 12/25/2025", away: "Broncos", home: "Chiefs", score: "DEN 20 KC 13", odds: "DEN -13.5", coveredBy: "KC +13.5", totalPoints: 33, totalLine: 37.5, winner: "Broncos" },
+    { week: "Week 17", date: "Sat 12/27/2025", away: "Texans", home: "Chargers", score: "HOU 20 LAC 16", odds: "LAC -1.5", coveredBy: "HOU +1.5", totalPoints: 36, totalLine: 40.5, winner: "Texans" },
+    { week: "Week 17", date: "Sat 12/27/2025", away: "Ravens", home: "Packers", score: "BAL 41 GB 24", odds: "GB -2.5", coveredBy: "BAL +2.5", totalPoints: 65, totalLine: 37.5, winner: "Ravens" },
+    { week: "Week 17", date: "Sun 12/28/2025", away: "Cardinals", home: "Bengals", score: "ARI 14 CIN 37", odds: "CIN -7", coveredBy: "CIN -7", totalPoints: 51, totalLine: 52.5, winner: "Bengals" },
+    { week: "Week 17", date: "Sun 12/28/2025", away: "Steelers", home: "Browns", score: "PIT 6 CLE 13", odds: "PIT -3.5", coveredBy: "CLE +3.5", totalPoints: 19, totalLine: 34.5, winner: "Browns" },
+    { week: "Week 17", date: "Sun 12/28/2025", away: "Saints", home: "Titans", score: "NO 34 TEN 26", odds: "TEN -1.5", coveredBy: "NO +1.5", totalPoints: 60, totalLine: 38.5, winner: "Saints" },
+    { week: "Week 17", date: "Sun 12/28/2025", away: "Jaguars", home: "Colts", score: "JAX 23 IND 17", odds: "JAX -3.5", coveredBy: "JAX -3.5", totalPoints: 40, totalLine: 48.5, winner: "Jaguars" },
+    { week: "Week 17", date: "Sun 12/28/2025", away: "Buccaneers", home: "Dolphins", score: "TB 17 MIA 20", odds: "TB -5.5", coveredBy: "MIA +5.5", totalPoints: 37, totalLine: 44.5, winner: "Dolphins" },
+    { week: "Week 16", date: "Thu 12/18/2025", away: "Rams", home: "Seahawks", score: "LAR 37 SEA 38", odds: "SEA -1.5", coveredBy: "LAR +1.5", totalPoints: 75, totalLine: 42.5, winner: "Seahawks" },
+    { week: "Week 16", date: "Sat 12/20/2025", away: "Eagles", home: "Commanders", score: "PHI 29 WSH 18", odds: "PHI -7", coveredBy: "PHI -7", totalPoints: 47, totalLine: 43.5, winner: "Eagles" },
+    { week: "Week 16", date: "Sat 12/20/2025", away: "Packers", home: "Bears", score: "GB 16 CHI 22", odds: "CHI -1.5", coveredBy: "CHI -1.5", totalPoints: 38, totalLine: 45.5, winner: "Bears" },
+    { week: "Week 16", date: "Sun 12/21/2025", away: "Bills", home: "Browns", score: "BUF 23 CLE 20", odds: "BUF -10.5", coveredBy: "CLE +10.5", totalPoints: 43, totalLine: 41.5, winner: "Bills" },
+    { week: "Week 16", date: "Sun 12/21/2025", away: "Chargers", home: "Cowboys", score: "LAC 34 DAL 17", odds: "DAL -1.5", coveredBy: "LAC +1.5", totalPoints: 51, totalLine: 50.5, winner: "Chargers" },
+    { week: "Week 16", date: "Sun 12/21/2025", away: "Chiefs", home: "Titans", score: "KC 9 TEN 26", odds: "KC -3.5", coveredBy: "TEN +3.5", totalPoints: 35, totalLine: 37.5, winner: "Titans" },
+    { week: "Week 16", date: "Sun 12/21/2025", away: "Bengals", home: "Dolphins", score: "CIN 45 MIA 21", odds: "CIN -3.5", coveredBy: "CIN -3.5", totalPoints: 66, totalLine: 48.5, winner: "Bengals" },
+    { week: "Week 16", date: "Sun 12/21/2025", away: "Jets", home: "Saints", score: "NYJ 6 NO 29", odds: "NO -6.5", coveredBy: "NO -6.5", totalPoints: 35, totalLine: 39.5, winner: "Saints" },
+    { week: "Week 16", date: "Sun 12/21/2025", away: "Patriots", home: "Ravens", score: "NE 28 BAL 24", odds: "BAL -3.5", coveredBy: "NE +3.5", totalPoints: 52, totalLine: 47.5, winner: "Patriots" },
+    { week: "Week 16", date: "Mon 12/22/2025", away: "49ers", home: "Colts", score: "SF 48 IND 27", odds: "SF -4.5", coveredBy: "SF -4.5", totalPoints: 75, totalLine: 46.5, winner: "49ers" }
+  ]
+};

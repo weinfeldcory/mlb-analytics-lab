@@ -22,10 +22,10 @@ The current workflow is aimed at team building, not just forecasting. The 2026 e
 Run from the repo root:
 
 ```bash
-.venv/bin/python projects/mlb-analytics-projections/src/build_modeling_tables.py
-.venv/bin/python projects/mlb-analytics-projections/src/pull_live_completed_games.py --start-date 2026-03-27 --end-date 2026-04-08
-.venv/bin/python projects/mlb-analytics-projections/src/export_hitter_projection_vs_current_2026.py
-.venv/bin/python projects/mlb-analytics-projections/src/export_pitcher_projection_vs_current_2026.py
+.venv/bin/python projects/baseball-analytics-app/src/build_modeling_tables.py
+.venv/bin/python projects/baseball-analytics-app/src/pull_live_completed_games.py --start-date 2026-03-27 --end-date 2026-04-08
+.venv/bin/python projects/baseball-analytics-app/src/export_hitter_projection_vs_current_2026.py
+.venv/bin/python projects/baseball-analytics-app/src/export_pitcher_projection_vs_current_2026.py
 ```
 
 Or run from inside this folder:

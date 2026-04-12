@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Sports Attendance",
+    "slug": "sports-attendance",
+    "scheme": "sportsattendance",
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
+

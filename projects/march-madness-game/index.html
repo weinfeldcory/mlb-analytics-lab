@@ -31,40 +31,40 @@
         <a href="#teams-section">Teams</a>
       </nav>
 
-      <section class="panel focus-strip">
+      <section id="draft-section" class="panel draft-stage">
         <div class="section-title">
-          <h2>Current Focus</h2>
-          <p>What this build is trying to accomplish right now.</p>
+          <h2>Draft Room</h2>
+          <p>Commissioner controls, live pick flow, and backend-persisted state.</p>
         </div>
-        <div class="focus-grid">
-          <article class="focus-card">
-            <span class="focus-label">Now</span>
-            <h3>Run the draft in-app</h3>
-            <p>Commissioner controls, current pick flow, undo, lock state, and backend persistence.</p>
-          </article>
-          <article class="focus-card">
-            <span class="focus-label">Next</span>
-            <h3>Own season setup</h3>
-            <p>Owners, teams, scoring matrix, and yearly reset should all originate here instead of in Sheets.</p>
-          </article>
-          <article class="focus-card">
-            <span class="focus-label">Later</span>
-            <h3>Replace spreadsheet scoring</h3>
-            <p>Ingest live tournament data directly and make this app the single source of truth.</p>
-          </article>
-        </div>
+        <div id="draft-room"></div>
       </section>
 
-      <section id="draft-section" class="grid">
-        <div class="panel">
+      <section class="summary-grid">
+        <div class="panel focus-strip">
           <div class="section-title">
-            <h2>Draft Room</h2>
-            <p>Commissioner controls, live pick flow, and backend-persisted state.</p>
+            <h2>Current Focus</h2>
+            <p>What this build is trying to accomplish right now.</p>
           </div>
-          <div id="draft-room"></div>
+          <div class="focus-grid">
+            <article class="focus-card">
+              <span class="focus-label">Now</span>
+              <h3>Run the draft in-app</h3>
+              <p>Commissioner controls, current pick flow, undo, lock state, and backend persistence.</p>
+            </article>
+            <article class="focus-card">
+              <span class="focus-label">Next</span>
+              <h3>Own season setup</h3>
+              <p>Owners, teams, scoring matrix, and yearly reset should all originate here instead of in Sheets.</p>
+            </article>
+            <article class="focus-card">
+              <span class="focus-label">Later</span>
+              <h3>Replace spreadsheet scoring</h3>
+              <p>Ingest live tournament data directly and make this app the single source of truth.</p>
+            </article>
+          </div>
         </div>
 
-        <div class="panel">
+        <div class="panel standings-stage">
           <div class="section-title">
             <h2>Standings</h2>
             <p>Current points, realistic ceiling, and expected finish.</p>

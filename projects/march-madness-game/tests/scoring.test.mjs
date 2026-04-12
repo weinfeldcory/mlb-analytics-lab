@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { currentScoring, games, teams } from "../src/data.js";
 import {
+  deriveOwners,
   constrainedEqualValueScoring,
   equalValueScoring,
   expectedStandings,
@@ -51,5 +52,21 @@ const winPaths = ownerWinningPaths(teams, games, currentScoring);
 assert.equal(winPaths.length, 4);
 assert.equal(winPaths[0].owner, "Cory");
 assert.match(winPaths[0].summary, /first place|clinch|remaining games/i);
+
+const customTeams = [
+  { name: "Alpha", seed: 1, owner: "Zoe" },
+  { name: "Beta", seed: 16, owner: "Ava" }
+];
+const customGames = [
+  { topTeam: "Alpha", bottomTeam: "Beta", winner: "Beta", round: "Round of 32 Appearance" }
+];
+const customOwners = ["Ava", "Zoe", "Mia"];
+
+assert.deepEqual(deriveOwners(customTeams, customOwners), customOwners);
+assert.deepEqual(standings(customTeams, customGames, currentScoring, customOwners), [
+  { owner: "Ava", points: 10 },
+  { owner: "Zoe", points: 0 },
+  { owner: "Mia", points: 0 }
+]);
 
 console.log("scoring tests passed");

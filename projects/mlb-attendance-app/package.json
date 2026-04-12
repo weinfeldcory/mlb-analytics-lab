@@ -1,0 +1,9 @@
+{
+  "name": "mlb-attendance-app",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "pnpm --filter mobile start",
+    "typecheck": "pnpm --filter mobile typecheck"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "season": 2026,
-  "updatedAt": "2026-04-09T02:02:20.833Z",
+  "updatedAt": "2026-04-12T17:57:49.134Z",
   "owners": [
     "Berkman",
     "Cory",
@@ -529,7 +529,7 @@
     {
       "name": "Duke",
       "seed": 1,
-      "owner": "Shuster"
+      "owner": "Berkman"
     },
     {
       "name": "Arizona",
@@ -861,8 +861,14 @@
     ],
     "snake": true,
     "locked": false,
-    "currentPickNumber": 1,
-    "currentPickIndex": 0,
-    "history": []
+    "currentPickNumber": 2,
+    "currentPickIndex": 1,
+    "history": [
+      {
+        "pickNumber": 1,
+        "teamName": "Duke",
+        "owner": "Berkman"
+      }
+    ]
   }
 }
