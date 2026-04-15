@@ -1,5 +1,155 @@
-import { rounds } from "../data.js";
+import { games as defaultGames, rounds } from "../data.js";
 import { draftStats, parseTeamsText, scoringToText, teamsToText } from "./state.js";
+
+const REGION_NAMES = ["East", "West", "South", "Midwest"];
+const REGION_SIDES = ["left", "right", "left", "right"];
+
+function bracketTemplateGames(appData) {
+  return appData.games?.length ? appData.games : defaultGames;
+}
+
+function buildBracketRegions(appData) {
+  const templateGames = bracketTemplateGames(appData);
+  const teamsByName = new Map(appData.teams.map((team) => [team.name, team]));
+  const firstRoundGames = templateGames.filter((game) => game.round === rounds[0]);
+
+  return Array.from({ length: 4 }, (_, regionIndex) => ({
+    name: REGION_NAMES[regionIndex] ?? `Region ${regionIndex + 1}`,
+    opening: firstRoundGames.slice(regionIndex * 8, (regionIndex + 1) * 8).map((game, index) => ({
+      ...game,
+      slotNumber: index + 1,
+      top: teamsByName.get(game.topTeam),
+      bottom: teamsByName.get(game.bottomTeam)
+    })),
+  }));
+}
+
+function renderTeamSlot(team) {
+  if (!team) {
+    return '<div class="bracket-slot is-empty">Open slot</div>';
+  }
+
+  if (team.owner) {
+    return `
+      <button class="bracket-slot is-owned" type="button" data-team-unassign="${team.name}">
+        <strong>${team.name}</strong>
+        <span>${team.seed}-seed · ${team.owner}</span>
+      </button>
+    `;
+  }
+
+  return `
+    <button class="bracket-slot" type="button" data-team="${team.name}">
+      <strong>${team.name}</strong>
+      <span>${team.seed}-seed · available</span>
+    </button>
+  `;
+}
+
+function renderFutureMatchup(topLabel, bottomLabel, label, className = "") {
+  return `
+    <article class="future-matchup ${className}">
+      <span class="future-round">${label}</span>
+      <div class="future-slot">
+        <strong>${topLabel}</strong>
+        <span>path slot</span>
+      </div>
+      <div class="future-slot">
+        <strong>${bottomLabel}</strong>
+        <span>path slot</span>
+      </div>
+    </article>
+  `;
+}
+
+function renderRegionBracket(region, side) {
+  const sweet16 = Array.from({ length: 4 }, (_, index) => {
+    const leftGame = (index * 2) + 1;
+    const rightGame = leftGame + 1;
+    return renderFutureMatchup(`Winner of Game ${leftGame}`, `Winner of Game ${rightGame}`, "Sweet 16", `sweet16-matchup sweet16-matchup-${index + 1}`);
+  }).join("");
+
+  const elite8 = Array.from({ length: 2 }, (_, index) => {
+    const leftGame = (index * 2) + 1;
+    const rightGame = leftGame + 1;
+    return renderFutureMatchup(`Winner of Sweet 16 ${leftGame}`, `Winner of Sweet 16 ${rightGame}`, "Elite 8", `elite8-matchup elite8-matchup-${index + 1}`);
+  }).join("");
+
+  const regionalFinal = renderFutureMatchup("Winner of Elite 8 1", "Winner of Elite 8 2", "Regional Final", "regional-final-matchup");
+
+  const opening = region.opening.map((game) => `
+    <article class="bracket-matchup opening-matchup opening-matchup-${game.slotNumber}">
+      <span class="future-round">Game ${game.slotNumber}</span>
+      ${renderTeamSlot(game.top)}
+      ${renderTeamSlot(game.bottom)}
+    </article>
+  `).join("");
+
+  const columns = side === "left"
+    ? `
+      <div class="region-column is-opening">
+        <span class="region-column-label">Round of 64</span>
+        ${opening}
+      </div>
+      <div class="region-column is-path">
+        <span class="region-column-label">Sweet 16</span>
+        ${sweet16}
+      </div>
+      <div class="region-column is-path">
+        <span class="region-column-label">Elite 8</span>
+        ${elite8}
+      </div>
+      <div class="region-column is-path is-center-edge">
+        <span class="region-column-label">Final Four</span>
+        ${regionalFinal}
+      </div>
+    `
+    : `
+      <div class="region-column is-path is-center-edge">
+        <span class="region-column-label">Final Four</span>
+        ${regionalFinal}
+      </div>
+      <div class="region-column is-path">
+        <span class="region-column-label">Elite 8</span>
+        ${elite8}
+      </div>
+      <div class="region-column is-path">
+        <span class="region-column-label">Sweet 16</span>
+        ${sweet16}
+      </div>
+      <div class="region-column is-opening">
+        <span class="region-column-label">Round of 64</span>
+        ${opening}
+      </div>
+    `;
+
+  return `
+    <article class="region-card region-card-${side}">
+      <div class="region-head">
+        <h4>${region.name}</h4>
+      </div>
+      <div class="region-grid region-grid-${side}">
+        ${columns}
+      </div>
+    </article>
+  `;
+}
+
+function renderCenterFinals() {
+  return `
+    <section class="finals-stage">
+      <div class="finals-column">
+        <span class="region-column-label">National Semifinals</span>
+        ${renderFutureMatchup("East Winner", "West Winner", "Semifinal 1", "semifinal-matchup semifinal-matchup-1")}
+        ${renderFutureMatchup("South Winner", "Midwest Winner", "Semifinal 2", "semifinal-matchup semifinal-matchup-2")}
+      </div>
+      <div class="finals-column championship-column">
+        <span class="region-column-label">Championship</span>
+        ${renderFutureMatchup("Winner of Semifinal 1", "Winner of Semifinal 2", "National Title", "championship-matchup")}
+      </div>
+    </section>
+  `;
+}
 
 export function renderDraftRoom(appData, uiState, actions) {
   const stats = draftStats(appData);
@@ -11,6 +161,7 @@ export function renderDraftRoom(appData, uiState, actions) {
     }
   }
 
+  const bracketRegions = buildBracketRegions(appData);
   const groupedBySeed = Object.groupBy(
     appData.teams.filter((team) => !team.owner),
     ({ seed }) => String(seed)
@@ -55,11 +206,26 @@ export function renderDraftRoom(appData, uiState, actions) {
         </select>
       </div>
     </div>
-    <div class="draft-grid">
+    <div class="draft-stack">
+      <section class="draft-panel draft-panel-primary">
+        <div class="draft-panel-head">
+          <h3>Bracket Board</h3>
+          <p>Draft directly from the actual tournament path so matchups and future routes are visible while you pick.</p>
+        </div>
+        <div class="bracket-board bracket-board-top">
+          ${renderRegionBracket(bracketRegions[0], REGION_SIDES[0])}
+          ${renderRegionBracket(bracketRegions[1], REGION_SIDES[1])}
+        </div>
+        ${renderCenterFinals()}
+        <div class="bracket-board bracket-board-bottom">
+          ${renderRegionBracket(bracketRegions[2], REGION_SIDES[2])}
+          ${renderRegionBracket(bracketRegions[3], REGION_SIDES[3])}
+        </div>
+      </section>
       <section class="draft-panel">
         <div class="draft-panel-head">
-          <h3>Available Teams</h3>
-          <p>Click a team to draft it to the current owner. Use commissioner controls above only when you need to override.</p>
+          <h3>Available By Seed</h3>
+          <p>Fallback inventory view for quick scanning by seed.</p>
         </div>
         <div class="seed-grid">
           ${Array.from({ length: 16 }, (_, index) => index + 1).map((seed) => `

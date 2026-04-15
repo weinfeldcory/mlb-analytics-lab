@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { currentScoring, games, teams } from "../src/data.js";
 import {
+  averageSeedRoundWinProbabilities,
+  bracketWinProbabilities,
   deriveOwners,
   constrainedEqualValueScoring,
   equalValueScoring,
@@ -31,7 +33,7 @@ assert.deepEqual(max, [
 
 const expected = expectedStandings(teams, games);
 const cory = expected.find((row) => row.owner === "Cory");
-assert.equal(Math.round(cory.expected * 10) / 10, 103.5);
+assert.equal(Math.round(cory.expected * 10) / 10, 104.1);
 
 const equalized = equalValueScoring(currentScoring);
 const constrained = constrainedEqualValueScoring(currentScoring);
@@ -72,5 +74,16 @@ assert.deepEqual(standings(customTeams, customGames, currentScoring, customOwner
   { owner: "Zoe", points: 0 },
   { owner: "Mia", points: 0 }
 ]);
+
+const bracketProbabilities = bracketWinProbabilities(teams, games);
+const totalWinsByRound = Array.from({ length: 6 }, (_, roundIndex) => (
+  teams.reduce((sum, team) => sum + bracketProbabilities.perTeamRoundWins.get(team.name)[roundIndex], 0)
+));
+
+assert.deepEqual(totalWinsByRound.map((value) => Math.round(value * 1000) / 1000), [32, 16, 8, 4, 2, 1]);
+
+const averageBySeed = averageSeedRoundWinProbabilities(teams, games);
+assert.ok(averageBySeed[1][0] > averageBySeed[16][0]);
+assert.ok(averageBySeed[2][1] > averageBySeed[15][1]);
 
 console.log("scoring tests passed");

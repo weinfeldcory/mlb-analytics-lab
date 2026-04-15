@@ -4,6 +4,15 @@ Local MLB projection workspace using `pybaseball`, DuckDB, pandas, and SQL.
 
 The current workflow is aimed at team building, not just forecasting. The 2026 exports now cover both hitters and pitchers, preserve traceable prior and in-season blend logic, and surface roster-construction outputs that can roll into a team-level season estimate.
 
+## Planning Docs
+
+- `PRODUCT_ROADMAP.md`
+  Product direction, workstreams, and delivery sequence.
+- `BACKLOG.md`
+  Execution-level follow-up work derived from the roadmap.
+- `EXPORT_FIELD_GLOSSARY.md`
+  Viewer-facing hitter and pitcher field definitions for the current export contract.
+
 ## Layout
 
 - `src/`
@@ -36,6 +45,65 @@ Or run from inside this folder:
 ../../.venv/bin/python src/export_hitter_projection_vs_current_2026.py
 ../../.venv/bin/python src/export_pitcher_projection_vs_current_2026.py
 ```
+
+## Refresh Workflow
+
+Use this order when refreshing the local product:
+
+1. Pull or update source data.
+2. Rebuild DuckDB modeling tables.
+3. Export viewer-ready hitter and pitcher files.
+4. Reload the local viewer and sanity-check the outputs.
+
+### 1. Pull source data
+
+Run the ingestion scripts needed for the refresh you want:
+
+```bash
+.venv/bin/python projects/baseball-analytics-app/src/pull_data.py
+.venv/bin/python projects/baseball-analytics-app/src/pull_games.py
+.venv/bin/python projects/baseball-analytics-app/src/pull_live_completed_games.py --start-date 2026-03-27 --end-date 2026-04-08
+```
+
+Use narrower date windows for in-season refreshes when you only need live completed games updated.
+
+### 2. Rebuild modeling tables
+
+```bash
+.venv/bin/python projects/baseball-analytics-app/src/build_modeling_tables.py
+```
+
+This executes the SQL pipeline in `sql/` and refreshes the DuckDB modeling tables used by the exports.
+
+### 3. Export product outputs
+
+```bash
+.venv/bin/python projects/baseball-analytics-app/src/export_hitter_projection_vs_current_2026.py
+.venv/bin/python projects/baseball-analytics-app/src/export_pitcher_projection_vs_current_2026.py
+```
+
+These scripts write both processed outputs and viewer-facing JSON:
+
+- `data/processed/*.json`
+- `data/processed/*.csv`
+- `viewer/data/*.json`
+
+### 4. Check the viewer
+
+From this directory:
+
+```bash
+python3 -m http.server 8000
+```
+
+Then open `http://localhost:8000/viewer/` and confirm:
+
+- hitter data loads
+- pitcher data loads
+- roster builder still works
+- summary cards and team rollups look reasonable
+
+If the viewer looks stale after a rerun, verify that the matching `viewer/data/*.json` files were rewritten by the export scripts.
 
 ## Viewer
 

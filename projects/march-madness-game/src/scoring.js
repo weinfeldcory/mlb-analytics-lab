@@ -1,4 +1,12 @@
-import { currentScoring, owners as defaultOwners, roundOrder, rounds, seedProbabilities } from "./data.js";
+import {
+  currentScoring,
+  games as defaultGames,
+  owners as defaultOwners,
+  roundOrder,
+  rounds,
+  seedProbabilities,
+  teams as defaultTeams
+} from "./data.js";
 
 export function deriveOwners(teams, ownerList = null) {
   if (Array.isArray(ownerList) && ownerList.length) {
@@ -80,9 +88,21 @@ export function trueMaxStandings(teams, games, scoring = currentScoring, ownerLi
   const owners = deriveOwners(teams, ownerList);
   const current = new Map(standings(teams, games, scoring, owners).map((row) => [row.owner, row.points]));
   const unresolved = unresolvedGames(games);
+  const bracketProbabilities = bracketWinProbabilities(teams, games, seedProbabilities, { respectResults: true });
 
   for (const game of unresolved) {
-    const outcomes = remainingOutcomesForGame(game, teams, scoring);
+    const winnerDistribution = bracketProbabilities.winnerDistributionsByGame.get(game) ?? new Map();
+    const outcomes = [...winnerDistribution.keys()].map((teamName) => {
+      const team = teamMap(teams).get(teamName);
+      return team ? {
+        team: team.name,
+        owner: team.owner,
+        seed: team.seed,
+        round: game.round,
+        points: pointsFor(scoring, team.seed, game.round)
+      } : null;
+    }).filter(Boolean);
+
     for (const owner of owners) {
       const best = Math.max(0, ...outcomes.filter((outcome) => outcome.owner === owner).map((outcome) => outcome.points));
       current.set(owner, current.get(owner) + best);
@@ -97,18 +117,15 @@ export function trueMaxStandings(teams, games, scoring = currentScoring, ownerLi
 export function expectedRemainingByTeam(teams, games, scoring = currentScoring, probabilities = seedProbabilities) {
   const unresolved = unresolvedGames(games);
   const remaining = new Map(teams.map((team) => [team.name, 0]));
+  const bracketProbabilities = bracketWinProbabilities(teams, games, probabilities, { respectResults: true });
 
   for (const game of unresolved) {
-    const outcomes = remainingOutcomesForGame(game, teams, scoring);
-    const weights = outcomes.map((outcome) => {
-      const probability = probabilities[outcome.seed][roundOrder[outcome.round]] || 0;
-      return { ...outcome, probability };
-    });
-    const totalWeight = weights.reduce((sum, outcome) => sum + outcome.probability, 0) || weights.length;
+    const winnerDistribution = bracketProbabilities.winnerDistributionsByGame.get(game) ?? new Map();
 
-    for (const outcome of weights) {
-      const normalizedProbability = totalWeight === weights.length ? 1 / weights.length : outcome.probability / totalWeight;
-      remaining.set(outcome.team, remaining.get(outcome.team) + outcome.points * normalizedProbability);
+    for (const [teamName, probability] of winnerDistribution.entries()) {
+      const team = teamMap(teams).get(teamName);
+      if (!team) continue;
+      remaining.set(team.name, remaining.get(team.name) + (pointsFor(scoring, team.seed, game.round) * probability));
     }
   }
 
@@ -134,11 +151,13 @@ export function teamRows(teams, games, scoring = currentScoring) {
   const earned = earnedPointsByTeam(teams, games, scoring);
   const expectedRemaining = expectedRemainingByTeam(teams, games, scoring);
   const unresolved = unresolvedGames(games);
+  const bracketProbabilities = bracketWinProbabilities(teams, games, seedProbabilities, { respectResults: true });
 
   return teams.map((team) => {
-    const remaining = unresolved
-      .filter((game) => game.topTeam === team.name || game.bottomTeam === team.name)
-      .reduce((sum, game) => sum + pointsFor(scoring, team.seed, game.round), 0);
+    const remaining = unresolved.reduce((sum, game) => {
+      const winnerDistribution = bracketProbabilities.winnerDistributionsByGame.get(game) ?? new Map();
+      return winnerDistribution.has(team.name) ? sum + pointsFor(scoring, team.seed, game.round) : sum;
+    }, 0);
     return { ...team, points: earned.get(team.name), remaining, expectedRemaining: expectedRemaining.get(team.name) };
   });
 }
@@ -153,6 +172,134 @@ export function smoothedSeedProbabilities(probabilities = seedProbabilities, pro
   return matrix;
 }
 
+export function conditionalSeedWinProbabilities(probabilities = seedProbabilities, probabilityFloors = [0.01, 0.01, 0.006, 0.004, 0.0025, 0.0015]) {
+  const smoothed = smoothedSeedProbabilities(probabilities, probabilityFloors);
+  const matrix = {};
+
+  for (let seed = 1; seed <= 16; seed += 1) {
+    matrix[seed] = rounds.map((_, index) => {
+      if (index === 0) {
+        return Math.min(1, smoothed[seed][0]);
+      }
+
+      const previousReach = Math.max(smoothed[seed][index - 1], probabilityFloors[index - 1] || 0.000001);
+      return Math.min(1, smoothed[seed][index] / previousReach);
+    });
+  }
+
+  return matrix;
+}
+
+export function pairwiseSeedGameProbability(topSeed, bottomSeed, roundIndex, probabilities = seedProbabilities) {
+  const conditional = conditionalSeedWinProbabilities(probabilities);
+  const topStrength = conditional[topSeed]?.[roundIndex] ?? 0;
+  const bottomStrength = conditional[bottomSeed]?.[roundIndex] ?? 0;
+  const total = topStrength + bottomStrength;
+
+  if (total <= 0) {
+    return 0.5;
+  }
+
+  return topStrength / total;
+}
+
+export function bracketWinProbabilities(
+  teams = defaultTeams,
+  games = defaultGames,
+  probabilities = seedProbabilities,
+  options = {}
+) {
+  const { respectResults = false } = options;
+  const teamsByName = teamMap(teams);
+  const perTeamRoundWins = new Map(teams.map((team) => [team.name, Array.from({ length: rounds.length }, () => 0)]));
+  const winnerDistributionsByGame = new Map();
+  let previousRoundWinners = [];
+
+  for (const [roundIndex, round] of rounds.entries()) {
+    const roundGames = games.filter((game) => game.round === round);
+    const nextRoundWinners = [];
+
+    for (const [gameIndex, game] of roundGames.entries()) {
+      const topDistribution = roundIndex === 0
+        ? new Map([[game.topTeam, 1]])
+        : previousRoundWinners[gameIndex * 2];
+      const bottomDistribution = roundIndex === 0
+        ? new Map([[game.bottomTeam, 1]])
+        : previousRoundWinners[(gameIndex * 2) + 1];
+      const winnerDistribution = new Map();
+
+      if (respectResults && game.winner) {
+        winnerDistribution.set(game.winner, 1);
+        const winnerWins = perTeamRoundWins.get(game.winner);
+        if (winnerWins) {
+          winnerWins[roundIndex] += 1;
+        }
+      } else {
+        for (const [topTeamName, topReachProbability] of topDistribution.entries()) {
+          const topTeam = teamsByName.get(topTeamName);
+          if (!topTeam) continue;
+
+          for (const [bottomTeamName, bottomReachProbability] of bottomDistribution.entries()) {
+            const bottomTeam = teamsByName.get(bottomTeamName);
+            if (!bottomTeam) continue;
+
+            const matchupProbability = topReachProbability * bottomReachProbability;
+            if (!matchupProbability) continue;
+
+            const topWinProbability = pairwiseSeedGameProbability(topTeam.seed, bottomTeam.seed, roundIndex, probabilities);
+            const bottomWinProbability = 1 - topWinProbability;
+
+            winnerDistribution.set(
+              topTeamName,
+              (winnerDistribution.get(topTeamName) ?? 0) + (matchupProbability * topWinProbability)
+            );
+            winnerDistribution.set(
+              bottomTeamName,
+              (winnerDistribution.get(bottomTeamName) ?? 0) + (matchupProbability * bottomWinProbability)
+            );
+
+            perTeamRoundWins.get(topTeamName)[roundIndex] += matchupProbability * topWinProbability;
+            perTeamRoundWins.get(bottomTeamName)[roundIndex] += matchupProbability * bottomWinProbability;
+          }
+        }
+      }
+
+      winnerDistributionsByGame.set(game, winnerDistribution);
+      nextRoundWinners.push(winnerDistribution);
+    }
+
+    previousRoundWinners = nextRoundWinners;
+  }
+
+  return {
+    perTeamRoundWins,
+    winnerDistributionsByGame
+  };
+}
+
+export function averageSeedRoundWinProbabilities(
+  teams = defaultTeams,
+  games = defaultGames,
+  probabilities = seedProbabilities
+) {
+  const { perTeamRoundWins } = bracketWinProbabilities(teams, games, probabilities, { respectResults: false });
+  const bySeed = Object.fromEntries(Array.from({ length: 16 }, (_, offset) => [offset + 1, Array.from({ length: rounds.length }, () => 0)]));
+  const seedCounts = new Map();
+
+  for (const team of teams) {
+    seedCounts.set(team.seed, (seedCounts.get(team.seed) ?? 0) + 1);
+    const roundWins = perTeamRoundWins.get(team.name) ?? [];
+    bySeed[team.seed] = bySeed[team.seed].map((value, index) => value + (roundWins[index] ?? 0));
+  }
+
+  for (let seed = 1; seed <= 16; seed += 1) {
+    const count = seedCounts.get(seed) ?? 1;
+    bySeed[seed] = bySeed[seed].map((value) => value / count);
+  }
+
+  return bySeed;
+}
+
 export function exactEqualValueScoring(
   probabilities = seedProbabilities,
   options = {}
@@ -163,12 +310,12 @@ export function exactEqualValueScoring(
     cap = Infinity
   } = options;
 
-  const smoothed = smoothedSeedProbabilities(probabilities);
+  const bracketProbabilities = averageSeedRoundWinProbabilities(defaultTeams, defaultGames, probabilities);
   const matrix = {};
 
   for (let seed = 1; seed <= 16; seed += 1) {
     matrix[seed] = rounds.map((_, index) => {
-      const probability = Math.max(smoothed[seed][index] || 0, probabilityFloors[index]);
+      const probability = Math.max(bracketProbabilities[seed]?.[index] || 0, probabilityFloors[index]);
       return Math.min(cap, roundExpectedValues[index] / probability);
     });
   }
@@ -226,12 +373,12 @@ export function constrainedEqualValueScoring(
 }
 
 export function seedExpectedValueTotals(scoring = currentScoring, probabilities = seedProbabilities) {
-  const smoothed = smoothedSeedProbabilities(probabilities);
+  const bracketProbabilities = averageSeedRoundWinProbabilities(defaultTeams, defaultGames, probabilities);
 
   return Array.from({ length: 16 }, (_, offset) => {
     const seed = offset + 1;
     const expectedValue = rounds.reduce(
-      (sum, _, index) => sum + scoring[seed][index] * smoothed[seed][index],
+      (sum, _, index) => sum + scoring[seed][index] * (bracketProbabilities[seed]?.[index] ?? 0),
       0
     );
 

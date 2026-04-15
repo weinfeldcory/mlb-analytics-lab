@@ -1,6 +1,6 @@
 {
   "season": 2026,
-  "updatedAt": "2026-04-15T01:20:22.076Z",
+  "updatedAt": "2026-04-15T01:48:01.885Z",
   "owners": [
     "Berkman",
     "Cory",
@@ -534,17 +534,17 @@
     {
       "name": "Arizona",
       "seed": 1,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "Michigan",
       "seed": 1,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "Florida",
       "seed": 1,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "Houston",
@@ -559,12 +559,12 @@
     {
       "name": "Iowa St",
       "seed": 2,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "Purdue",
       "seed": 2,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Michigan St",
@@ -861,9 +861,35 @@
     ],
     "snake": true,
     "locked": false,
-    "currentPickNumber": 1,
-    "currentPickIndex": 0,
-    "history": []
+    "currentPickNumber": 6,
+    "currentPickIndex": 2,
+    "history": [
+      {
+        "pickNumber": 1,
+        "teamName": "Arizona",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 2,
+        "teamName": "Michigan",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 4,
+        "teamName": "Florida",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 5,
+        "teamName": "Iowa St",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 6,
+        "teamName": "Purdue",
+        "owner": "Shuster"
+      }
+    ]
   },
   "baselineTeams": [
     {

@@ -12,6 +12,10 @@ import {
 } from "../scoring.js";
 import { formatNumber, formatPercent } from "../lib/format.js";
 
+function createTeamOwnerMap(teams) {
+  return new Map(teams.map((team) => [team.name, team.owner]));
+}
+
 export function renderOverview(appData) {
   const standingsRows = appData.standings || [];
   const leader = standingsRows[0];
@@ -19,6 +23,9 @@ export function renderOverview(appData) {
   const unresolvedCount = (appData.unresolvedGames || []).length;
   const secondPlace = standingsRows[1];
   const leaderMargin = leader && secondPlace ? leader.points - secondPlace.points : null;
+  const teamOwnerMap = createTeamOwnerMap(appData.teams);
+  const liveWatchGames = (appData.unresolvedGames || []).slice(0, 3);
+  const topPaths = (appData.paths || []).slice(0, 2);
   const nextAction = appData.draft.locked
     ? "Unlock the draft when the room is ready to move again."
     : appData.draft.currentOwner
@@ -60,6 +67,44 @@ export function renderOverview(appData) {
         <p>${leader && leaderMargin != null ? `${leaderMargin === 0 ? "The top spot is currently tied." : `${leader.owner} leads by ${leaderMargin} point${leaderMargin === 1 ? "" : "s"}.`}` : "Use the workspace for deeper standings and path detail."}</p>
       </article>
     </div>
+    <div class="overview-detail-grid">
+      <article class="overview-panel">
+        <div class="overview-panel-head">
+          <h3>Live Watch</h3>
+          <p>Remaining matchups that can still move the pool.</p>
+        </div>
+        <div class="overview-watch-list">
+          ${liveWatchGames.map((game) => `
+            <div class="overview-watch-row">
+              <div>
+                <strong>${game.topTeam} vs ${game.bottomTeam}</strong>
+                <p>${game.round.replace(" Appearance", "")}</p>
+              </div>
+              <div class="overview-watch-meta">
+                <span>${teamOwnerMap.get(game.topTeam) ?? "Open"} / ${teamOwnerMap.get(game.bottomTeam) ?? "Open"}</span>
+              </div>
+            </div>
+          `).join("") || '<p class="empty-state">No unresolved games remain.</p>'}
+        </div>
+      </article>
+      <article class="overview-panel">
+        <div class="overview-panel-head">
+          <h3>Path Signals</h3>
+          <p>Most important winner-path summaries at a glance.</p>
+        </div>
+        <div class="overview-signal-list">
+          ${topPaths.map((row) => `
+            <div class="overview-signal-row">
+              <div>
+                <strong>${row.owner}</strong>
+                <p>${row.summary || "No strong path signal surfaced."}</p>
+              </div>
+              <span class="pill">${formatPercent(row.odds, 1)}</span>
+            </div>
+          `).join("") || '<p class="empty-state">Path signals will appear once live outcomes remain.</p>'}
+        </div>
+      </article>
+    </div>
   `;
 }
 
@@ -73,7 +118,7 @@ export function renderStandings(appData) {
   const alternateCurrent = new Map(standings(teams, games, alternate, appData.owners).map((row) => [row.owner, row.points]));
   const alternateExpected = new Map(expectedStandings(teams, games, alternate, undefined, appData.owners).map((row) => [row.owner, row.expected]));
 
-  const markup = `
+  const cardsMarkup = `
     <div class="standings-cards">
       ${current.map((row, index) => `
         <article class="rank-card">
@@ -90,6 +135,9 @@ export function renderStandings(appData) {
         </article>
       `).join("")}
     </div>
+  `;
+
+  const detailTableMarkup = `
     <table>
       <thead>
         <tr><th>Owner</th><th>Current</th><th>Win Odds</th><th>Expected</th><th>True Max</th><th>Alt Current</th><th>Alt Expected</th></tr>
@@ -112,12 +160,15 @@ export function renderStandings(appData) {
 
   const snapshot = document.querySelector("#standings");
   if (snapshot) {
-    snapshot.innerHTML = markup;
+    snapshot.innerHTML = cardsMarkup;
   }
 
   const detail = document.querySelector("#standings-detail");
   if (detail) {
-    detail.innerHTML = markup;
+    detail.innerHTML = `
+      ${cardsMarkup}
+      ${detailTableMarkup}
+    `;
   }
 }
 
@@ -199,6 +250,9 @@ export function renderMatrix(appData) {
   const constrainedFairness = scoringFairnessSummary(proposed);
   const strictDeviations = equalValueDeviations(strict);
   const currentDeviations = equalValueDeviations(appData.currentScoring);
+  const constrainedDeviations = equalValueDeviations(proposed);
+  const focusSeeds = [1, 8, 12, 16];
+
   document.querySelector("#matrix").innerHTML = `
     <div class="model-note">
       <h3>Equal-EV scoring</h3>
@@ -210,6 +264,26 @@ export function renderMatrix(appData) {
       </p>
       <a href="${scoringSourceUrl}" target="_blank" rel="noreferrer">Historical seed table source</a>
     </div>
+    <div class="formula-strip">
+      <div class="formula-card">
+        <span class="overview-label">Strict Formula</span>
+        <code>points(seed, round) = target round EV / P(seed wins round)</code>
+      </div>
+      <div class="formula-card">
+        <span class="overview-label">Target Used Here</span>
+        <code>1.0 expected point per seed per round</code>
+      </div>
+      <div class="formula-card">
+        <span class="overview-label">Result</span>
+        <code>every seed starts with the same total expected value</code>
+      </div>
+    </div>
+    <div class="paths-intro">
+      <p>
+        Strict equal-EV is the mathematical baseline. If a seed has a lower chance to win a round, it gets more points for that round in exact proportion.
+        The constrained variant is here only to test whether a cleaner, more human-usable table can stay reasonably close to that baseline.
+      </p>
+    </div>
     <div class="fairness-strip">
       <div><dt>Current EV spread</dt><dd>${formatNumber(currentFairness.spread, 2)}</dd></div>
       <div><dt>Strict EV spread</dt><dd>${formatNumber(strictFairness.spread, 2)}</dd></div>
@@ -220,18 +294,17 @@ export function renderMatrix(appData) {
     <div class="table-scroll compact">
       <table>
         <thead>
-          <tr><th>Round</th><th>Strict 1-seed</th><th>Strict 12-seed</th><th>Current 1-seed</th><th>Current 12-seed</th><th>Constrained 1-seed</th><th>Constrained 12-seed</th></tr>
+          <tr><th>Seed</th><th>Current EV</th><th>Strict EV</th><th>Constrained EV</th><th>Current vs Mean</th><th>Constrained vs Mean</th></tr>
         </thead>
         <tbody>
-          ${summary.map((row) => `
+          ${strictDeviations.map((row, index) => `
             <tr>
-              <td>${row.round.replace(" Appearance", "")}</td>
-              <td>${formatNumber(strict[1][rounds.indexOf(row.round)], 2)}</td>
-              <td>${formatNumber(strict[12][rounds.indexOf(row.round)], 2)}</td>
-              <td>${row.currentOneSeed}</td>
-              <td>${row.currentCinderella}</td>
-              <td>${formatNumber(row.optimizedOneSeed, 2)}</td>
-              <td>${formatNumber(row.optimizedCinderella, 2)}</td>
+              <td>${row.seed}</td>
+              <td>${formatNumber(currentDeviations[index].expectedValue, 2)}</td>
+              <td>${formatNumber(row.expectedValue, 2)}</td>
+              <td>${formatNumber(constrainedDeviations[index].expectedValue, 2)}</td>
+              <td>${formatNumber(currentDeviations[index].deltaFromMean, 2)}</td>
+              <td>${formatNumber(constrainedDeviations[index].deltaFromMean, 2)}</td>
             </tr>
           `).join("")}
         </tbody>
@@ -240,17 +313,22 @@ export function renderMatrix(appData) {
     <div class="table-scroll compact">
       <table>
         <thead>
-          <tr><th>Seed</th><th>Current EV</th><th>Strict EV</th><th>Delta From Mean</th></tr>
+          <tr><th>Round</th>${focusSeeds.map((seed) => `<th>${seed}-seed current</th><th>${seed}-seed strict</th><th>${seed}-seed constrained</th>`).join("")}</tr>
         </thead>
         <tbody>
-          ${strictDeviations.map((row, index) => `
+          ${summary.map((row) => {
+            const roundIndex = rounds.indexOf(row.round);
+            return `
             <tr>
-              <td>${row.seed}</td>
-              <td>${formatNumber(currentDeviations[index].expectedValue, 2)}</td>
-              <td>${formatNumber(row.expectedValue, 2)}</td>
-              <td>${formatNumber(row.deltaFromMean, 2)}</td>
+              <td>${row.round.replace(" Appearance", "")}</td>
+              ${focusSeeds.map((seed) => `
+                <td>${formatNumber(appData.currentScoring[seed][roundIndex], 2)}</td>
+                <td>${formatNumber(strict[seed][roundIndex], 2)}</td>
+                <td>${formatNumber(proposed[seed][roundIndex], 2)}</td>
+              `).join("")}
             </tr>
-          `).join("")}
+          `;
+          }).join("")}
         </tbody>
       </table>
     </div>
@@ -267,14 +345,18 @@ export function renderMatrix(appData) {
             <tr>
               <td>${seed}</td>
               ${appData.currentScoring[seed].map((points, index) => `
-                <td><strong>${points}</strong><span>${proposed[seed][index]}</span></td>
+                <td>
+                  <strong>${formatNumber(points, 2)}</strong>
+                  <span>strict ${formatNumber(strict[seed][index], 2)}</span>
+                  <span>constrained ${formatNumber(proposed[seed][index], 2)}</span>
+                </td>
               `).join("")}
             </tr>
           `).join("")}
         </tbody>
       </table>
     </div>
-    <p class="note">Bold is the current matrix. Small numbers are the constrained equal-EV recommendation. The strict comparison above shows the mathematically exact equal-EV output before usability caps are applied.</p>
+    <p class="note">Each cell shows current points in bold, then the exact strict equal-EV value and the constrained practical value beneath it.</p>
   `;
 }
 
