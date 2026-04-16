@@ -3,7 +3,15 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { readState, updateSeasonConfig, updateWeeklyPicks } from "./store.js";
+import {
+  launchSeason,
+  readState,
+  updateAvailableLines,
+  updateRecentResults,
+  updateSeasonConfig,
+  updateWeeklyOutcome,
+  updateWeeklyPicks
+} from "./store.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,9 +76,29 @@ async function handleApi(request, response, pathname) {
       return json(response, 200, await updateSeasonConfig(body));
     }
 
+    if (request.method === "POST" && pathname === "/api/season/launch") {
+      const body = await readBody(request);
+      return json(response, 200, await launchSeason(body));
+    }
+
     if (request.method === "POST" && pathname === "/api/weekly-picks") {
       const body = await readBody(request);
       return json(response, 200, await updateWeeklyPicks(body));
+    }
+
+    if (request.method === "POST" && pathname === "/api/weekly-outcome") {
+      const body = await readBody(request);
+      return json(response, 200, await updateWeeklyOutcome(body));
+    }
+
+    if (request.method === "POST" && pathname === "/api/available-lines") {
+      const body = await readBody(request);
+      return json(response, 200, await updateAvailableLines(body));
+    }
+
+    if (request.method === "POST" && pathname === "/api/recent-results") {
+      const body = await readBody(request);
+      return json(response, 200, await updateRecentResults(body));
     }
 
     return notFound(response);

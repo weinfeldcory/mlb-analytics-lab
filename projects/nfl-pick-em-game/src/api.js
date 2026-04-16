@@ -26,8 +26,36 @@ export function updateSeasonConfig(payload) {
   });
 }
 
+export function launchSeason(payload) {
+  return fetchJson("/api/season/launch", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 export function updateWeeklyPicks(payload) {
   return fetchJson("/api/weekly-picks", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateWeeklyOutcome(payload) {
+  return fetchJson("/api/weekly-outcome", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateAvailableLines(payload) {
+  return fetchJson("/api/available-lines", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateRecentResults(payload) {
+  return fetchJson("/api/recent-results", {
     method: "POST",
     body: JSON.stringify(payload)
   });
