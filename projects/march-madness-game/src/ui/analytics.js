@@ -26,6 +26,7 @@ export function renderOverview(appData) {
   const teamOwnerMap = createTeamOwnerMap(appData.teams);
   const liveWatchGames = (appData.unresolvedGames || []).slice(0, 3);
   const topPaths = (appData.paths || []).slice(0, 2);
+  const seasonOptions = appData.seasonOptions || [];
   const nextAction = appData.draft.locked
     ? "Unlock the draft when the room is ready to move again."
     : appData.draft.currentOwner
@@ -62,6 +63,11 @@ export function renderOverview(appData) {
         <p>${latestPick ? `${latestPick.owner} made pick ${latestPick.pickNumber}.` : "The draft history will surface here once the board starts moving."}</p>
       </article>
       <article class="focus-card">
+        <span class="focus-label">Season</span>
+        <h3>${appData.season}</h3>
+        <p>${Number(appData.currentSeason) === Number(appData.season) ? "Current working season." : "Historical season view."}</p>
+      </article>
+      <article class="focus-card">
         <span class="focus-label">Watch</span>
         <h3>${leader ? `${leader.owner} holds first place` : "Standings coming into focus"}</h3>
         <p>${leader && leaderMargin != null ? `${leaderMargin === 0 ? "The top spot is currently tied." : `${leader.owner} leads by ${leaderMargin} point${leaderMargin === 1 ? "" : "s"}.`}` : "Use the workspace for deeper standings and path detail."}</p>
@@ -85,6 +91,31 @@ export function renderOverview(appData) {
               </div>
             </div>
           `).join("") || '<p class="empty-state">No unresolved games remain.</p>'}
+        </div>
+      </article>
+      <article class="overview-panel">
+        <div class="overview-panel-head">
+          <h3>Season Archive</h3>
+          <p>Browse current and historical tournament states without leaving the main board.</p>
+        </div>
+        <div class="season-archive-list">
+          ${seasonOptions.map((option) => `
+            <button
+              type="button"
+              class="season-archive-card ${Number(option.season) === Number(appData.season) ? "is-active" : ""}"
+              data-season-select="${option.season}"
+            >
+              <div>
+                <strong>${option.season}</strong>
+                <p>${Number(option.season) === Number(appData.currentSeason) ? "Current season" : "Historical season"}</p>
+              </div>
+              <div class="season-archive-meta">
+                <span>${option.draftedTeams}/${option.totalTeams} drafted</span>
+                <span>${option.completedGames}/${option.totalGames} finals</span>
+                <span>${option.ownerCount} owners</span>
+              </div>
+            </button>
+          `).join("") || '<p class="empty-state">Only one season is available.</p>'}
         </div>
       </article>
       <article class="overview-panel">

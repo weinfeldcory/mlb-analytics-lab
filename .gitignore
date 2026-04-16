@@ -12,3 +12,7 @@ __pycache__/
 *.duckdb
 projects/baseball-analytics-app/data/raw/*.csv
 projects/baseball-analytics-app/data/processed/*.csv
+projects/march-madness-game/data/season-state.db
+projects/march-madness-game/data/season-state.db-shm
+projects/march-madness-game/data/season-state.db-wal
+projects/march-madness-game/data/seasons/

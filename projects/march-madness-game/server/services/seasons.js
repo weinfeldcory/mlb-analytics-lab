@@ -1,5 +1,8 @@
 import {
+  createInitialState,
   createDraftState,
+  listSeasonSummaries,
+  readCurrentSeason,
   readState,
   sanitizeOwners,
   sanitizeScoring,
@@ -7,12 +10,25 @@ import {
   writeState
 } from "../store.js";
 
-export async function loadSeasonState() {
-  return readState();
+export async function loadSeasonState(selectedSeason) {
+  return readState(selectedSeason);
 }
 
-export async function updateSeasonConfig({ season, owners: nextOwners, teams: nextTeams, currentScoring: nextScoring }) {
-  const state = await readState();
+export async function loadSeasonOptions() {
+  return listSeasonSummaries();
+}
+
+export async function loadCurrentSeason() {
+  return readCurrentSeason();
+}
+
+export async function updateSeasonConfig({ season, owners: nextOwners, teams: nextTeams, currentScoring: nextScoring }, selectedSeason) {
+  let state;
+  try {
+    state = await readState(selectedSeason);
+  } catch {
+    state = createInitialState();
+  }
 
   if (!Number.isInteger(Number(season))) {
     throw new Error("Season must be a year.");
@@ -37,5 +53,5 @@ export async function updateSeasonConfig({ season, owners: nextOwners, teams: ne
   state.games = [];
   state.draft = createDraftState(ownersList);
 
-  return writeState(state);
+  return writeState(state, selectedSeason);
 }

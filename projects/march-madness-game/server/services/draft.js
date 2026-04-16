@@ -9,19 +9,19 @@ import {
   writeState
 } from "../store.js";
 
-export async function assignTeam(teamName, owner) {
-  const state = await readState();
+export async function assignTeam(teamName, owner, selectedSeason) {
+  const state = await readState(selectedSeason);
   const team = state.teams.find((entry) => entry.name === teamName);
 
   if (!team) throw new Error(`Unknown team: ${teamName}`);
   if (!state.owners.includes(owner)) throw new Error(`Unknown owner: ${owner}`);
 
   team.owner = owner;
-  return writeState(state);
+  return writeState(state, selectedSeason);
 }
 
-export async function draftPick(teamName) {
-  const state = await readState();
+export async function draftPick(teamName, selectedSeason) {
+  const state = await readState(selectedSeason);
   const team = state.teams.find((entry) => entry.name === teamName);
   const currentOwner = computeCurrentOwner(state);
 
@@ -38,11 +38,11 @@ export async function draftPick(teamName) {
   });
   advanceDraft(state);
 
-  return writeState(state);
+  return writeState(state, selectedSeason);
 }
 
-export async function undoDraftPick() {
-  const state = await readState();
+export async function undoDraftPick(selectedSeason) {
+  const state = await readState(selectedSeason);
   const lastPick = state.draft.history.pop();
 
   if (!lastPick) throw new Error("No draft picks to undo.");
@@ -53,11 +53,11 @@ export async function undoDraftPick() {
   }
   rebuildDraftPositionFromHistory(state);
 
-  return writeState(state);
+  return writeState(state, selectedSeason);
 }
 
-export async function unassignTeam(teamName) {
-  const state = await readState();
+export async function unassignTeam(teamName, selectedSeason) {
+  const state = await readState(selectedSeason);
   const team = state.teams.find((entry) => entry.name === teamName);
 
   if (!team) throw new Error(`Unknown team: ${teamName}`);
@@ -66,16 +66,16 @@ export async function unassignTeam(teamName) {
   state.draft.history = state.draft.history.filter((entry) => entry.teamName !== teamName);
   rebuildDraftPositionFromHistory(state);
 
-  return writeState(state);
+  return writeState(state, selectedSeason);
 }
 
-export async function resetDraft(mode = "empty") {
-  const state = await readState();
-  return writeState(resetStateForDraft(state, mode));
+export async function resetDraft(mode = "empty", selectedSeason) {
+  const state = await readState(selectedSeason);
+  return writeState(resetStateForDraft(state, mode), selectedSeason);
 }
 
-export async function updateDraftSettings({ order, snake, locked }) {
-  const state = await readState();
+export async function updateDraftSettings({ order, snake, locked }, selectedSeason) {
+  const state = await readState(selectedSeason);
 
   if (order) {
     state.owners = sanitizeOwners(order);
@@ -95,5 +95,5 @@ export async function updateDraftSettings({ order, snake, locked }) {
   }
 
   rebuildDraftPositionFromHistory(state);
-  return writeState(state);
+  return writeState(state, selectedSeason);
 }

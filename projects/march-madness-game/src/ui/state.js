@@ -27,6 +27,7 @@ export function parseTeamsText(text) {
 
 export function createUiState(appData) {
   return {
+    selectedSeason: appData.selectedSeason || appData.season,
     manualOwner: appData.draft.currentOwner || appData.owners[0] || "",
     activeWorkspace: "standings",
     setupMessage: "",

@@ -1,10 +1,12 @@
 import {
   assignDraftTeam,
+  currentSeasonFromLocation,
   loadAppState,
   makeDraftPick,
   resetDraft,
   undoDraftPick,
   unassignDraftTeam,
+  updateSeasonRoute,
   updateDraftSettings,
   updateSeasonConfig
 } from "./api.js";
@@ -20,7 +22,7 @@ import { renderDraftRoom, renderSeasonSetup } from "./ui/draft.js";
 import { createUiState } from "./ui/state.js";
 
 async function initializeApp() {
-  let appData = await loadAppState();
+  let appData = await loadAppState(currentSeasonFromLocation());
   const uiState = createUiState(appData);
 
   const setWorkspace = (workspace, options = {}) => {
@@ -33,6 +35,7 @@ async function initializeApp() {
   };
 
   const render = () => {
+    syncUiStateWithAppData(appData, uiState);
     renderOverview(appData);
     renderDraftRoom(appData, uiState, actions);
     renderSeasonSetup(appData, uiState, actions);
@@ -42,6 +45,7 @@ async function initializeApp() {
     renderTeams(appData);
     renderTeamTable(appData);
     renderWorkspaceState(uiState);
+    renderSeasonSelector(appData, uiState);
     bindShellActions(actions);
 
     const status = document.querySelector("#data-status");
@@ -51,7 +55,7 @@ async function initializeApp() {
   };
 
   const refresh = async () => {
-    appData = await loadAppState();
+    appData = await loadAppState(uiState.selectedSeason);
     if (!appData.owners.includes(uiState.manualOwner)) {
       uiState.manualOwner = appData.draft.currentOwner || appData.owners[0] || "";
     }
@@ -61,41 +65,52 @@ async function initializeApp() {
   const actions = {
     render,
     setWorkspace,
+    selectSeason: async (season) => {
+      uiState.selectedSeason = Number(season);
+      updateSeasonRoute(uiState.selectedSeason);
+      await refresh();
+    },
     pick: async (teamName) => {
-      await makeDraftPick(teamName);
+      await makeDraftPick(teamName, uiState.selectedSeason);
       await refresh();
     },
     manualAssign: async (teamName, owner) => {
-      await assignDraftTeam(teamName, owner);
+      await assignDraftTeam(teamName, owner, uiState.selectedSeason);
       await refresh();
     },
     unassign: async (teamName) => {
-      await unassignDraftTeam(teamName);
+      await unassignDraftTeam(teamName, uiState.selectedSeason);
       await refresh();
     },
     undo: async () => {
-      await undoDraftPick();
+      await undoDraftPick(uiState.selectedSeason);
       await refresh();
     },
     reset: async (mode) => {
-      await resetDraft(mode);
+      await resetDraft(mode, uiState.selectedSeason);
       await refresh();
     },
     toggleLock: async (locked) => {
-      await updateDraftSettings({ locked });
+      await updateDraftSettings({ locked }, uiState.selectedSeason);
       await refresh();
     },
     saveDraftSettings: async (payload) => {
-      await updateDraftSettings(payload);
+      await updateDraftSettings(payload, uiState.selectedSeason);
       await refresh();
     },
     saveSeasonConfig: async (payload) => {
-      await updateSeasonConfig(payload);
+      uiState.selectedSeason = Number(payload.season);
+      await updateSeasonConfig(payload, uiState.selectedSeason);
       await refresh();
     }
   };
 
   render();
+
+  window.onpopstate = async () => {
+    uiState.selectedSeason = currentSeasonFromLocation() || appData.currentSeason || appData.season;
+    await refresh();
+  };
 }
 
 function renderWorkspaceState(uiState) {
@@ -111,7 +126,35 @@ function renderWorkspaceState(uiState) {
   });
 }
 
+function syncUiStateWithAppData(appData, uiState) {
+  uiState.selectedSeason = appData.selectedSeason || appData.season;
+}
+
+function renderSeasonSelector(appData, uiState) {
+  const select = document.querySelector("#season-selector");
+  if (!select) return;
+
+  const options = appData.seasonOptions || [{ season: appData.season }];
+  select.innerHTML = options
+    .map((option) => `
+      <option value="${option.season}" ${Number(option.season) === Number(uiState.selectedSeason) ? "selected" : ""}>
+        ${option.season}
+      </option>
+    `)
+    .join("");
+}
+
 function bindShellActions(actions) {
+  document.querySelector("#season-selector").onchange = (event) => {
+    actions.selectSeason(event.target.value);
+  };
+
+  document.querySelectorAll("[data-season-select]").forEach((button) => {
+    button.onclick = () => {
+      actions.selectSeason(button.dataset.seasonSelect);
+    };
+  });
+
   document.querySelectorAll("[data-workspace]").forEach((button) => {
     button.onclick = () => {
       actions.setWorkspace(button.dataset.workspace);

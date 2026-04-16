@@ -11,7 +11,7 @@ import {
   undoDraftPick,
   updateDraftSettings
 } from "./services/draft.js";
-import { loadSeasonState, updateSeasonConfig } from "./services/seasons.js";
+import { loadCurrentSeason, loadSeasonOptions, loadSeasonState, updateSeasonConfig } from "./services/seasons.js";
 import { summarizeState } from "./services/standings.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -63,54 +63,114 @@ async function serveFile(response, urlPathname) {
 
 async function handleApi(request, response, pathname) {
   try {
+    const requestUrl = new URL(request.url, "http://localhost");
+    const querySeason = requestUrl.searchParams.get("season");
+
     if (request.method === "GET" && pathname === "/api/health") {
       return json(response, 200, { ok: true });
     }
 
     if (request.method === "GET" && pathname === "/api/state") {
-      const state = await loadSeasonState();
-      return json(response, 200, summarizeState(state));
+      const state = await loadSeasonState(querySeason);
+      const seasonOptions = await loadSeasonOptions();
+      const currentSeason = await loadCurrentSeason();
+      return json(response, 200, {
+        ...summarizeState(state),
+        selectedSeason: Number(state.season),
+        currentSeason,
+        seasonOptions
+      });
     }
 
     if (request.method === "POST" && pathname === "/api/draft/assign") {
       const body = await readBody(request);
-      const state = await assignTeam(body.teamName, body.owner);
-      return json(response, 200, summarizeState(state));
+      const state = await assignTeam(body.teamName, body.owner, body.season);
+      const seasonOptions = await loadSeasonOptions();
+      const currentSeason = await loadCurrentSeason();
+      return json(response, 200, {
+        ...summarizeState(state),
+        selectedSeason: Number(state.season),
+        currentSeason,
+        seasonOptions
+      });
     }
 
     if (request.method === "POST" && pathname === "/api/draft/pick") {
       const body = await readBody(request);
-      const state = await draftPick(body.teamName);
-      return json(response, 200, summarizeState(state));
+      const state = await draftPick(body.teamName, body.season);
+      const seasonOptions = await loadSeasonOptions();
+      const currentSeason = await loadCurrentSeason();
+      return json(response, 200, {
+        ...summarizeState(state),
+        selectedSeason: Number(state.season),
+        currentSeason,
+        seasonOptions
+      });
     }
 
     if (request.method === "POST" && pathname === "/api/draft/unassign") {
       const body = await readBody(request);
-      const state = await unassignTeam(body.teamName);
-      return json(response, 200, summarizeState(state));
+      const state = await unassignTeam(body.teamName, body.season);
+      const seasonOptions = await loadSeasonOptions();
+      const currentSeason = await loadCurrentSeason();
+      return json(response, 200, {
+        ...summarizeState(state),
+        selectedSeason: Number(state.season),
+        currentSeason,
+        seasonOptions
+      });
     }
 
     if (request.method === "POST" && pathname === "/api/draft/reset") {
       const body = await readBody(request);
-      const state = await resetDraft(body.mode);
-      return json(response, 200, summarizeState(state));
+      const state = await resetDraft(body.mode, body.season);
+      const seasonOptions = await loadSeasonOptions();
+      const currentSeason = await loadCurrentSeason();
+      return json(response, 200, {
+        ...summarizeState(state),
+        selectedSeason: Number(state.season),
+        currentSeason,
+        seasonOptions
+      });
     }
 
     if (request.method === "POST" && pathname === "/api/draft/undo") {
-      const state = await undoDraftPick();
-      return json(response, 200, summarizeState(state));
+      const body = await readBody(request);
+      const state = await undoDraftPick(body.season);
+      const seasonOptions = await loadSeasonOptions();
+      const currentSeason = await loadCurrentSeason();
+      return json(response, 200, {
+        ...summarizeState(state),
+        selectedSeason: Number(state.season),
+        currentSeason,
+        seasonOptions
+      });
     }
 
     if (request.method === "POST" && pathname === "/api/draft/settings") {
       const body = await readBody(request);
-      const state = await updateDraftSettings(body);
-      return json(response, 200, summarizeState(state));
+      const state = await updateDraftSettings(body, body.season);
+      const seasonOptions = await loadSeasonOptions();
+      const currentSeason = await loadCurrentSeason();
+      return json(response, 200, {
+        ...summarizeState(state),
+        selectedSeason: Number(state.season),
+        currentSeason,
+        seasonOptions
+      });
     }
 
     if (request.method === "POST" && pathname === "/api/season/config") {
       const body = await readBody(request);
-      const state = await updateSeasonConfig(body);
-      return json(response, 200, summarizeState(state));
+      const state = await updateSeasonConfig(body, body.season);
+      const seasonOptions = await loadSeasonOptions();
+      const currentSeason = await loadCurrentSeason();
+      return json(response, 200, {
+        ...summarizeState(state),
+        selectedSeason: Number(state.season),
+        currentSeason,
+        seasonOptions
+      });
     }
 
     return notFound(response);

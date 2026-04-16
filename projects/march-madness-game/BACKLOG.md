@@ -24,19 +24,19 @@ These are the highest-value items for getting to a 2027-ready web product.
 
 ### Foundation
 
-- [todo] Extract backend service modules from `server/store.js`.
+- [done] Extract backend service modules from `server/store.js`.
   - Create `server/services/seasons.js`, `server/services/draft.js`, and `server/services/standings.js`.
   - Keep HTTP routing in `server/app.js` thin.
 
-- [todo] Remove static season assumptions from scoring and standings logic.
+- [doing] Remove static season assumptions from scoring and standings logic.
   - Stop relying on global `owners` from `src/data.js` where season-owned data should drive calculations.
   - Ensure simulations and standings use the selected season state only.
 
-- [todo] Add season test fixtures.
+- [done] Add season test fixtures.
   - Create at least two synthetic season states.
   - Cover standings, draft flow, undo, and reset behavior.
 
-- [todo] Document local development flows.
+- [doing] Document local development flows.
   - Add a short setup and reset guide for running the app locally.
   - Document how current persistence works until SQLite replaces it.
 
@@ -71,7 +71,7 @@ These are the highest-value items for getting to a 2027-ready web product.
 
 ### Experience Rewrite
 
-- [todo] Redesign the app shell around core product surfaces.
+- [doing] Redesign the app shell around core product surfaces.
   - `Overview`
   - `Draft Room`
   - `Standings`
@@ -79,7 +79,7 @@ These are the highest-value items for getting to a 2027-ready web product.
   - `Scoring Lab`
   - `Commissioner`
 
-- [todo] Build a proper `Overview` surface.
+- [doing] Build a proper `Overview` surface.
   - Current leader
   - Remaining live games
   - Key path/watch items
@@ -91,16 +91,16 @@ These are the highest-value items for getting to a 2027-ready web product.
   - Keep top actions and top context visible without forcing users to parse the entire dashboard.
   - Preserve access to existing information while reducing homepage cognitive load.
 
-- [todo] Finish the Draft Room layout rewrite.
+- [doing] Finish the Draft Room layout rewrite.
   - Make draft state the dominant experience.
   - Reduce commissioner control clutter.
   - Improve readability of available vs drafted teams.
 
-- [todo] Add mobile-first navigation.
+- [doing] Add mobile-first navigation.
   - Replace anchor-link navigation with a clearer phone-friendly pattern.
   - Ensure the top-level product surfaces are reachable in one tap.
 
-- [todo] Establish a shared design system direction.
+- [doing] Establish a shared design system direction.
   - Typography scale
   - spacing scale
   - surface and border tokens
@@ -216,9 +216,9 @@ These are valuable, but should not distract from getting the core product right 
 
 ### Cycle 1
 
-- backend service extraction
+- local dev and reset documentation
 - scoring/state cleanup
-- local dev documentation
+- season-state isolation guidance
 
 ### Cycle 2
 
@@ -239,7 +239,8 @@ These are valuable, but should not distract from getting the core product right 
 
 The best immediate focus remains:
 
-1. finish the multi-season backend foundation
-2. redesign the shell and draft experience
+1. close the remaining documentation and state-cleanup gaps
+2. finish the multi-season backend foundation
+3. keep tightening the shell and draft experience
 
-Those two efforts unlock nearly everything that follows, including a real mobile app later.
+Those efforts unlock nearly everything that follows, including a real mobile app later.

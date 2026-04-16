@@ -152,6 +152,7 @@ function renderCenterFinals() {
 }
 
 export function renderDraftRoom(appData, uiState, actions) {
+  const isHistoricalSeason = Number(appData.currentSeason) !== Number(appData.season);
   const stats = draftStats(appData);
   const ownerCounts = new Map(appData.owners.map((owner) => [owner, 0]));
 
@@ -181,27 +182,28 @@ export function renderDraftRoom(appData, uiState, actions) {
           <span>${stats.draftedTeams}/${stats.totalTeams} drafted</span>
           <span>${stats.availableTeams} available</span>
         </div>
+        ${isHistoricalSeason ? '<p class="history-note">Historical season view is read-only.</p>' : ""}
         <div class="draft-controls">
-          <button type="button" data-action="toggle-lock">${appData.draft.locked ? "Unlock Draft" : "Lock Draft"}</button>
-          <button type="button" data-action="undo">Undo Pick</button>
-          <button type="button" data-action="reset-empty">Start Empty Draft</button>
-          <button type="button" data-action="restore-sheet">Restore Sheet</button>
+          <button type="button" data-action="toggle-lock" ${isHistoricalSeason ? "disabled" : ""}>${appData.draft.locked ? "Unlock Draft" : "Lock Draft"}</button>
+          <button type="button" data-action="undo" ${isHistoricalSeason ? "disabled" : ""}>Undo Pick</button>
+          <button type="button" data-action="reset-empty" ${isHistoricalSeason ? "disabled" : ""}>Start Empty Draft</button>
+          <button type="button" data-action="restore-sheet" ${isHistoricalSeason ? "disabled" : ""}>Restore Sheet</button>
         </div>
       </div>
       <div class="draft-settings-card">
         <div class="draft-panel-head">
           <h3>Commissioner Settings</h3>
-          <p>Control order and use manual assignment when needed.</p>
+          <p>${isHistoricalSeason ? "Historical season settings are visible for reference only." : "Control order and use manual assignment when needed."}</p>
         </div>
         <label class="field-label" for="draft-order">Draft order</label>
-        <textarea id="draft-order" class="setup-input setup-textarea" rows="3">${appData.draft.order.join("\n")}</textarea>
+        <textarea id="draft-order" class="setup-input setup-textarea" rows="3" ${isHistoricalSeason ? "disabled" : ""}>${appData.draft.order.join("\n")}</textarea>
         <label class="checkbox-row">
-          <input id="snake-mode" type="checkbox" ${appData.draft.snake ? "checked" : ""} />
+          <input id="snake-mode" type="checkbox" ${appData.draft.snake ? "checked" : ""} ${isHistoricalSeason ? "disabled" : ""} />
           <span>Snake draft</span>
         </label>
-        <button type="button" data-action="save-draft-settings">Save Draft Settings</button>
+        <button type="button" data-action="save-draft-settings" ${isHistoricalSeason ? "disabled" : ""}>Save Draft Settings</button>
         <label class="field-label" for="manual-owner">Manual assign owner</label>
-        <select id="manual-owner" class="setup-input">
+        <select id="manual-owner" class="setup-input" ${isHistoricalSeason ? "disabled" : ""}>
           ${appData.owners.map((owner) => `<option value="${owner}" ${uiState.manualOwner === owner ? "selected" : ""}>${owner}</option>`).join("")}
         </select>
       </div>
@@ -236,7 +238,7 @@ export function renderDraftRoom(appData, uiState, actions) {
               </div>
               <div class="seed-list">
                 ${(groupedBySeed[String(seed)] || []).map((team) => `
-                  <button class="draft-team draft-team-compact" type="button" data-team="${team.name}">
+                  <button class="draft-team draft-team-compact" type="button" data-team="${team.name}" ${isHistoricalSeason ? "disabled" : ""}>
                     <strong>${team.name}</strong>
                     <span>${seed}-seed</span>
                   </button>
@@ -262,7 +264,7 @@ export function renderDraftRoom(appData, uiState, actions) {
                 ${(draftedByOwner.get(owner) || [])
                   .sort((a, b) => a.seed - b.seed || a.name.localeCompare(b.name))
                   .map((team) => `
-                    <button class="draft-team is-owned" type="button" data-team-unassign="${team.name}">
+                    <button class="draft-team is-owned" type="button" data-team-unassign="${team.name}" ${isHistoricalSeason ? "disabled" : ""}>
                       <strong>${team.name}</strong>
                       <span>${team.seed}-seed</span>
                     </button>
@@ -334,32 +336,34 @@ export function renderDraftRoom(appData, uiState, actions) {
 }
 
 export function renderSeasonSetup(appData, uiState, actions) {
+  const isHistoricalSeason = Number(appData.currentSeason) !== Number(appData.season);
   document.querySelector("#season-setup").innerHTML = `
     <form id="season-setup-form" class="setup-form">
+      ${isHistoricalSeason ? '<p class="history-note">Historical seasons are read-only. Switch back to the current season to edit commissioner settings.</p>' : ""}
       <div class="setup-grid">
         <label class="setup-field">
           <span>Season Year</span>
-          <input id="setup-season" class="setup-input" type="number" value="${appData.season}" />
+          <input id="setup-season" class="setup-input" type="number" value="${appData.season}" ${isHistoricalSeason ? "disabled" : ""} />
         </label>
         <label class="setup-field">
           <span>Owners</span>
-          <textarea id="setup-owners" class="setup-input setup-textarea" rows="6">${appData.owners.join("\n")}</textarea>
+          <textarea id="setup-owners" class="setup-input setup-textarea" rows="6" ${isHistoricalSeason ? "disabled" : ""}>${appData.owners.join("\n")}</textarea>
         </label>
       </div>
       <div class="setup-grid setup-grid-wide">
         <label class="setup-field">
           <span>Teams</span>
-          <textarea id="setup-teams" class="setup-input setup-textarea" rows="18">${teamsToText(appData.teams)}</textarea>
+          <textarea id="setup-teams" class="setup-input setup-textarea" rows="18" ${isHistoricalSeason ? "disabled" : ""}>${teamsToText(appData.teams)}</textarea>
           <small>One team per line: <code>seed, team name</code></small>
         </label>
         <label class="setup-field">
           <span>Scoring Matrix</span>
-          <textarea id="setup-scoring" class="setup-input setup-textarea" rows="18">${scoringToText(appData.currentScoring)}</textarea>
+          <textarea id="setup-scoring" class="setup-input setup-textarea" rows="18" ${isHistoricalSeason ? "disabled" : ""}>${scoringToText(appData.currentScoring)}</textarea>
           <small>JSON object keyed by seed with ${rounds.length} values per seed.</small>
         </label>
       </div>
       <div class="setup-actions">
-        <button type="submit" ${uiState.savingSetup ? "disabled" : ""}>${uiState.savingSetup ? "Saving…" : "Save Season Config"}</button>
+        <button type="submit" ${uiState.savingSetup || isHistoricalSeason ? "disabled" : ""}>${uiState.savingSetup ? "Saving…" : "Save Season Config"}</button>
       </div>
       ${uiState.setupMessage ? `<p class="setup-message">${uiState.setupMessage}</p>` : ""}
       ${uiState.setupError ? `<p class="setup-error">${uiState.setupError}</p>` : ""}

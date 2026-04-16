@@ -22,6 +22,21 @@ The development path should be:
 4. Ship a participant-first mobile app.
 5. Expand selective commissioner workflows on mobile only after the web admin experience is mature.
 
+## Current Status As Of April 15, 2026
+
+Already true:
+
+- the product has a backend-persisted web app rather than a spreadsheet-only workflow
+- draft, season config, and standings logic are exposed through service-oriented server modules
+- the web app has started the move from one dashboard into clearer surfaces such as `Overview`, `Draft Room`, and deeper detail workspaces
+
+Still gating the roadmap:
+
+- runtime persistence is still a single JSON store rather than season-scoped storage
+- direct live game ingestion is not yet app-owned
+- authentication and public/read-only roles do not exist yet
+- the shell is improved, but not yet at the clarity bar required before a native client should inherit it
+
 ## Success Criteria By Stage
 
 ### Stage 1: 2027 Web-Ready Product
@@ -80,6 +95,11 @@ Definition of done:
 - the app behavior matches the current prototype
 - modules are clearer and smaller
 - key logic is covered by tests
+
+Current assessment:
+
+- mostly complete
+- remaining work is documentation and cleanup, not major restructuring
 
 ## Phase 1: Multi-Season Foundation
 

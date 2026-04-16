@@ -160,6 +160,28 @@ body {
   padding: 16px 18px;
 }
 
+.season-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.season-switcher select {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 10px 14px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .quick-nav button {
   display: inline-flex;
   align-items: center;
@@ -258,13 +280,63 @@ body {
 }
 
 .overview-focus-grid {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .overview-detail-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
+}
+
+.season-archive-list {
+  display: grid;
+  gap: 12px;
+}
+
+.season-archive-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 16px;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.season-archive-card.is-active {
+  border-color: rgba(15, 91, 216, 0.22);
+  background: linear-gradient(180deg, rgba(231, 240, 255, 0.92), rgba(255, 255, 255, 0.92));
+}
+
+.season-archive-card strong {
+  display: block;
+  font-size: 1.15rem;
+  line-height: 1.1;
+}
+
+.season-archive-card p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.season-archive-meta {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+.history-note {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 0.92rem;
 }
 
 .overview-panel {

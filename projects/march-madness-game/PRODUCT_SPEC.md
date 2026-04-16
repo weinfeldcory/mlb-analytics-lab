@@ -122,15 +122,19 @@ The working product target is now broader than spreadsheet replacement. The app 
 ### Working
 
 - Backend-persisted season state
+- Service-oriented draft, season, and standings modules behind the HTTP layer
 - Draft room with pick flow, lock, undo, manual assignment
 - Season setup form
+- Workspace-based product shell with overview, standings, teams, paths, and scoring surfaces
 - Standings, teams, scoring, and fairness views
+- Test coverage for scoring logic and core draft/season service flows
 
 ### In Progress
 
-- Better information architecture and polish
-- Socially acceptable scoring optimization
-- Stronger documentation of target functionality
+- Better information architecture and shell polish
+- Multi-season persistence beyond one JSON runtime store
+- Local contributor documentation and reset flow
+- Practical scoring model refinement
 
 ### Missing
 
@@ -152,10 +156,11 @@ The spreadsheet can be retired when all of the following are true:
 
 ## Recommended Near-Term Roadmap
 
-1. Refactor the frontend and backend into clearer modules and services
+1. Finish local development and reset documentation so the current app is easier to operate safely
 2. Move from JSON-file persistence to SQLite with a multi-season schema
-3. Redesign the shell into focused product surfaces with calmer UI hierarchy
-4. Finalize a usable constrained scoring model
-5. Add backend game ingestion and normalized live game state
-6. Add authentication and commissioner/public role separation
-7. Introduce public display mode and historical season browsing
+3. Add explicit season selection and historical season reads across the API and UI
+4. Continue the shell rewrite so `Overview` and `Draft Room` become the obvious primary surfaces
+5. Finalize a usable constrained scoring model without burying the live product under scoring-lab complexity
+6. Add backend game ingestion and normalized live game state
+7. Add authentication and commissioner/public role separation
+8. Introduce public display mode and historical season browsing

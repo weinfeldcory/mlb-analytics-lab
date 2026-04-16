@@ -4,18 +4,21 @@ import os from "node:os";
 import path from "node:path";
 
 import { draftPick, resetDraft, undoDraftPick, updateDraftSettings } from "../server/services/draft.js";
-import { loadSeasonState, updateSeasonConfig } from "../server/services/seasons.js";
+import { loadSeasonOptions, loadSeasonState, updateSeasonConfig } from "../server/services/seasons.js";
 import { createFixtureState } from "./fixtures/season-fixtures.mjs";
 
 async function withTempStore(run) {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "mmg-store-"));
   const storePath = path.join(tempDir, "season-state.json");
+  const dbPath = path.join(tempDir, "season-state.db");
   process.env.SEASON_STATE_PATH = storePath;
+  process.env.SEASON_DB_PATH = dbPath;
 
   try {
-    return await run(storePath);
+    return await run(storePath, dbPath);
   } finally {
     delete process.env.SEASON_STATE_PATH;
+    delete process.env.SEASON_DB_PATH;
   }
 }
 
@@ -76,7 +79,7 @@ await withTempStore(async (storePath) => {
   assert.equal(afterUndo.draft.currentPickIndex, 0);
   assert.deepEqual(afterUndo.draft.history, []);
 
-  const persisted = JSON.parse(await readFile(storePath, "utf8"));
+  const persisted = await loadSeasonState();
   assert.equal(persisted.season, 2032);
   assert.ok(Array.isArray(persisted.baselineTeams));
 });
@@ -89,5 +92,33 @@ const loadedState = await withTempStore(async (storePath) => {
 });
 
 assert.deepEqual(loadedState.baselineTeams, loadedState.teams);
+
+await withTempStore(async (storePath) => {
+  const fixtureState = createFixtureState();
+  await writeFile(storePath, JSON.stringify(fixtureState, null, 2));
+
+  await updateSeasonConfig({
+    season: 2035,
+    owners: ["Alex", "Blair"],
+    teams: [
+      { seed: 1, name: "Solar", owner: "Alex" },
+      { seed: 2, name: "Lunar", owner: "Blair" }
+    ],
+    currentScoring: {
+      1: [1, 2, 3, 4, 5, 6],
+      2: [2, 3, 4, 5, 6, 7]
+    }
+  }, 2035);
+
+  const season2031 = await loadSeasonState(2031);
+  const season2035 = await loadSeasonState(2035);
+  const options = await loadSeasonOptions();
+
+  assert.equal(season2031.season, 2031);
+  assert.equal(season2035.season, 2035);
+  assert.deepEqual(options.map((option) => option.season), [2035, 2031]);
+  assert.equal(options[0].draftedTeams, 2);
+  assert.equal(options[1].draftedTeams, 3);
+});
 
 console.log("server service tests passed");

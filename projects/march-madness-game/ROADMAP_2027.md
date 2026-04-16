@@ -34,6 +34,28 @@ The 2027 product bar is met when all of the following are true:
 - the homepage surfaces the most important information and actions without hiding existing functionality
 - season rollover does not require destructive resets or code changes
 
+## Current Status As Of April 15, 2026
+
+Completed:
+
+- backend service boundaries exist for draft, season, and standings flows
+- the app already supports backend-persisted draft actions and season configuration
+- the product shell has been split into overview, draft room, and detail workspaces
+- automated tests cover scoring plus core season and draft service behavior
+
+In progress:
+
+- the shell rewrite is partially complete, but the information architecture is still heavier than the target 2027 product
+- season logic is more modular, but runtime persistence is still one mutable JSON store
+- scoring analysis is present, but the live product still needs a cleaner balance between operations and scoring-lab depth
+
+Not started at the required level:
+
+- SQLite and season-scoped persistence
+- direct live game ingestion
+- authentication, roles, and public/read-only views
+- season rollover and historical browsing as first-class product behavior
+
 ## Strategy
 
 The 2027 work should happen in this order:
@@ -150,20 +172,19 @@ Evidence of completion:
 - public viewers can safely use the product
 - the product supports distinct commissioner and participant journeys
 
-## Recommended Delivery Sequence
+## Recommended Delivery Sequence From The Current State
 
 ### Cycle 1
 
 Focus:
 
-- frontend modularization
-- backend service extraction
-- scoring/state cleanup
 - local development documentation
+- remaining scoring/state cleanup
+- smaller shell cleanup passes that do not expand scope
 
 Success gate:
 
-- the prototype is easier to change without changing behavior
+- the current product is easier to operate and safer to iterate on
 
 ### Cycle 2
 
@@ -182,15 +203,15 @@ Success gate:
 
 Focus:
 
-- new app shell
+- season selector in API and UI
+- historical season reads
 - homepage consolidation
-- overview surface
-- mobile navigation
 - Draft Room simplification
+- clearer phone navigation
 
 Success gate:
 
-- the participant-facing experience is clearly stronger than the current dashboard
+- the participant-facing experience is clearly stronger and season context is explicit
 
 ### Cycle 4
 
@@ -245,7 +266,8 @@ Do not spend early cycles on:
 
 The highest-value immediate focus remains:
 
-1. finish the multi-season backend foundation
-2. redesign the shell and draft experience
+1. finish documentation and the remaining cleanup needed before schema work
+2. build the multi-season backend foundation
+3. continue redesigning the shell and draft experience on top of explicit season context
 
-Those two efforts unlock nearly everything else on the 2027 path.
+Those efforts unlock nearly everything else on the 2027 path.
