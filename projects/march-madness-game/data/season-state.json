@@ -1,6 +1,6 @@
 {
   "season": 2026,
-  "updatedAt": "2026-04-15T01:48:01.885Z",
+  "updatedAt": "2026-04-16T01:30:04.831Z",
   "owners": [
     "Berkman",
     "Cory",
@@ -529,7 +529,7 @@
     {
       "name": "Duke",
       "seed": 1,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Arizona",
@@ -549,12 +549,12 @@
     {
       "name": "Houston",
       "seed": 2,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "UConn",
       "seed": 2,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Iowa St",
@@ -569,287 +569,287 @@
     {
       "name": "Michigan St",
       "seed": 3,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "Illinois",
       "seed": 3,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "Gonzaga",
       "seed": 3,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "Virginia",
       "seed": 3,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "Nebraska",
       "seed": 4,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "Alabama",
       "seed": 4,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Kansas",
       "seed": 4,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "Arkansas",
       "seed": 4,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "Vanderbilt",
       "seed": 5,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "St John's (NY)",
       "seed": 5,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "Texas Tech",
       "seed": 5,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Wisconsin",
       "seed": 5,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Tennessee",
       "seed": 6,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "North Carolina",
       "seed": 6,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "Louisville",
       "seed": 6,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "BYU",
       "seed": 6,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "Kentucky",
       "seed": 7,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "Saint Mary's (CA)",
       "seed": 7,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "Miami (FL)",
       "seed": 7,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "UCLA",
       "seed": 7,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "Clemson",
       "seed": 8,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "Villanova",
       "seed": 8,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Ohio St",
       "seed": 8,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "Georgia",
       "seed": 8,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "Utah St",
       "seed": 9,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "TCU",
       "seed": 9,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "Saint Louis",
       "seed": 9,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Iowa",
       "seed": 9,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "Santa Clara",
       "seed": 10,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "UCF",
       "seed": 10,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "Missouri",
       "seed": 10,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "Texas A&M",
       "seed": 10,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "Texas",
       "seed": 11,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "SMU",
       "seed": 11,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "Miami (OH)",
       "seed": 11,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "VCU",
       "seed": 11,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "South Fla",
       "seed": 11,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "McNeese",
       "seed": 12,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "Akron",
       "seed": 12,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "UNI",
       "seed": 12,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "High Point",
       "seed": 12,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "California Baptist",
       "seed": 13,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "Hofstra",
       "seed": 13,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "Troy",
       "seed": 13,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "Hawaii",
       "seed": 13,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "North Dakota St",
       "seed": 14,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Penn",
       "seed": 14,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "Wright St",
       "seed": 14,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Kennesaw St",
       "seed": 14,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "Tennessee St",
       "seed": 15,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Idaho",
       "seed": 15,
-      "owner": null
+      "owner": "Berkman"
     },
     {
       "name": "Furman",
       "seed": 15,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Queens (NC)",
       "seed": 15,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "Siena",
       "seed": 16,
-      "owner": null
+      "owner": "Seiden"
     },
     {
       "name": "LIU",
       "seed": 16,
-      "owner": null
+      "owner": "Cory"
     },
     {
       "name": "Howard",
       "seed": 16,
-      "owner": null
+      "owner": "Shuster"
     },
     {
       "name": "Prairie View",
       "seed": 16,
-      "owner": null
+      "owner": "Berkman"
     }
   ],
   "draft": {
@@ -861,8 +861,8 @@
     ],
     "snake": true,
     "locked": false,
-    "currentPickNumber": 6,
-    "currentPickIndex": 2,
+    "currentPickNumber": 66,
+    "currentPickIndex": 1,
     "history": [
       {
         "pickNumber": 1,
@@ -888,6 +888,306 @@
         "pickNumber": 6,
         "teamName": "Purdue",
         "owner": "Shuster"
+      },
+      {
+        "pickNumber": 6,
+        "teamName": "North Dakota St",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 7,
+        "teamName": "Texas A&M",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 8,
+        "teamName": "UCLA",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 9,
+        "teamName": "North Carolina",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 10,
+        "teamName": "Houston",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 11,
+        "teamName": "Duke",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 12,
+        "teamName": "Gonzaga",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 13,
+        "teamName": "Michigan St",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 14,
+        "teamName": "Alabama",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 15,
+        "teamName": "Nebraska",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 16,
+        "teamName": "Miami (FL)",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 17,
+        "teamName": "Virginia",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 18,
+        "teamName": "Tennessee",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 19,
+        "teamName": "UConn",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 20,
+        "teamName": "St John's (NY)",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 21,
+        "teamName": "Kansas",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 22,
+        "teamName": "Villanova",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 23,
+        "teamName": "Kentucky",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 24,
+        "teamName": "Illinois",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 25,
+        "teamName": "Arkansas",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 26,
+        "teamName": "Vanderbilt",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 27,
+        "teamName": "Wisconsin",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 28,
+        "teamName": "Louisville",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 29,
+        "teamName": "BYU",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 30,
+        "teamName": "Texas Tech",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 31,
+        "teamName": "Ohio St",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 32,
+        "teamName": "Saint Mary's (CA)",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 33,
+        "teamName": "Clemson",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 34,
+        "teamName": "Georgia",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 35,
+        "teamName": "Utah St",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 36,
+        "teamName": "UCF",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 37,
+        "teamName": "TCU",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 38,
+        "teamName": "Saint Louis",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 39,
+        "teamName": "Iowa",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 40,
+        "teamName": "Santa Clara",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 41,
+        "teamName": "SMU",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 42,
+        "teamName": "Missouri",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 43,
+        "teamName": "Texas",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 44,
+        "teamName": "VCU",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 45,
+        "teamName": "Miami (OH)",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 46,
+        "teamName": "South Fla",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 47,
+        "teamName": "UNI",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 48,
+        "teamName": "Akron",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 49,
+        "teamName": "McNeese",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 50,
+        "teamName": "High Point",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 51,
+        "teamName": "Tennessee St",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 52,
+        "teamName": "Hofstra",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 53,
+        "teamName": "Penn",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 54,
+        "teamName": "Howard",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 55,
+        "teamName": "Queens (NC)",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 56,
+        "teamName": "California Baptist",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 57,
+        "teamName": "Hawaii",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 58,
+        "teamName": "LIU",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 59,
+        "teamName": "Furman",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 60,
+        "teamName": "Siena",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 61,
+        "teamName": "Troy",
+        "owner": "Seiden"
+      },
+      {
+        "pickNumber": 62,
+        "teamName": "Wright St",
+        "owner": "Shuster"
+      },
+      {
+        "pickNumber": 63,
+        "teamName": "Kennesaw St",
+        "owner": "Cory"
+      },
+      {
+        "pickNumber": 64,
+        "teamName": "Idaho",
+        "owner": "Berkman"
+      },
+      {
+        "pickNumber": 65,
+        "teamName": "Prairie View",
+        "owner": "Berkman"
       }
     ]
   },

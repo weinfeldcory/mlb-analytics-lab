@@ -8,7 +8,7 @@ import {
 } from "./config.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
-import { formatInteger, formatNumber, teamLabel, weightedAverage } from "./utils.js";
+import { formatInteger, formatNumber, recordKey, teamLabel, weightedAverage } from "./utils.js";
 
 let onRosterChange = () => {};
 
@@ -77,7 +77,7 @@ function slotsForType(type) {
 }
 
 export function findRecordById(type, playerId) {
-  return datasetForType(type).find((record) => String(record.fg_player_id) === String(playerId));
+  return datasetForType(type).find((record) => recordKey(type, record) === String(playerId));
 }
 
 export function isSelected(type, playerId) {
@@ -102,8 +102,14 @@ export function restoreRoster() {
     const hitterBySlot = new Map((stored.hitters || []).map((slot) => [slot.id, slot.playerId]));
     const pitcherBySlot = new Map((stored.pitchers || []).map((slot) => [slot.id, slot.playerId]));
 
-    state.roster.hitters = hitterSlotDefinitions.map((slot) => ({ ...slot, playerId: hitterBySlot.get(slot.id) || null }));
-    state.roster.pitchers = pitcherSlotDefinitions.map((slot) => ({ ...slot, playerId: pitcherBySlot.get(slot.id) || null }));
+    state.roster.hitters = hitterSlotDefinitions.map((slot) => {
+      const playerId = hitterBySlot.get(slot.id);
+      return { ...slot, playerId: playerId && findRecordById("hitter", playerId) ? playerId : null };
+    });
+    state.roster.pitchers = pitcherSlotDefinitions.map((slot) => {
+      const playerId = pitcherBySlot.get(slot.id);
+      return { ...slot, playerId: playerId && findRecordById("pitcher", playerId) ? playerId : null };
+    });
   } catch (_error) {
     state.roster.hitters = hitterSlotDefinitions.map((slot) => ({ ...slot, playerId: null }));
     state.roster.pitchers = pitcherSlotDefinitions.map((slot) => ({ ...slot, playerId: null }));
@@ -267,7 +273,7 @@ function renderSlotCards(type, container, slots) {
           <div class="slot-player">${record.player_name}</div>
           <div class="slot-meta">${metaLine}</div>
           <div class="slot-meta">${scoreLine}</div>
-          <button class="slot-remove" data-type="${type}" data-slot-id="${slot.id}">Remove</button>
+          <button type="button" class="slot-remove" data-type="${type}" data-slot-id="${slot.id}">Remove</button>
         </article>
       `;
     })

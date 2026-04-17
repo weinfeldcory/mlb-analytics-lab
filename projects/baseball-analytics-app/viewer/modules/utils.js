@@ -12,6 +12,21 @@ export function formatInteger(value) {
   return Math.round(Number(value)).toString();
 }
 
+export function formatPercent(value, digits = 0) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "-";
+  }
+  return `${(Number(value) * 100).toFixed(digits)}%`;
+}
+
+function normalizeKeyPart(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "na";
+}
+
 export function teamLabel(record) {
   const currentTeam = typeof record.team_2026 === "string" ? record.team_2026.trim() : "";
   const priorTeam = typeof record.team_2025 === "string" ? record.team_2025.trim() : "";
@@ -25,6 +40,24 @@ export function teamLabel(record) {
   }
 
   return "FA";
+}
+
+export function recordKey(type, record) {
+  const fgPlayerId = record?.fg_player_id;
+  if (fgPlayerId !== null && fgPlayerId !== undefined && String(fgPlayerId).trim() !== "") {
+    return `${type}:fg:${String(fgPlayerId)}`;
+  }
+
+  return [
+    type,
+    normalizeKeyPart(record?.player_name),
+    normalizeKeyPart(teamLabel(record)),
+    normalizeKeyPart(record?.roster_position),
+    normalizeKeyPart(record?.roster_role),
+    normalizeKeyPart(record?.projected_role_bucket),
+    normalizeKeyPart(record?.position_bucket),
+    normalizeKeyPart(record?.projected_age),
+  ].join(":");
 }
 
 export function average(records, key) {

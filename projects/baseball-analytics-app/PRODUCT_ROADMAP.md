@@ -2,166 +2,161 @@
 
 ## Purpose
 
-Define the product direction for the baseball analytics app and the sequence required to move it from a strong local analyst tool to a clearer decision product.
+Define the next product phase for the baseball analytics app based on the current codebase as of 2026-04-15.
 
-This file is the planning bridge between:
+This roadmap is intended to stay grounded in what already exists in the project:
 
-- `README.md` for current project setup and workflow
-- `BACKLOG.md` for execution-level work
-- the current Python/SQL/viewer implementation for what already exists
+- documented local refresh workflow in `README.md`
+- documented viewer export contract in `EXPORT_FIELD_GLOSSARY.md`
+- modular viewer code under `viewer/modules/`
+- working hitter board, pitcher board, and roster builder using 2026 viewer exports
+
+The roadmap should now focus less on basic product framing and more on making the app easier to trust, compare, validate, and share.
 
 ## Product Standard
 
 The next major version of this project should be:
 
-- reliable enough that a full refresh from raw pulls to viewer export can be run without manual spelunking
-- inspectable enough that every displayed score can be traced back to blend inputs and role assumptions
-- clear enough that the viewer helps answer baseball decisions rather than feeling like a dense analyst sandbox
-- broad enough to compare hitters, pitchers, teams, and full roster builds inside one coherent workflow
-- current enough that in-season refreshes and preseason baseline refreshes follow one predictable operating model
-- publishable enough that the app can be shared beyond the local machine without ad hoc setup steps
+- reliable enough that refreshes can be rerun without guessing which scripts or files matter
+- inspectable enough that users can explain a player ranking without reading SQL by hand
+- decision-oriented enough that comparison and roster-swap questions are first-class workflows
+- operational enough that stale exports or broken contracts are caught before the viewer is shared
+- publishable enough that the static viewer can be handed off without a custom walkthrough
+
+## Current Status Snapshot
+
+The project has already cleared several foundation milestones:
+
+- the refresh workflow is documented in `README.md`
+- the hitter and pitcher export contract is documented in `EXPORT_FIELD_GLOSSARY.md`
+- `viewer/main.js` has already been reduced to a thin entrypoint and the viewer is split across focused modules
+- the landing experience now centers the roster builder and season estimate rather than only a long raw table
+- hitter and pitcher exports both support traceable prior/current blend logic and team-building fields
+
+That changes the roadmap materially. The main product risk is no longer "can this project be organized?" It is now:
+
+- the app still relies on table scanning for most comparison decisions
+- explanation lives mostly in labels and docs rather than in-product reasoning surfaces
+- export validation and publish operations are still implicit
+- artifact naming still mixes preseason-style and in-season-style outputs in ways that will get messier with each season
+
+## In-Flight Build Read
+
+The current worktree has already started moving on the first product cycle:
+
+- hitter and pitcher boards now include dedicated comparison panels with two-slot selection flows
+- comparison state is already persisted locally, which removes one major trust and usability gap
+- board controls now support decision vs projection views, row limits, and reset actions
+- reading-guide surfaces have started to turn filtered slices into product language rather than raw table state
+
+That means the remaining Cycle 1 gap is narrower than the roadmap previously implied:
+
+- comparison exists, but still needs a stronger explanation layer for why scores move
+- comparison surfaces still need final polish around delta language, hierarchy, and trust cues
+- roster-swap and team-shape decision outputs remain the next major product unlock after explanation lands
 
 ## Exit Criteria
 
-The product bar is met when all of the following are true:
+The next product bar is met when all of the following are true:
 
-- data refresh is documented and reproducible from pulls through export
-- hitter and pitcher outputs follow a stable export contract with explicit field definitions
-- the viewer supports a clear decision workflow for ranking players, comparing alternatives, and building a roster
-- the app exposes enough provenance to explain why a player is high or low without reading SQL by hand
-- team-level and roster-level outputs are easy to interpret without knowing the implementation details
-- the project can be run locally and published in a repeatable way
-- the codebase is modular enough that new model work does not require editing one giant viewer script
-
-## Current Product Read
-
-The project already has meaningful product value:
-
-- strong local data workflow using `pybaseball`, DuckDB, pandas, and SQL
-- traceable hitter and pitcher exports with preseason and in-season blend logic
-- a working viewer that supports player ranking, filtering, and roster construction
-- team-level season estimation from selected hitters and pitchers
-
-The biggest gaps are product-shape gaps rather than idea gaps:
-
-- the project behaves like an internal lab tool more than a finished analytics product
-- the viewer is concentrated in a large `viewer/main.js` file
-- the app has no documented product surface hierarchy beyond the current page layout
-- export contracts and refresh flows are implied by code, not documented as product primitives
-- there is no clear publishing path for sharing the work beyond local static hosting
+- a user can compare two or more hitters or pitchers directly in the viewer
+- the viewer explains why a player scores high or low using the existing trace fields
+- roster swaps expose their impact on season estimate and team-shape outputs
+- export refreshes fail loudly when required fields or output files are missing
+- the project has one documented publish path for a static viewer bundle
+- season naming and artifact naming are consistent enough to support 2027 work without ambiguity
 
 ## Strategy
 
-The work should happen in this order:
+The work should now happen in this order:
 
-1. Stabilize the data product contract before expanding the surface area.
-2. Improve the viewer information architecture before adding more metrics.
-3. Add comparison and explanation workflows before adding more speculative model complexity.
-4. Make publishing and recurring refreshes easy once the local product shape is stable.
+1. Add comparison and explanation workflows on top of the existing data contract.
+2. Strengthen roster decision support so the product is centered on team construction, not list browsing.
+3. Add validation and publishing guardrails before expanding the model surface area again.
+4. Only then widen the product into additional scenarios such as trade packages, baselines, and historical views.
 
-This order matters. More metrics, more charts, and more model variants will increase complexity faster than value if the export contract and user workflow remain loose.
+This order matters because the current project already has enough signal and structure to be useful. The constraint is not lack of metrics. The constraint is turning existing model outputs into faster, more defensible decisions.
 
 ## Workstreams
 
-### Workstream 1: Data Product Foundation
+### Workstream 1: Comparison And Explanation
 
 Outcome:
 
-- the analytics outputs behave like stable product data, not just ad hoc exports
+- the viewer supports real player decisions instead of manual cross-scanning
 
 Required outcomes:
 
-- document the refresh pipeline from pulls to modeling tables to JSON exports
-- define the canonical hitter and pitcher export fields and their meanings
-- make trace and blend fields first-class documented product outputs
-- align season naming and file naming so yearly refreshes are obvious
-- reduce hidden assumptions in scripts and SQL execution order
+- add side-by-side hitter comparison
+- add side-by-side pitcher comparison
+- add a score explanation surface using existing prior, blend, role, and reliability fields
+- show the contribution of prior signal, current signal, playing time, and role assumptions in product language
+- allow comparison state to survive refreshes or be shareable via URL state when practical
 
 Evidence of completion:
 
-- a new refresh can be run from the docs without reading source code first
-- hitter and pitcher exports each have a documented schema and glossary
-- downstream viewer logic depends on stable field contracts rather than incidental field presence
+- a user can compare alternatives without scanning multiple distant rows
+- the viewer can answer "why is this player here?" in the product itself
+- comparison and explanation become the fastest path to trust
 
-### Workstream 2: Viewer Productization
+### Workstream 2: Team-Building Decision Support
 
 Outcome:
 
-- the viewer feels like a baseball decision board instead of a raw analytics page
+- roster construction becomes the center of the product rather than an adjacent feature
 
 Required outcomes:
 
-- redesign the page around explicit user tasks such as `Rank`, `Compare`, `Build Roster`, and `Assess Team`
-- shorten the cognitive path from landing to useful answer
-- make summary cards and team views more decision-oriented
-- break `viewer/main.js` into smaller modules by data loading, state, rendering, and roster logic
-- tighten the visual hierarchy so the primary workflow is obvious on desktop and usable on laptop screens
+- add swap-in and swap-out delta views for hitters and pitchers
+- expose how a roster move changes runs scored, runs allowed, wins, and role balance
+- improve feedback when roster slots are hard to fill or structurally unbalanced
+- surface team strengths, weaknesses, and scarcity flags from the selected roster
+- clarify which player attributes matter most for each slot type
 
 Evidence of completion:
 
-- a user can answer top-level questions without scanning a giant table first
-- the viewer code is no longer centered in one large file
-- the roster builder, hitter board, and pitcher board feel like connected surfaces rather than stacked sections
+- users can understand the impact of a roster move in one pass
+- the season estimate reads as a decision output, not just a calculation
+- the roster builder becomes the default workflow for answering "what should this team look like?"
 
-### Workstream 3: Comparison And Explanation
+### Workstream 3: Validation And Operations
 
 Outcome:
 
-- the app supports actual baseball choices, not just rankings
+- refreshes and publishes are safer and easier to trust
 
 Required outcomes:
 
-- add player-to-player comparison views
-- add explanation panels for why a score moved up or down
-- expose prior vs current signal contribution more clearly
-- show tradeoff lenses such as floor vs upside, role fit, and playing-time risk
-- add saved or shareable comparison states where practical
+- add lightweight export validation for required fields, non-empty outputs, and expected viewer files
+- add stale-data checks around live game windows and export timestamps
+- define one publish-ready static bundle workflow
+- separate local dev artifacts from publish artifacts
+- document preseason vs in-season refresh cadence and expectations
 
 Evidence of completion:
 
-- users can compare two or more players without manual cross-scanning
-- the app explains score construction in product language
-- roster-fit decisions are easier to defend from the UI alone
+- broken refreshes are detected before the viewer is opened
+- stale exports are visible before sharing
+- publishing the viewer is routine rather than custom
 
-### Workstream 4: Team Building And Scenario Analysis
+### Workstream 4: Season And Artifact Management
 
 Outcome:
 
-- team construction becomes a stronger product pillar than isolated player browsing
+- the project can evolve across seasons without naming drift or contract confusion
 
 Required outcomes:
 
-- improve roster slot logic and selection feedback
-- add team templates or baseline roster assumptions
-- support what-if swaps and delta views for roster changes
-- make team-level season outputs easier to interpret
-- add clearer guardrails around position balance and pitching role balance
+- define file naming rules for preseason projections, in-season blends, and viewer-ready bundles
+- standardize year references across scripts, exports, and docs
+- clarify which outputs are canonical product files versus exploratory artifacts
+- prepare the workflow so a 2027 rollover is mechanical rather than interpretive
 
 Evidence of completion:
 
-- a user can understand the impact of roster swaps quickly
-- team-level outputs read as decisions, not just aggregate math
-- roster construction becomes the product's defining workflow
-
-### Workstream 5: Publishing And Operations
-
-Outcome:
-
-- the app can be refreshed and shared consistently
-
-Required outcomes:
-
-- define the local runbook and recurring refresh cadence
-- add a lightweight publish path for the static viewer and data bundle
-- separate development artifacts from publish-ready artifacts
-- add validation checks for missing data, stale exports, and broken field assumptions
-- document how and when to refresh preseason vs in-season outputs
-
-Evidence of completion:
-
-- there is one documented path to publish the viewer
-- stale or incomplete exports are detectable before publish
-- the app can be shared without custom explanation every time
+- a new season can be added without duplicating ambiguous naming patterns
+- core artifacts are easy to identify from the file tree
+- product contracts survive year-over-year evolution
 
 ## Recommended Delivery Sequence
 
@@ -169,91 +164,78 @@ Evidence of completion:
 
 Focus:
 
-- roadmap and backlog grounding
-- export contract documentation
-- refresh workflow documentation
-- identify viewer surface priorities
+- finish hitter and pitcher comparison so the current scaffolding becomes a stable product surface
+- add the score explanation surface on top of the existing trace fields
+- finish the first pass at comparison-oriented information architecture already underway in the boards
 
 Success gate:
 
-- the project has a clear product direction and the data contract is documented
+- the app can justify and compare player rankings from the UI alone
 
 ### Cycle 2
 
 Focus:
 
-- modularize `viewer/main.js`
-- tighten page hierarchy
-- improve summary and team panels
+- roster swap deltas
+- stronger team-level interpretation
+- slot-fit and role-balance feedback
 
 Success gate:
 
-- the viewer is easier to extend and easier to read
+- roster construction clearly becomes the primary product workflow
 
 ### Cycle 3
 
 Focus:
 
-- player comparison workflow
-- score explanation surface
-- better roster feedback
+- export validation
+- stale-data checks
+- publish path and operations runbook
 
 Success gate:
 
-- the app supports real comparison decisions instead of table scanning alone
+- the app is safer to refresh and easier to share
 
 ### Cycle 4
 
 Focus:
 
-- what-if roster changes
-- team scenario outputs
-- team-building UX refinement
+- season naming cleanup
+- artifact taxonomy
+- 2027 rollover readiness
 
 Success gate:
 
-- roster construction is clearly the center of the product
-
-### Cycle 5
-
-Focus:
-
-- publish path
-- validation checks
-- refresh cadence and operations
-
-Success gate:
-
-- the app can be maintained and shared without ad hoc recovery steps
+- the project can add new seasons without product-contract ambiguity
 
 ## Design Standard
 
-The viewer should follow these principles:
+The viewer should continue to feel like a compact internal baseball decision board:
 
-- clear task hierarchy
-- strong information density without visual clutter
-- obvious primary actions
-- explanation near the decision, not buried in docs
-- compact comparison surfaces
-- traceability without requiring SQL fluency
+- strong task hierarchy
+- compact high-signal summaries
+- explanation close to rankings and roster choices
+- comparison surfaces that minimize eye travel
+- traceability without exposing raw implementation clutter
 
-This should feel like a sharp internal baseball front-office tool, not a generic dashboard and not a decorative consumer app.
+This should not drift back toward a long stacked dashboard or a metrics scrapbook.
 
 ## Non-Goals For The Next Cycles
 
-Do not spend early cycles on:
+Do not prioritize the following before the current roadmap is complete:
 
-- decorative chart sprawl
-- unsupported mobile-native ambitions
-- adding more metrics before making current metrics easier to use
-- speculative ML complexity that weakens traceability
-- backfilling every historical season before the 2026 product workflow is solid
+- adding many more model outputs without explanation surfaces
+- heavy chart expansion that does not support a concrete decision task
+- native-app ambitions before the static product is operationally stable
+- deeper ML experimentation that weakens inspectability
+- broad historical backfills that distract from the 2026 and 2027 product workflow
 
 ## Immediate Priority
 
 The highest-value immediate focus is:
 
-1. define the export contract and refresh workflow
-2. modularize the viewer and improve the decision workflow
+1. finish the in-flight comparison cycle by adding explanation and polishing comparison trust cues
+2. move directly into roster swap deltas and team decision feedback
+3. add export validation and a real publish path before widening the product surface
 
-Those two efforts unlock everything else without increasing product chaos.
+Those are the missing pieces between a strong local analyst tool and a product that can be trusted and shared.

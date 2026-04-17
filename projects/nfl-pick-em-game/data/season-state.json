@@ -2,8 +2,8 @@
   "title": "Busy Picks",
   "season": 2026,
   "currentWeek": 1,
-  "notes": "Testing",
-  "updatedAt": "2026-04-12T15:26:05.209Z",
+  "notes": "Testing save",
+  "updatedAt": "2026-04-16T01:53:45.472Z",
   "source": {
     "sheetTitle": "Busy Picks 2025 Season",
     "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1jV5kmQBMXtmWVnMyztz54Mw0GY6LWiOz3YPCbAs51e8/edit",
@@ -12,7 +12,8 @@
   "owners": [
     "Cory",
     "Jeremy",
-    "Taylor"
+    "Taylor",
+    "Alex"
   ],
   "standings": [
     {
@@ -40,9 +41,21 @@
       }
     },
     {
-      "owner": "Taylor",
+      "owner": "Alex",
       "points": 0,
       "rank": 3,
+      "expectedPoints": 0,
+      "liveOdds": "—",
+      "breakdown": {
+        "potd": 0,
+        "overUnder": 0,
+        "dotd": 0
+      }
+    },
+    {
+      "owner": "Taylor",
+      "points": 0,
+      "rank": 4,
       "expectedPoints": 0,
       "liveOdds": "—",
       "breakdown": {
@@ -60,7 +73,8 @@
       "potd": {
         "Cory": "SF -2.5",
         "Jeremy": "SF -2.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -74,6 +88,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -91,6 +110,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -101,7 +124,8 @@
       "potd": {
         "Cory": "BUF -5.5",
         "Jeremy": "PHI -1.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -115,6 +139,11 @@
           "pick": "U"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -132,6 +161,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -142,7 +175,8 @@
       "potd": {
         "Cory": "PHI -4.5",
         "Jeremy": "ATL -4.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -156,6 +190,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -173,6 +212,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -183,7 +226,8 @@
       "potd": {
         "Cory": "LAR -3.5",
         "Jeremy": "CHI +2.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -197,6 +241,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -214,6 +263,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -224,7 +277,8 @@
       "potd": {
         "Cory": "DAL +2.5",
         "Jeremy": "MIN -3.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -238,6 +292,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -255,6 +314,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -265,7 +328,8 @@
       "potd": {
         "Cory": "SEA -1.5",
         "Jeremy": "LV -3.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -279,6 +343,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -296,6 +365,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -306,7 +379,8 @@
       "potd": {
         "Cory": "PHI -2.5",
         "Jeremy": "DAL -1.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -320,6 +394,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -337,6 +416,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -347,7 +430,8 @@
       "potd": {
         "Cory": "BUF -7.5",
         "Jeremy": "SF +2.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -361,6 +445,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -378,6 +467,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -388,7 +481,8 @@
       "potd": {
         "Cory": "SF -2.5",
         "Jeremy": "IND -3.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -402,6 +496,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -419,6 +518,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -429,7 +532,8 @@
       "potd": {
         "Cory": "BAL -4.5",
         "Jeremy": "BUF -9.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -443,6 +547,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -460,6 +569,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -470,7 +583,8 @@
       "potd": {
         "Cory": "BUF -5.5",
         "Jeremy": "LAC -2.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -484,6 +598,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -501,6 +620,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -511,7 +634,8 @@
       "potd": {
         "Cory": "KC -4.5",
         "Jeremy": "BAL -14.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -525,6 +649,11 @@
           "pick": "U"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -542,6 +671,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -552,7 +685,8 @@
       "potd": {
         "Cory": "BUF -2.5",
         "Jeremy": "TB -3.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -566,6 +700,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -583,6 +722,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -593,7 +736,8 @@
       "potd": {
         "Cory": "BUF -6",
         "Jeremy": "IND -1.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -607,6 +751,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -624,6 +773,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -634,7 +787,8 @@
       "potd": {
         "Cory": "BUF -2.5",
         "Jeremy": "CAR -2.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -648,6 +802,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -665,6 +824,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -675,7 +838,8 @@
       "potd": {
         "Cory": "TB -3",
         "Jeremy": "LAC +1.5",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -689,6 +853,11 @@
           "pick": "O"
         },
         "Taylor": {
+          "game": "",
+          "line": "",
+          "pick": ""
+        },
+        "Alex": {
           "game": "",
           "line": "",
           "pick": ""
@@ -706,6 +875,10 @@
         "Taylor": {
           "team": "",
           "line": ""
+        },
+        "Alex": {
+          "team": "",
+          "line": ""
         }
       }
     },
@@ -716,7 +889,8 @@
       "potd": {
         "Cory": "TB -5.5",
         "Jeremy": "NYG -3",
-        "Taylor": ""
+        "Taylor": "",
+        "Alex": ""
       },
       "overUnder": {
         "Cory": {
@@ -733,6 +907,11 @@
           "game": "",
           "line": "",
           "pick": ""
+        },
+        "Alex": {
+          "game": "",
+          "line": "",
+          "pick": ""
         }
       },
       "dotd": {
@@ -745,6 +924,10 @@
           "line": "290"
         },
         "Taylor": {
+          "team": "",
+          "line": ""
+        },
+        "Alex": {
           "team": "",
           "line": ""
         }
@@ -1109,5 +1292,199 @@
       "totalLine": 46.5,
       "winner": "49ers"
     }
-  ]
+  ],
+  "weeklyOutcomes": [
+    {
+      "week": 1,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 2,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 3,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 4,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 5,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 6,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 7,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 8,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 9,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 10,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 11,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 12,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 13,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 14,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 15,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 16,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    },
+    {
+      "week": 17,
+      "potdWinner": "",
+      "overUnder": {
+        "game": "",
+        "line": "",
+        "outcome": ""
+      },
+      "dotdWinners": [],
+      "finalized": false
+    }
+  ],
+  "scoring": {
+    "mode": "imported",
+    "completedWeeks": 0,
+    "lastComputedAt": null
+  }
 }

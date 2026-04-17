@@ -16,6 +16,11 @@
             Traceable hitter and pitcher valuations blending preseason priors with current-season signals for roster
             construction, role fit, and team-level season estimates.
           </p>
+          <nav class="quick-nav" aria-label="Primary sections">
+            <a href="#roster-builder" class="quick-nav-link">Roster</a>
+            <a href="#hitter-board" class="quick-nav-link">Hitters</a>
+            <a href="#pitcher-board" class="quick-nav-link">Pitchers</a>
+          </nav>
         </div>
         <div class="hero-note">
           <span class="hero-note-label">Season Model</span>
@@ -23,7 +28,7 @@
         </div>
       </section>
 
-      <section class="roster-builder">
+      <section class="roster-builder" id="roster-builder">
         <div class="roster-builder-header">
           <div>
             <p class="eyebrow">Roster Builder</p>
@@ -59,7 +64,21 @@
         </div>
       </section>
 
-      <section class="board-section">
+      <section class="dictionary-section" id="metric-dictionary">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Dictionary</p>
+            <h2>What The Advanced Terms Mean</h2>
+          </div>
+        </div>
+        <div class="dictionary-intro">
+          Use this as the fast translation layer for the board. These definitions are viewer-facing summaries of the
+          main scoring, blend, role, and roster terms used across hitters, pitchers, and team outputs.
+        </div>
+        <div class="dictionary-grid" id="dictionary-grid"></div>
+      </section>
+
+      <section class="board-section" id="hitter-board">
         <div class="section-header">
           <div>
             <p class="eyebrow">Hitter Board</p>
@@ -67,11 +86,43 @@
           </div>
         </div>
 
+        <section class="summary" id="summary-cards"></section>
+
+        <section class="insight-panel" id="hitter-guide"></section>
+
+        <section class="comparison-panel" id="hitter-comparison"></section>
+
+        <section class="team-panel" id="team-panel">
+          <div class="team-panel-header compact-header">
+            <div>
+              <p class="eyebrow">Hitter Snapshot</p>
+              <h2 id="team-title">All Hitter Pools</h2>
+            </div>
+            <p class="team-panel-copy" id="team-copy">
+              Select a team to see aggregate team-building value and the strongest lineup fits.
+            </p>
+          </div>
+
+          <div class="team-metrics" id="team-metrics"></div>
+
+          <div class="team-leaders">
+            <h3>Top Bats</h3>
+            <div class="team-leaders-list" id="team-leaders-list"></div>
+          </div>
+        </section>
+
         <section class="controls">
           <label>
             <span>Team</span>
             <select id="team-filter">
               <option value="ALL">All Teams</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Position</span>
+            <select id="position-filter">
+              <option value="ALL">All Positions</option>
             </select>
           </label>
 
@@ -103,57 +154,43 @@
               <option value="pace_pa_162">162G PA Pace</option>
             </select>
           </label>
+
+          <label>
+            <span>Stat View</span>
+            <select id="hitter-stat-view">
+              <option value="decision">Decision</option>
+              <option value="projection">Projected Stats</option>
+              <option value="all">All Stats</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Rows</span>
+            <select id="hitter-row-limit">
+              <option value="25">Top 25</option>
+              <option value="50">Top 50</option>
+              <option value="100">Top 100</option>
+              <option value="ALL">All</option>
+            </select>
+          </label>
+
+          <div class="control-action">
+            <span>Board Tools</span>
+            <button id="reset-hitter-filters" class="secondary-button" type="button">Reset Hitter Filters</button>
+          </div>
         </section>
 
-        <section class="summary" id="summary-cards"></section>
-
-        <section class="team-panel" id="team-panel">
-          <div class="team-panel-header compact-header">
-            <div>
-              <p class="eyebrow">Hitter Snapshot</p>
-              <h2 id="team-title">All Hitter Pools</h2>
-            </div>
-            <p class="team-panel-copy" id="team-copy">
-              Select a team to see aggregate team-building value and the strongest lineup fits.
-            </p>
-          </div>
-
-          <div class="team-metrics" id="team-metrics"></div>
-
-          <div class="team-leaders">
-            <h3>Top Bats</h3>
-            <div class="team-leaders-list" id="team-leaders-list"></div>
-          </div>
-        </section>
+        <div class="table-status" id="hitter-table-status"></div>
 
         <section class="table-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>Pick</th>
-                <th>Player</th>
-                <th>Team</th>
-                <th>Role</th>
-                <th>Pos</th>
-                <th>Team Build</th>
-                <th>Talent</th>
-                <th>PT</th>
-                <th>Upside</th>
-                <th>Floor</th>
-                <th>Starter</th>
-                <th>Stability</th>
-                <th>Platoon Risk</th>
-                <th>Curr wOBA</th>
-                <th>Proj wOBA</th>
-                <th>162G PA</th>
-              </tr>
-            </thead>
+            <thead id="hitter-table-head"></thead>
             <tbody id="projection-rows"></tbody>
           </table>
         </section>
       </section>
 
-      <section class="board-section">
+      <section class="board-section" id="pitcher-board">
         <div class="section-header">
           <div>
             <p class="eyebrow">Pitcher Board</p>
@@ -161,11 +198,24 @@
           </div>
         </div>
 
+        <section class="summary" id="pitcher-summary-cards"></section>
+
+        <section class="insight-panel" id="pitcher-guide"></section>
+
+        <section class="comparison-panel" id="pitcher-comparison"></section>
+
         <section class="controls">
           <label>
             <span>Team</span>
             <select id="pitcher-team-filter">
               <option value="ALL">All Teams</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Role</span>
+            <select id="pitcher-role-filter">
+              <option value="ALL">All Roles</option>
             </select>
           </label>
 
@@ -195,31 +245,37 @@
               <option value="pace_runs_allowed_162">162G Runs Allowed Pace</option>
             </select>
           </label>
+
+          <label>
+            <span>Stat View</span>
+            <select id="pitcher-stat-view">
+              <option value="decision">Decision</option>
+              <option value="projection">Projected Stats</option>
+              <option value="all">All Stats</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Rows</span>
+            <select id="pitcher-row-limit">
+              <option value="25">Top 25</option>
+              <option value="50">Top 50</option>
+              <option value="100">Top 100</option>
+              <option value="ALL">All</option>
+            </select>
+          </label>
+
+          <div class="control-action">
+            <span>Board Tools</span>
+            <button id="reset-pitcher-filters" class="secondary-button" type="button">Reset Pitcher Filters</button>
+          </div>
         </section>
 
-        <section class="summary" id="pitcher-summary-cards"></section>
+        <div class="table-status" id="pitcher-table-status"></div>
 
         <section class="table-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>Pick</th>
-                <th>Pitcher</th>
-                <th>Team</th>
-                <th>Role</th>
-                <th>Team Build</th>
-                <th>Run Prev</th>
-                <th>Pitch Quality</th>
-                <th>PT</th>
-                <th>Upside</th>
-                <th>Floor</th>
-                <th>Proj ERA</th>
-                <th>Proj IP</th>
-                <th>Proj K</th>
-                <th>Curr ERA</th>
-                <th>162G IP</th>
-              </tr>
-            </thead>
+            <thead id="pitcher-table-head"></thead>
             <tbody id="pitcher-rows"></tbody>
           </table>
         </section>

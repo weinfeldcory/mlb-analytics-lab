@@ -2,14 +2,14 @@
 
 ## How To Use This File
 
-This backlog translates the roadmap into executable work.
+This backlog translates the current roadmap into executable work.
 
 Rules:
 
 - `Now` means active priority for the next few development cycles.
-- `Next` means important, but blocked on current foundation work.
+- `Next` means important follow-up once the active comparison and roster work lands.
 - `Later` means intentionally deferred.
-- each ticket should be small enough to complete without mixing unrelated concerns
+- each ticket should stay small enough to finish without mixing unrelated concerns
 
 Status labels:
 
@@ -18,135 +18,136 @@ Status labels:
 - `[blocked]`
 - `[done]`
 
+## Completed Foundations
+
+These roadmap items are already in place and should not be treated as open work unless they regress.
+
+- [done] Document the refresh pipeline in `README.md`.
+- [done] Add a viewer-facing hitter and pitcher field glossary in `EXPORT_FIELD_GLOSSARY.md`.
+- [done] Split the viewer out of one giant `viewer/main.js` entrypoint into modules.
+- [done] Recenter the landing experience around roster construction and season estimate.
+- [done] Tighten summary cards and team panels enough to support top-level scanning.
+- [done] Add board-level controls for stat views, row limits, and filter resets.
+- [done] Add first-pass reading guides so filtered board slices explain themselves in product language.
+
 ## Now
 
-These items are the highest-value next steps for turning the current project into a stronger product.
+These are the highest-value next steps for turning the current project into a stronger decision product.
 
-### Data Product Foundation
+### Comparison And Explanation
 
-- [todo] Document the refresh pipeline in `README.md`.
-  - Pulls
-  - DuckDB table builds
-  - export scripts
-  - viewer refresh path
+- [doing] Add side-by-side hitter comparison.
+  - pick two hitters from the board
+  - compare team-build, talent, PT, upside, floor, and projection outputs
+  - keep the comparison visible without losing table context
+  - current status: compare slots and board actions are in place; remaining work is trust cues and explanation polish
 
-- [todo] Add a field glossary for hitter exports.
-  - define core ranking fields
-  - define blend fields
-  - define trace fields
+- [doing] Add side-by-side pitcher comparison.
+  - pick two pitchers from the board
+  - compare run prevention, pitch quality, PT, role, and projection outputs
+  - make role differences obvious
+  - current status: compare slots and board actions are in place; remaining work is role contrast and explanation polish
 
-- [todo] Add a field glossary for pitcher exports.
-  - define role bucket fields
-  - define run-prevention and pitch-quality fields
-  - define current-vs-prior blend fields
+- [done] Add a score explanation panel.
+  - explain prior contribution
+  - explain current-season contribution
+  - explain playing-time effect
+  - explain role and reliability effects
+  - explanation now lives directly inside the hitter and pitcher comparison surfaces
 
-- [todo] Audit filename and season naming consistency.
-  - clarify `2025` vs `2026` outputs
-  - make preseason and in-season artifacts easier to distinguish
+- [done] Add comparison state persistence.
+  - local persistence is wired through comparison storage
+  - URL state can stay as a later enhancement if sharing becomes the stronger need
+
+### Team-Building Decision Support
+
+- [todo] Add roster swap delta views.
+  - replace one hitter
+  - replace one pitcher
+  - show change in runs scored, runs allowed, and wins
+
+- [todo] Add roster-balance feedback.
+  - identify thin positions
+  - identify overloaded bench or role mixes
+  - identify weak rotation or bullpen structure
+
+- [todo] Add selected-roster strengths and weaknesses summary.
+  - best traits
+  - biggest risks
+  - scarcity or fragility flags
+
+## Next
+
+These items should follow once comparison and roster-decision workflows are live.
+
+### Validation And Operations
 
 - [todo] Add lightweight export validation.
   - required fields present
   - no empty datasets
   - viewer JSON written successfully
+  - hitter and pitcher file versions align
 
-### Viewer Productization
-
-- [todo] Split `viewer/main.js` into smaller modules.
-  - data loading
-  - filter state
-  - roster builder logic
-  - hitter rendering
-  - pitcher rendering
-
-- [todo] Define the top-level viewer surface hierarchy.
-  - `Overview`
-  - `Hitters`
-  - `Pitchers`
-  - `Roster Builder`
-  - `Team View`
-
-- [todo] Improve the landing experience.
-  - make the first screen answer what the app does
-  - show the top action paths faster
-  - reduce the feeling of one long stacked dashboard
-
-- [todo] Tighten summary cards and team panels around decisions.
-  - what should I look at
-  - who leads
-  - what risk tradeoffs matter
-
-## Next
-
-These items should follow once the foundation and viewer shape are stronger.
-
-### Comparison And Explanation
-
-- [todo] Add side-by-side player comparison.
-  - hitter vs hitter
-  - pitcher vs pitcher
-
-- [todo] Add a score explanation panel.
-  - prior contribution
-  - in-season contribution
-  - playing-time effect
-  - role effect
-
-- [todo] Add roster swap delta views.
-  - replace one hitter
-  - replace one pitcher
-  - show season-estimate change
-
-- [todo] Add clearer team-level views.
-  - top roster strengths
-  - top weaknesses
-  - position scarcity or role-balance flags
-
-### Operations
+- [todo] Add stale-data checks.
+  - last refresh timestamp
+  - missing live game windows
+  - export mismatch warnings
 
 - [todo] Add publish-ready build guidance.
-  - local static hosting
+  - static hosting path
   - publish folder expectations
   - update cadence
 
-- [todo] Add stale-data checks.
-  - last refresh time
-  - missing game ranges
-  - export mismatch warnings
+- [todo] Separate publish artifacts from development artifacts.
+  - define canonical viewer bundle
+  - clarify which processed files are product outputs
+
+### Season And Artifact Management
+
+- [todo] Audit filename and season naming consistency.
+  - clarify `projection_engine` vs `projection_vs_current`
+  - clarify preseason vs in-season artifacts
+  - make yearly rollover easier
+
+- [todo] Define canonical product artifacts for each season.
+  - local modeling outputs
+  - processed exports
+  - viewer-ready exports
 
 ## Later
 
-These are valuable, but should not outrun product clarity.
+These are valuable, but should not outrun decision clarity and operational trust.
 
 ### Deeper Product Features
 
 - [todo] Add saved roster scenarios
 - [todo] Add compare-against-team baseline mode
 - [todo] Add trade package evaluation workflow
-- [todo] Add historical trend views where they support current decisions
+- [todo] Add historical trend views where they support a current decision
 - [todo] Add richer charting once comparison workflows are already strong
 
 ### Platform Expansion
 
-- [todo] Add a real app shell if the static viewer proves stable
-- [todo] Add authenticated sharing or private publishing if external usage grows
+- [todo] Add a fuller app shell only if the static viewer proves operationally stable
+- [todo] Add authenticated sharing only if external usage grows
 - [todo] Add API-backed delivery only after the static product contract is mature
 
 ## Recommended Order For The Next Three Work Cycles
 
 ### Cycle 1
 
-- document the refresh workflow
-- add export glossaries
-- audit naming and validation gaps
+- finish hitter comparison
+- finish pitcher comparison
+- add score explanations
 
 ### Cycle 2
 
-- split `viewer/main.js`
-- establish viewer surface hierarchy
-- tighten the first-screen workflow
+- add roster swap deltas
+- add roster-balance feedback
+- add strengths and weaknesses summary
 
 ### Cycle 3
 
-- add comparison views
-- add score explanations
-- add roster delta feedback
+- add export validation
+- add stale-data checks
+- add publish workflow guidance

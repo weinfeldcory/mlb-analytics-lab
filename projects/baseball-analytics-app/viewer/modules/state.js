@@ -5,6 +5,10 @@ export const state = {
   pitchers: [],
   filteredHitters: [],
   filteredPitchers: [],
+  comparison: {
+    hitters: [],
+    pitchers: [],
+  },
   roster: {
     hitters: hitterSlotDefinitions.map((slot) => ({ ...slot, playerId: null })),
     pitchers: pitcherSlotDefinitions.map((slot) => ({ ...slot, playerId: null })),
