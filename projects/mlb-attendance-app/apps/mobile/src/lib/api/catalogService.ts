@@ -1,5 +1,5 @@
 import { games, teams, venues } from "../data/mockSportsData";
-import type { Game, Team, Venue } from "../../types/models";
+import type { Game, Team, Venue } from "@mlb-attendance/domain";
 
 export interface GameSearchFilters {
   query?: string;
@@ -48,4 +48,3 @@ export async function searchGames(filters: GameSearchFilters): Promise<Game[]> {
     return Boolean(matchesQuery && matchesDate && matchesStadium);
   });
 }
-

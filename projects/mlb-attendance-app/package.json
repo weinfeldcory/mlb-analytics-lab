@@ -3,7 +3,8 @@
   "private": true,
   "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "dev": "pnpm --filter mobile start",
-    "typecheck": "pnpm --filter mobile typecheck"
+    "dev": "corepack pnpm --filter mobile start",
+    "typecheck": "corepack pnpm -r typecheck",
+    "test": "corepack pnpm --filter @mlb-attendance/domain test"
   }
 }

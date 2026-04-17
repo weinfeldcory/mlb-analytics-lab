@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import type { RecentMoment } from "../../types/models";
+import type { RecentMoment } from "@mlb-attendance/domain";
 import { colors, spacing } from "../../styles/tokens";
 
 interface RecentMomentRowProps {
@@ -47,4 +47,3 @@ const styles = StyleSheet.create({
     color: colors.slate500
   }
 });
-

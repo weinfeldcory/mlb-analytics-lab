@@ -1,4 +1,4 @@
-import type { Game, Team, Venue } from "../types/models";
+import type { Game, Team, Venue } from "@mlb-attendance/domain";
 
 export function formatGameLabel(game: Game, teamsById: Map<string, Team>, venuesById: Map<string, Venue>) {
   const awayTeam = teamsById.get(game.awayTeamId);
@@ -11,4 +11,3 @@ export function formatGameLabel(game: Game, teamsById: Map<string, Team>, venues
     score: `${game.awayScore}-${game.homeScore}`
   };
 }
-

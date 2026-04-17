@@ -8,7 +8,7 @@ import { SectionCard } from "../../components/common/SectionCard";
 import { useAppData } from "../../providers/AppDataProvider";
 import { colors, spacing } from "../../styles/tokens";
 import { formatGameLabel } from "../../lib/formatters";
-import type { Game } from "../../types/models";
+import type { Game } from "@mlb-attendance/domain";
 
 export function LogGameScreen() {
   const router = useRouter();
@@ -23,6 +23,10 @@ export function LogGameScreen() {
   const [section, setSection] = useState("");
   const [row, setRow] = useState("");
   const [seatNumber, setSeatNumber] = useState("");
+  const [memorableMoment, setMemorableMoment] = useState("");
+  const [companion, setCompanion] = useState("");
+  const [giveaway, setGiveaway] = useState("");
+  const [weather, setWeather] = useState("");
   const [searchError, setSearchError] = useState("");
   const [seatError, setSeatError] = useState("");
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -54,7 +58,11 @@ export function LogGameScreen() {
           section,
           row,
           seatNumber
-        }
+        },
+        memorableMoment,
+        companion,
+        giveaway,
+        weather
       });
 
       setSeatError("");
@@ -65,6 +73,10 @@ export function LogGameScreen() {
       setSection("");
       setRow("");
       setSeatNumber("");
+      setMemorableMoment("");
+      setCompanion("");
+      setGiveaway("");
+      setWeather("");
     } catch (error) {
       setConfirmation(null);
       setSearchError(error instanceof Error ? error.message : "We could not save that game.");
@@ -147,6 +159,33 @@ export function LogGameScreen() {
           onChangeText={setSeatNumber}
           placeholder="7"
           autoCapitalize="characters"
+        />
+      </SectionCard>
+
+      <SectionCard title="4. Add the Memory (Optional)">
+        <LabeledInput
+          label="Memorable moment"
+          value={memorableMoment}
+          onChangeText={setMemorableMoment}
+          placeholder="Judge hit one into the second deck."
+        />
+        <LabeledInput
+          label="Who you went with"
+          value={companion}
+          onChangeText={setCompanion}
+          placeholder="Dad, Sam, coworkers..."
+        />
+        <LabeledInput
+          label="Giveaway"
+          value={giveaway}
+          onChangeText={setGiveaway}
+          placeholder="Bobblehead, jersey, cap..."
+        />
+        <LabeledInput
+          label="Weather"
+          value={weather}
+          onChangeText={setWeather}
+          placeholder="72F and clear"
         />
         <PrimaryButton label="Save Attendance Log" onPress={handleSave} disabled={!selectedGame} />
       </SectionCard>

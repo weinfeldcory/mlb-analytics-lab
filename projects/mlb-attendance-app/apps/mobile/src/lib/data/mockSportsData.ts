@@ -1,4 +1,4 @@
-import type { AttendanceLog, Game, Team, UserProfile, Venue } from "../../types/models";
+import type { AttendanceLog, Game, Team, UserProfile, Venue } from "@mlb-attendance/domain";
 
 export const mockUser: UserProfile = {
   id: "user_1",

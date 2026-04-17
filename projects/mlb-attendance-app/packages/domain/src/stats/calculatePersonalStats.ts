@@ -6,7 +6,7 @@ import type {
   Team,
   UserProfile,
   Venue
-} from "../../../../apps/mobile/src/types/models";
+} from "../models";
 
 function didTeamWin(game: Game, teamId: string) {
   if (game.homeTeamId === teamId) {

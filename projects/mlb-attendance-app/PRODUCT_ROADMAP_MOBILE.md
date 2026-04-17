@@ -1,274 +1,321 @@
 # MLB Attendance App Product Roadmap
 
-## Objective
+Last updated: 2026-04-16
 
-Take the current local Expo prototype from a seeded MLB logging demo to a product that can support:
+## Product Thesis
 
-- a dependable personal attendance journal for one fan
-- durable game logging and stats across devices
-- a catalog and import layer that reduces manual entry friction
-- a flexible platform for later social, collection, and live-experience features
+This app should become the easiest way for a fan to build a durable personal record of every MLB game they attended.
 
-This roadmap is intentionally sequenced to prove the personal attendance loop before adding community or live data complexity.
+The product wins if logging a game is faster than opening Notes, the record is trustworthy across devices, and the stats feel personal enough to make the fan come back even when they are not at the ballpark.
 
-## Product Strategy
+## Current Product Baseline
 
-The development path should be:
+As of 2026-04-16, the mobile app is still a prototype:
 
-1. Make personal game logging fast, trustworthy, and pleasant.
-2. Add persistence so a fan's history survives app restarts and device changes.
-3. Improve input quality with better catalog search, imports, and profile preferences.
-4. Expand the stats and collection model once the core log is reliable.
-5. Add selective social and live features only after the single-user product is stable.
+- Expo mobile app with five tabs: Home, Log Game, History, Stats, Profile
+- seeded MLB teams, venues, games, and attendance logs
+- in-memory state only, so data does not survive app restarts
+- create-only attendance flow with duplicate prevention
+- basic derived stats and recent moments
+- placeholder profile experience
 
-## Success Criteria By Stage
+Current product constraints visible in code:
 
-### Stage 1: Personal Attendance MVP
+- no edit or delete flow for logged games
+- no local persistence, sync, backup, or account model
+- tiny catalog footprint with fixed 2025 seeded games
+- no onboarding, notifications, imports, or attachment support
+- domain types still leak from `apps/mobile` into `packages/domain`
+- no real automated test floor yet
 
-Success means:
+## Strategy
 
-- a user can log attended games without confusion
-- history is accurate and easy to browse
-- core personal stats feel rewarding enough to bring the user back
-- the app works without seeded-only assumptions in the main user flow
+The sequencing should stay strict:
 
-### Stage 2: Durable Personal Product
+1. Make the single-user logging loop trustworthy.
+2. Make the record durable on device.
+3. Reduce manual entry with a real catalog and import path.
+4. Turn the logbook into a collectible stats product.
+5. Add accounts and sync only when the local experience is solid.
+6. Defer social and live context until they strengthen, not distract from, the core journal.
 
-Success means:
+## Product Principles
 
-- logs persist reliably across app sessions
-- the game catalog is broad enough for normal logging behavior
-- profile preferences shape the experience meaningfully
-- core stats and summaries can be trusted as a personal record
+- Personal record first: every roadmap decision should improve the quality of the fan's own logbook.
+- Trust before delight: persistence, editability, and data integrity matter more than badges.
+- Low-friction entry: the app should ask for as little manual data as possible at logging time.
+- Stable identities: teams, venues, and games need canonical IDs before deeper analytics can be trusted.
+- Offline matters: a stadium product cannot assume perfect connectivity.
 
-### Stage 3: Expansion Platform
+## Success Metrics
 
-Success means:
+Early product health should be measured with simple signals:
 
-- the product model supports collections, achievements, and richer metadata
-- account and sync foundations can support multiple devices or users
-- optional social features can be added without reworking the core domain
+- time to first successful log
+- percentage of logs created without leaving the log flow
+- edit/delete usage rate after first save
+- duplicate-save prevention rate
+- seven-day retention after first logged game
+- average logs per active user
+- percent of active users with favorite team set
+- percent of logs tied to canonical game IDs instead of manual fallback records
 
-## Phase Plan
+## Roadmap Overview
 
-## Phase 0: Stabilize The Prototype
+## Release 0.1: Trustworthy Personal MVP
 
-Purpose:
+Target window: April 16, 2026 to May 31, 2026
 
-- reduce prototype debt
-- make the current Expo app easier to extend safely
+Goal:
 
-Epics:
+- ship an experience that feels like a real personal logbook instead of a seeded demo
 
-- shared domain alignment
-- state management cleanup
-- component consistency
-- test baseline
+Must-have outcomes:
 
-Ticket candidates:
+- user can create, review, edit, and delete attendance logs
+- home screen clearly drives the next useful action
+- profile supports favorite team and basic preferences
+- empty states and success states are coherent across all tabs
+- domain logic has one canonical home and a first test baseline
 
-- Remove duplicated stats logic between `apps/mobile` and `packages/domain` so one domain path is canonical.
-- Introduce fixture-driven test coverage for attendance creation, duplicate prevention, and personal stats calculation.
-- Clean up provider responsibilities so catalog search, attendance mutation, and derived stats boundaries are explicit.
-- Standardize empty states, validation messaging, and success states across `Home`, `Log Game`, `History`, and `Stats`.
-- Add a contributor-facing note for booting the app and understanding the seeded data model.
+Core workstreams:
 
-Definition of done:
-
-- the current flows still behave the same
-- product logic is easier to trust and change
-- the app has a basic quality floor for future iterations
-
-## Phase 1: Personal Logging MVP
-
-Purpose:
-
-- make the core loop strong enough for real repeated use
-- improve confidence that every saved game belongs in the user's record
-
-Epics:
-
-- faster log flow
-- better history usability
+- product hardening
+- attendance CRUD
 - profile basics
-- first retention hooks
+- UX consistency
+- engineering foundation
 
 Ticket candidates:
 
-- Add stronger search and filter behavior in `Log Game`, including clearer no-result and selected-state handling.
-- Support editing and deleting an attendance log from `History`.
-- Add notes such as who the user went with, weather, giveaway, or freeform memory.
-- Let the user set and edit a favorite team inside `Profile`.
-- Improve `Home` so it focuses on the next useful action, recent log, and progress milestones.
-- Add first-run onboarding that explains what gets tracked and why.
+- Move shared product types into `packages/domain` so the domain package no longer imports from `apps/mobile`.
+- Add unit tests for attendance creation, duplicate prevention, witnessed event generation, and personal stats calculation.
+- Add edit and delete controls in `History` with confirmation and optimistic UI state.
+- Expand the log model with optional freeform memory, companion, giveaway, and weather notes.
+- Upgrade `Home` to show last log, progress milestone, and a clear CTA when the logbook is empty.
+- Replace `Profile` placeholder content with favorite team selection and lightweight app preferences.
+- Add first-run onboarding with a clear explanation of what the app stores and how stats are derived.
+- Standardize validation, zero states, and success feedback across `Log Game`, `History`, `Stats`, and `Home`.
 
-Definition of done:
+Exit criteria:
 
-- the user can create, review, and correct their own logbook
-- the app no longer feels like a demo with fixed seeded assumptions
-- the personal value proposition is clear in one session
+- app no longer depends on demo-only assumptions in core flows
+- user can correct mistakes after saving
+- engineering surface is stable enough to persist data safely next
 
-## Phase 2: Local Persistence And Offline Reliability
+## Release 0.2: Local Persistence And Offline Reliability
 
-Purpose:
+Target window: June 1, 2026 to July 15, 2026
 
-- preserve user history between sessions
-- make the app trustworthy even before cloud sync exists
+Goal:
 
-Epics:
+- make the app trustworthy as a durable local record
 
-- on-device storage
-- offline-safe mutations
-- local migrations
-- recovery and integrity
+Must-have outcomes:
+
+- attendance logs and profile data survive app restarts
+- storage schema can evolve without wiping user data
+- local failures are surfaced clearly and recoverably
+
+Core workstreams:
+
+- storage layer
+- repository abstraction
+- migration support
+- offline-safe behavior
 
 Ticket candidates:
 
-- Replace in-memory attendance state with persistent local storage.
-- Add a migration path for seeded demo data versus real user-created data.
-- Persist profile settings, favorite team, and lightweight onboarding state.
-- Add duplicate-detection rules that survive app reloads.
-- Add safe error handling and retry messaging around save failures and corrupt local state.
-- Define an app-owned repository layer instead of reading directly from static mock files in runtime flows.
+- Replace in-memory provider state with a repository backed by persistent local storage.
+- Persist attendance logs, favorite team, onboarding completion, and app preferences.
+- Add seeded-data bootstrap logic so demo fixtures are optional and never overwrite user-created records.
+- Add storage versioning and migrations for attendance logs, notes, and future metadata fields.
+- Add integrity checks for malformed local state and a recovery path for corrupted payloads.
+- Add save-state messaging so the user can distinguish draft, saved, and failed actions.
+- Write tests around repository reads, writes, migrations, and duplicate detection after reload.
 
-Definition of done:
+Exit criteria:
 
-- logs survive app restarts
-- a user can rely on the app as a personal record
-- local storage changes can evolve without data loss
+- user history survives restarts
+- data model can evolve safely
+- app is dependable enough to start backfilling real attendance
 
-## Phase 3: Catalog And Import Quality
+## Release 0.3: Catalog Quality And Backfill
 
-Purpose:
+Target window: July 16, 2026 to September 15, 2026
 
-- reduce the amount of manual entry required
-- make it practical to backfill a real fan's past attendance
+Goal:
 
-Epics:
+- remove the main manual-entry pain from logging and backfilling
 
-- better game catalog
+Must-have outcomes:
+
+- catalog covers normal MLB attendance scenarios across seasons
+- users can search by team, venue, and date with low friction
+- backfilling prior attendance is practical
+
+Core workstreams:
+
+- catalog expansion
+- search quality
 - import tooling
-- data validation
-- venue and team metadata quality
+- identity normalization
 
 Ticket candidates:
 
-- Expand the catalog service beyond a tiny seeded MLB slate.
-- Add season-aware game browsing by team, venue, and date.
-- Introduce bulk import paths for past attendance from CSV or manual batch entry.
-- Add fuzzy venue and opponent matching to help with imperfect recall.
-- Store canonical identifiers for teams, venues, and games so historical logs remain stable.
-- Add guardrails for postponed games, doubleheaders, and incomplete score data.
+- Expand the catalog service beyond seeded games to season-aware MLB schedules.
+- Add team, venue, season, and date filters plus stronger matchup search.
+- Introduce canonical IDs for leagues, teams, venues, and games.
+- Add handling for doubleheaders, postponed games, resumed games, and incomplete score states.
+- Add manual fallback entries for games the catalog cannot resolve yet, but keep them visibly distinct.
+- Add CSV import and guided batch entry for historical attendance backfill.
+- Add fuzzy matching for venue names, abbreviations, and imperfect recollection.
 
-Definition of done:
+Exit criteria:
 
-- most normal MLB attendance scenarios can be logged without workarounds
-- backfilling prior seasons is practical
-- game identity is consistent enough for long-term stats
+- most real MLB attendance history can be logged without workarounds
+- catalog identity is stable enough for long-term stats and sync
 
-## Phase 4: Rich Personal Stats And Collection Layer
+## Release 0.4: Personal Stats, Collections, And Memories
 
-Purpose:
+Target window: September 16, 2026 to November 30, 2026
 
-- turn the record into something fans want to revisit
-- deepen the sense of progress and identity
+Goal:
 
-Epics:
+- turn the logbook into a product fans revisit between games
+
+Must-have outcomes:
+
+- stats feel deeper and more specific than a generic tracker
+- collection progress creates repeat engagement
+- memories become first-class, not incidental
+
+Core workstreams:
 
 - advanced stats
-- collections and badges
-- memorable moments
-- visual progress tracking
+- progress systems
+- richer memory objects
+- visual summaries
 
 Ticket candidates:
 
-- Add streaks, attendance by season, day-of-week, opponent, and venue splits.
-- Track collection goals such as all 30 parks, rivalry series, opening days, or giveaway categories.
-- Expand witnessed moments into a richer schema instead of a small seeded list.
-- Add milestones, badges, or progress states tied to real attendance behavior.
-- Build visual summaries for recent seasons and lifetime progress.
-- Let users attach photos or artifacts to a logged game later in the flow.
+- Add splits by season, opponent, weekday, stadium, and section.
+- Track park progress, rivalry series progress, opening day attendance, and giveaway collections.
+- Expand witnessed moments from a derived label list into a richer schema with manual additions.
+- Add photos or attachments after a log is saved.
+- Add milestone states, badges, and recap cards that summarize personal progress.
+- Build season and lifetime summary views that feel collectible, not spreadsheet-like.
 
-Definition of done:
+Exit criteria:
 
-- the app offers more than storage
-- stats feel personalized and collectible
-- repeat engagement comes from progress, not only data entry
+- users return for stats and progress, not only for data entry
+- the product has a clear identity as a fan record, not just a utility form
 
-## Phase 5: Account, Sync, And Multi-Device Support
+## Release 1.0: Account, Sync, And Backup
 
-Purpose:
+Target window: after local product-market fit signals are positive
 
-- move from device-local utility to durable product account
-- prepare for optional social and collaboration features
+Goal:
 
-Epics:
+- make the personal record durable across devices without compromising offline behavior
+
+Must-have outcomes:
+
+- account creation and sign-in are simple
+- sync respects offline-created records and duplicate conflicts
+- users can export or back up their own data
+
+Core workstreams:
 
 - authentication
-- cloud sync
-- conflict handling
-- account settings
+- backend data model
+- sync engine
+- conflict resolution
+- privacy and export
 
 Ticket candidates:
 
-- Add sign-in and account creation with a minimal, low-friction auth flow.
-- Define backend models for users, attendance logs, profile settings, and derived stats jobs.
-- Add sync semantics for offline-created logs and duplicate conflict resolution.
-- Introduce export and backup options so users can keep control of their record.
-- Add account-level settings for privacy, favorite team, notification preferences, and data export.
-- Establish API contracts that mirror the app's domain model cleanly.
+- Add low-friction auth and account recovery.
+- Define backend models for users, logs, notes, collections, and derived stats.
+- Implement sync semantics for offline-created and locally-edited records.
+- Add export and backup options.
+- Add privacy controls and account-level settings.
 
-Definition of done:
+Exit criteria:
 
-- a user can trust their record across devices
-- the backend model is stable enough for future expansion
-- account infrastructure does not distort the single-user product flow
+- users trust the app across devices
+- backend contracts reflect the domain cleanly
 
-## Phase 6: Social And Live Fan Features
+## Release 1.1+: Optional Social And Live Context
 
-Purpose:
+Only start this work after Release 1.0 is stable.
 
-- add network effects only after the personal product is strong
-- make game-day use better without overwhelming the core journal
+Potential bets:
 
-Epics:
+- shareable season recap cards
+- friend comparisons or follows
+- upcoming-game reminders
+- collaborative memories for shared attendance
+- live game context for an already selected attended game
 
-- friends and sharing
-- live context
-- collaborative attendance
-- notifications
+Guardrails:
 
-Ticket candidates:
+- every social feature must be opt-in
+- live features cannot displace the personal record as the core product
+- privacy defaults must stay conservative
 
-- Add shareable summaries for recent games, season stats, and stadium progress.
-- Support friend connections or lightweight follow mode for comparing attendance histories.
-- Add optional live game context for upcoming or in-progress attended games.
-- Support shared memories for groups attending the same game.
-- Add reminders for upcoming tickets or notable attendance milestones.
-- Introduce privacy controls so every social feature is opt-in.
+## Now / Next / Later
 
-Definition of done:
+Now:
 
-- social features add value without weakening the personal record
-- live features complement logging instead of replacing it
-- privacy and sharing behavior are explicit and understandable
+- attendance edit/delete
+- profile preferences and favorite team editing
+- richer notes on a log
+- domain model cleanup
+- test baseline
+- UX consistency across tabs
 
-## What Not To Build Yet
+Next:
 
-Avoid these until the earlier phases are complete:
+- persistent storage
+- migration/versioning
+- repository abstraction
+- error handling and recovery
+- seeded-data bootstrap rules
 
-- marketplace or ticket resale features
-- fantasy-style gamification unrelated to real attendance history
-- league-wide social feeds
-- generalized support for every sport before MLB logging is solid
-- highly custom visual polish work before persistence and catalog quality are stable
+Later:
 
-## Near-Term Recommendation
+- full-season catalog
+- CSV and batch import
+- advanced collections and memories
+- account sync
+- social and live features
 
-If work starts now, prioritize:
+## Explicit Non-Goals For 2026
 
-1. Phase 0 cleanup around shared domain logic and tests.
-2. Phase 1 features for edit/delete, favorite team settings, and better onboarding.
-3. Phase 2 local persistence so the app can be used as a real personal record.
+Do not spend roadmap capacity on these yet:
 
-That sequence is the shortest path from prototype to a product with real user value.
+- ticket purchase or resale
+- seat maps with exact stadium geometry
+- fantasy, betting, or predictive gaming loops
+- broad multi-sport expansion before MLB product fit
+- chat or feed features
+- aggressive notification systems before retention value is proven
+
+## Key Product Risks
+
+- Overbuilding social features before the single-user loop is strong
+- Shipping sync before local storage and identity rules are stable
+- Treating seeded fixture coverage as equivalent to real catalog support
+- Letting stats logic fragment again across app and domain layers
+- Adding too many logging fields before the core save flow becomes fast
+
+## Recommended Immediate Build Order
+
+If work starts today, the next three implementation slices should be:
+
+1. Domain cleanup plus test baseline.
+2. Attendance edit/delete and richer notes.
+3. Local persistence repository with migrations.
+
+That order keeps product trust moving forward while avoiding rework when storage lands.
