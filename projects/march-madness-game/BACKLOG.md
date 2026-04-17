@@ -38,36 +38,43 @@ These are the highest-value items for getting to a 2027-ready web product.
 
 - [doing] Document local development flows.
   - Add a short setup and reset guide for running the app locally.
-  - Document how current persistence works until SQLite replaces it.
+  - Document how current SQLite-backed persistence works and where JSON bootstrap data still fits.
 
 ### Multi-Season Foundation
 
-- [todo] Introduce SQLite and a migration system.
-  - Add database bootstrap.
-  - Add migration runner.
-  - Keep the first version simple and local.
+- [done] Introduce SQLite and a migration system.
+  - Database bootstrap exists in `server/store.js`.
+  - Migration tracking exists through `schema_migrations`.
+  - Legacy JSON state can seed the database on first run.
 
-- [todo] Define the initial season schema.
-  - `seasons`
-  - `season_owners`
-  - `season_teams`
-  - `season_draft_picks`
-  - `season_games`
-  - `season_scoring_rules`
-  - `audit_events`
+- [doing] Define the initial normalized season schema.
+  - Keep `seasons` for season metadata and compatibility.
+  - Add `season_owners`.
+  - Add `season_teams`.
+  - Add `season_draft_picks`.
+  - Add `season_games`.
+  - Add `season_scoring_rules`.
+  - Add `audit_events`.
 
 - [todo] Add repositories for season reads and writes.
   - Load season summary.
   - Load season detail.
   - Write draft actions by season.
   - Write season config by season.
+  - Read draft history without parsing a full state blob.
 
-- [todo] Replace JSON-file writes with season-scoped persistence.
+- [doing] Replace blob-oriented season writes with season-scoped persistence.
   - Preserve `data/season-state.json` as bootstrap/import data only.
+  - Preserve `seasons.state_json` temporarily as a compatibility layer, not the primary domain model.
 
-- [todo] Add season selector support to the API.
+- [done] Add season selector support to the API.
   - Allow requesting current season explicitly.
-  - Prepare the UI to switch season context cleanly.
+  - The UI can already switch season context; remaining work is historical-season product polish.
+
+- [todo] Add explicit season creation and season rollover flows.
+  - Create a new season without mutating prior seasons.
+  - Allow the commissioner to mark or switch the current season.
+  - Keep historical seasons browsable after rollover.
 
 ### Experience Rewrite
 
@@ -84,6 +91,7 @@ These are the highest-value items for getting to a 2027-ready web product.
   - Remaining live games
   - Key path/watch items
   - Recent picks or updates
+  - Explicit season context and status
 
 - [todo] Consolidate the homepage without feature loss.
   - Shorten the initial scroll depth substantially.
@@ -106,6 +114,11 @@ These are the highest-value items for getting to a 2027-ready web product.
   - surface and border tokens
   - button hierarchy
   - table/card patterns
+
+- [todo] Thin `src/main.js` further.
+  - Move shell wiring into focused workspace modules.
+  - Extract season selector and response-status rendering helpers.
+  - Keep bootstrap and refresh orchestration small.
 
 ## Next
 
@@ -219,13 +232,15 @@ These are valuable, but should not distract from getting the core product right 
 - local dev and reset documentation
 - scoring/state cleanup
 - season-state isolation guidance
+- roadmap/doc alignment with the current SQLite-backed runtime
+- `server/app.js` response helper cleanup
 
 ### Cycle 2
 
-- SQLite setup
-- season schema
+- normalized season schema
 - season-scoped repositories
-- API season selector
+- season creation and rollover
+- compatibility-layer reduction
 
 ### Cycle 3
 
@@ -234,13 +249,14 @@ These are valuable, but should not distract from getting the core product right 
 - overview screen
 - mobile navigation
 - continued Draft Room simplification
+- historical season browsing polish
 
 ## Current Focus Recommendation
 
 The best immediate focus remains:
 
-1. close the remaining documentation and state-cleanup gaps
-2. finish the multi-season backend foundation
+1. close the remaining documentation and state-cleanup gaps around the current SQLite runtime
+2. finish the normalized multi-season backend foundation
 3. keep tightening the shell and draft experience
 
 Those efforts unlock nearly everything that follows, including a real mobile app later.

@@ -36,6 +36,18 @@ const MIGRATIONS = [
   },
   {
     id: "002_season_summary_columns"
+  },
+  {
+    id: "003_season_owners",
+    sql: `
+      CREATE TABLE IF NOT EXISTS season_owners (
+        season INTEGER NOT NULL,
+        owner_name TEXT NOT NULL,
+        draft_position INTEGER NOT NULL,
+        PRIMARY KEY (season, owner_name),
+        UNIQUE (season, draft_position)
+      );
+    `
   }
 ];
 
@@ -283,6 +295,7 @@ async function ensureDatabase() {
         fields.totalGames,
         fields.draftLocked
       );
+      syncSeasonOwners(db, normalized);
     }
 
     const defaultSeason = Number(seedStates[0].season);
@@ -409,7 +422,25 @@ function backfillSeasonSummaryColumns(db) {
       fields.draftLocked,
       Number(row.season)
     );
+    syncSeasonOwners(db, state);
   }
+}
+
+function syncSeasonOwners(db, state) {
+  db.prepare("DELETE FROM season_owners WHERE season = ?").run(Number(state.season));
+
+  const insertOwner = db.prepare(`
+    INSERT INTO season_owners (season, owner_name, draft_position)
+    VALUES (?, ?, ?)
+  `);
+
+  state.owners.forEach((owner, index) => {
+    insertOwner.run(Number(state.season), String(owner), index);
+  });
+}
+
+export async function getDatabase() {
+  return ensureDatabase();
 }
 
 export async function readCurrentSeason() {
@@ -514,6 +545,8 @@ export async function writeState(nextState, selectedSeason) {
     VALUES ('current_season', ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value
   `).run(String(targetSeason));
+
+  syncSeasonOwners(db, state);
 
   return state;
 }

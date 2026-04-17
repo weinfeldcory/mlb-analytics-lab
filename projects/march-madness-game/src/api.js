@@ -28,7 +28,7 @@ export function updateSeasonRoute(season) {
   } else {
     url.searchParams.delete("season");
   }
-  window.history.pushState({ season }, "", `${url.pathname}${url.search}`);
+  window.location.assign(`${url.pathname}${url.search}`);
 }
 
 function withSeason(url, season) {

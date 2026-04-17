@@ -44,12 +44,17 @@ This covers scoring logic plus core draft and season service behavior.
 
 ## Persistence Model Today
 
-The runtime store is currently a JSON file:
+The runtime store is currently SQLite, with legacy JSON bootstrap support:
+
+- default database path: `data/season-state.db`
+- override path: `SEASON_DB_PATH=/absolute/path/to/season-state.db`
+
+Legacy bootstrap/import paths still exist:
 
 - default path: `data/season-state.json`
 - override path: `SEASON_STATE_PATH=/absolute/path/to/season-state.json`
 
-The server will create the file if it does not exist.
+On first run, the server will seed SQLite from available legacy JSON state if needed.
 
 ## Reset Flows
 
@@ -67,16 +72,17 @@ If you want to experiment without touching the default store:
 ```bash
 mkdir -p /tmp/mmg
 cp data/season-state.json /tmp/mmg/season-state.json
-SEASON_STATE_PATH=/tmp/mmg/season-state.json npm run dev
+SEASON_STATE_PATH=/tmp/mmg/season-state.json SEASON_DB_PATH=/tmp/mmg/season-state.db npm run dev
 ```
 
-This keeps local testing isolated from the checked-in bootstrap state.
+This keeps local testing isolated from the checked-in bootstrap state and database.
 
 ## Near-Term Product Priorities
 
 The immediate roadmap is:
 
-1. Replace the single JSON runtime store with SQLite and season-scoped persistence.
-2. Add explicit season selection and historical season reads.
-3. Keep tightening the shell so the overview and draft experience are faster to scan.
-4. Add direct game ingestion and then authentication/public roles.
+1. Finish the move from JSON/bootstrap-era storage to normalized SQLite-backed season persistence.
+2. Replace blob-oriented season storage with normalized season-scoped tables and repositories.
+3. Add explicit season selection and historical season reads.
+4. Keep tightening the shell so the overview and draft experience are faster to scan.
+5. Add direct game ingestion and then authentication/public roles.

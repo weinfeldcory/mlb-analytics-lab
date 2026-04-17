@@ -42,16 +42,18 @@ Completed:
 - the app already supports backend-persisted draft actions and season configuration
 - the product shell has been split into overview, draft room, and detail workspaces
 - automated tests cover scoring plus core season and draft service behavior
+- runtime season state now boots into SQLite with season summaries and current-season selection
 
 In progress:
 
 - the shell rewrite is partially complete, but the information architecture is still heavier than the target 2027 product
-- season logic is more modular, but runtime persistence is still one mutable JSON store
+- season logic is more modular, but persistence still stores one large `state_json` blob per season instead of normalized season tables
 - scoring analysis is present, but the live product still needs a cleaner balance between operations and scoring-lab depth
+- API season selection exists, but the UI and service model still need explicit historical-season product behavior
 
 Not started at the required level:
 
-- SQLite and season-scoped persistence
+- normalized multi-table season persistence
 - direct live game ingestion
 - authentication, roles, and public/read-only views
 - season rollover and historical browsing as first-class product behavior
@@ -98,7 +100,7 @@ Outcome:
 
 Required outcomes:
 
-- introduce SQLite and a migration path
+- keep SQLite as the runtime store and finish the migration path away from blob-only season records
 - define season-scoped tables for owners, teams, picks, games, rules, and audit events
 - add repository/service layers for season reads and writes
 - make season selection explicit in the API
@@ -108,7 +110,8 @@ Evidence of completion:
 
 - multiple seasons can coexist
 - current season is selected rather than implied
-- `data/season-state.json` is bootstrap data, not the long-term runtime store
+- `data/season-state.json` is bootstrap data only
+- draft, config, and standings flows no longer depend on rewriting a whole serialized state document
 
 ### Workstream 3: Web Experience Rewrite
 
@@ -181,6 +184,7 @@ Focus:
 - local development documentation
 - remaining scoring/state cleanup
 - smaller shell cleanup passes that do not expand scope
+- roadmap and backlog alignment to the current SQLite-backed implementation
 
 Success gate:
 
@@ -190,14 +194,14 @@ Success gate:
 
 Focus:
 
-- SQLite setup
-- migration runner
-- initial season schema
-- season repositories and API season selection
+- normalize the SQLite schema beyond `seasons.state_json`
+- add repository helpers for season, owner, team, and draft reads/writes
+- backfill or dual-write season summary and draft data
+- tighten API season selection and season-creation flows
 
 Success gate:
 
-- the app can hold more than one season safely
+- the app can hold more than one season safely without whole-state rewrite assumptions
 
 ### Cycle 3
 
@@ -266,8 +270,51 @@ Do not spend early cycles on:
 
 The highest-value immediate focus remains:
 
-1. finish documentation and the remaining cleanup needed before schema work
-2. build the multi-season backend foundation
+1. finish documentation and the remaining cleanup needed before normalized schema work
+2. replace blob-oriented season persistence with repository-backed season tables
 3. continue redesigning the shell and draft experience on top of explicit season context
 
 Those efforts unlock nearly everything else on the 2027 path.
+
+## Current Gaps To Close Next
+
+These are the highest-leverage roadmap gaps between the present codebase and the 2027 bar:
+
+- `server/store.js` currently proves that SQLite bootstrapping works, but too much product state is still serialized into one `state_json` field
+- `server/app.js` exposes season-aware routes, but the route layer still repeats response-shaping and depends on whole-state service reads
+- `src/main.js` is smaller than before, but it still coordinates most shell behavior and remains the choke point for season selection, refresh, and workspace wiring
+- the product exposes `Overview` and `Draft Room`, but the landing experience still asks users to interpret too much information before they can act
+- local development is safer than before, but the docs need to treat SQLite as the default runtime path instead of the future plan
+
+## Recommended Deliverables For The Next Two Cycles
+
+### Cycle 1 Deliverables
+
+- close doc drift in README, roadmap, and backlog files so contributors understand the current SQLite-backed runtime
+- extract response-building helpers from `server/app.js` so every season-aware route does not duplicate summary payload assembly
+- remove remaining static season assumptions from scoring and standings helpers
+- define the first normalized schema slice for seasons, owners, teams, and draft picks
+
+Exit signal:
+
+- a new contributor can explain the runtime model correctly and the server code clearly separates route handling from state assembly
+
+### Cycle 2 Deliverables
+
+- add repository modules for season summary, season detail, and draft history
+- dual-write draft and season-config mutations into normalized tables while preserving current app behavior
+- add explicit season creation and season listing flows backed by SQLite, not JSON copies
+- expose enough historical-season data for the UI to browse prior seasons safely
+
+Exit signal:
+
+- the app can create, select, and inspect multiple seasons using repository-backed data, while legacy blob storage remains only as a compatibility layer
+
+## Dependency Rules
+
+The following sequencing should stay fixed unless a hard blocker appears:
+
+1. normalized persistence before direct ingestion
+2. explicit season context before public shareable routes
+3. web information architecture before native mobile investment
+4. auth after the data model is stable enough to avoid reworking permissions twice

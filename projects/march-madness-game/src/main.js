@@ -50,8 +50,20 @@ async function initializeApp() {
 
     const status = document.querySelector("#data-status");
     if (status) {
-      status.textContent = `App backend live · updated ${new Date(appData.updatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+      const seasonLabel = Number(appData.currentSeason) === Number(appData.season)
+        ? `${appData.season} current season`
+        : `${appData.season} historical season`;
+      status.textContent = `${seasonLabel} · updated ${new Date(appData.updatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
     }
+
+    const seasonEyebrow = document.querySelector("#season-eyebrow");
+    if (seasonEyebrow) {
+      seasonEyebrow.textContent = Number(appData.currentSeason) === Number(appData.season)
+        ? `${appData.season} Busy March Madness`
+        : `${appData.season} Busy March Madness Archive`;
+    }
+
+    document.title = `${appData.season} Busy March Madness`;
   };
 
   const refresh = async () => {
@@ -137,11 +149,13 @@ function renderSeasonSelector(appData, uiState) {
   const options = appData.seasonOptions || [{ season: appData.season }];
   select.innerHTML = options
     .map((option) => `
-      <option value="${option.season}" ${Number(option.season) === Number(uiState.selectedSeason) ? "selected" : ""}>
+      <option value="${option.season}">
         ${option.season}
       </option>
     `)
     .join("");
+
+  select.value = String(uiState.selectedSeason);
 }
 
 function bindShellActions(actions) {

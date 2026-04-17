@@ -32,7 +32,7 @@ Already true:
 
 Still gating the roadmap:
 
-- runtime persistence is still a single JSON store rather than season-scoped storage
+- runtime persistence now uses SQLite, but most season data is still stored as one serialized state blob instead of normalized season tables
 - direct live game ingestion is not yet app-owned
 - authentication and public/read-only roles do not exist yet
 - the shell is improved, but not yet at the clarity bar required before a native client should inherit it
@@ -117,10 +117,10 @@ Epics:
 
 Ticket candidates:
 
-- Add SQLite database setup and migration runner.
-- Define tables for seasons, owners, teams, draft picks, games, scoring rules, users, and audit events.
-- Add repository helpers for loading a season summary and season detail.
-- Refactor write operations to target a selected season instead of a global state file.
+- Keep SQLite as the default runtime store and finish the migration runner path.
+- Define normalized tables for seasons, owners, teams, draft picks, games, scoring rules, users, and audit events.
+- Add repository helpers for loading a season summary, season detail, and draft history.
+- Refactor write operations to target repository-backed season records instead of a serialized state blob.
 - Add season selector support to the API.
 - Build a new season creation flow that does not wipe prior seasons.
 - Preserve existing `data/season-state.json` only as import/bootstrap data.
@@ -130,6 +130,7 @@ Definition of done:
 - multiple seasons can exist simultaneously
 - current season can be switched in the UI
 - historical seasons remain readable
+- draft and standings flows no longer depend on rewriting a whole season blob
 
 ## Phase 2: Web Experience Rewrite
 
@@ -238,17 +239,27 @@ Epics:
 
 Ticket candidates:
 
-- Version the main API routes.
-- Define canonical response shapes for seasons, standings, teams, draft state, and live games.
+- Formalize response contracts for season summary, season detail, standings, teams, and draft state.
 - Add event records for picks, game finals, lead changes, and season transitions.
-- Add push-notification candidate triggers.
-- Document mobile screen inventory and API dependencies.
-- Add basic operational logging around auth, ingestion, and write failures.
+- Decide which commissioner workflows stay web-only even after a native participant app exists.
+- Define notification-worthy events and the delivery model before choosing push infrastructure.
+- Document the mobile screen inventory against existing web surfaces so the native app inherits proven concepts rather than redesigning them from scratch.
 
 Definition of done:
 
-- a native app can consume the backend without special-case logic
-- notifications and activity feed features are structurally possible
+- the backend exposes stable, season-scoped contracts that a native client can rely on
+- core participant screens are already proven in responsive web form
+- the mobile app can be built without reopening domain model or auth fundamentals
+
+## Updated Near-Term Recommendation
+
+The next practical platform sequence is:
+
+1. finish documentation and state-cleanup work around the current SQLite-backed runtime
+2. normalize season persistence and add repository-backed reads/writes
+3. complete the web shell simplification around `Overview`, `Draft Room`, and explicit season context
+4. add direct live game ingestion only after the season model is stable
+5. add auth and public/read-only modes before committing to native client scope
 
 ## Phase 6: Native Mobile App V1
 

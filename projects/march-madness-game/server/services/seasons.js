@@ -1,25 +1,29 @@
 import {
   createInitialState,
   createDraftState,
-  listSeasonSummaries,
-  readCurrentSeason,
   readState,
   sanitizeOwners,
   sanitizeScoring,
   sanitizeTeams,
   writeState
 } from "../store.js";
+import { listSeasonOwners, listSeasonSummaryRecords, readCurrentSeasonRecord } from "../repositories/seasons.js";
 
 export async function loadSeasonState(selectedSeason) {
   return readState(selectedSeason);
 }
 
 export async function loadSeasonOptions() {
-  return listSeasonSummaries();
+  return listSeasonSummaryRecords();
 }
 
 export async function loadCurrentSeason() {
-  return readCurrentSeason();
+  const record = await readCurrentSeasonRecord();
+  return record?.season ?? null;
+}
+
+export async function loadSeasonOwners(selectedSeason) {
+  return listSeasonOwners(selectedSeason);
 }
 
 export async function updateSeasonConfig({ season, owners: nextOwners, teams: nextTeams, currentScoring: nextScoring }, selectedSeason) {

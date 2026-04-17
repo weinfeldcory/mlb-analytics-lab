@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 
 import { draftPick, resetDraft, undoDraftPick, updateDraftSettings } from "../server/services/draft.js";
-import { loadSeasonOptions, loadSeasonState, updateSeasonConfig } from "../server/services/seasons.js";
+import { listSeasonOwners } from "../server/repositories/seasons.js";
+import { loadSeasonOptions, loadSeasonOwners, loadSeasonState, updateSeasonConfig } from "../server/services/seasons.js";
 import { createFixtureState } from "./fixtures/season-fixtures.mjs";
 
 async function withTempStore(run) {
@@ -80,8 +81,13 @@ await withTempStore(async (storePath) => {
   assert.deepEqual(afterUndo.draft.history, []);
 
   const persisted = await loadSeasonState();
+  const normalizedOwners = await loadSeasonOwners(2032);
   assert.equal(persisted.season, 2032);
   assert.ok(Array.isArray(persisted.baselineTeams));
+  assert.deepEqual(normalizedOwners, [
+    { owner: "Taylor", draftPosition: 0 },
+    { owner: "Jordan", draftPosition: 1 }
+  ]);
 });
 
 const loadedState = await withTempStore(async (storePath) => {
@@ -113,12 +119,17 @@ await withTempStore(async (storePath) => {
   const season2031 = await loadSeasonState(2031);
   const season2035 = await loadSeasonState(2035);
   const options = await loadSeasonOptions();
+  const owners2035 = await listSeasonOwners(2035);
 
   assert.equal(season2031.season, 2031);
   assert.equal(season2035.season, 2035);
   assert.deepEqual(options.map((option) => option.season), [2035, 2031]);
   assert.equal(options[0].draftedTeams, 2);
   assert.equal(options[1].draftedTeams, 3);
+  assert.deepEqual(owners2035, [
+    { owner: "Alex", draftPosition: 0 },
+    { owner: "Blair", draftPosition: 1 }
+  ]);
 });
 
 console.log("server service tests passed");
