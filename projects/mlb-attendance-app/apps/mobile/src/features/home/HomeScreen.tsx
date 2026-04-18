@@ -10,19 +10,30 @@ import { formatGameLabel } from "../../lib/formatters";
 
 export function HomeScreen() {
   const router = useRouter();
-  const { attendanceLogs, games, teams, venues, stats } = useAppData();
+  const { attendanceLogs, games, teams, venues, stats, profile, persistenceStatus, persistenceError, isHydrated, retryHydration } = useAppData();
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const venuesById = useMemo(() => new Map(venues.map((venue) => [venue.id, venue])), [venues]);
   const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
   const latestLog = attendanceLogs[0];
   const latestGame = latestLog ? gamesById.get(latestLog.gameId) : undefined;
   const latestGameLabel = latestGame ? formatGameLabel(latestGame, teamsById, venuesById) : undefined;
+  const favoriteTeam = teams.find((team) => team.id === profile.favoriteTeamId);
 
   return (
     <Screen
       title="Your Live Sports Record"
       subtitle="This zero-cost MVP keeps Home focused on the next action, recent activity, and a light progress snapshot."
     >
+      <SectionCard title="Status">
+        <Text style={styles.primaryText}>{isHydrated ? `${profile.displayName}'s record is live on this device.` : "Loading your saved record..."}</Text>
+        <Text style={styles.secondaryText}>
+          Save status: {persistenceStatus}
+          {favoriteTeam ? ` • Favorite team: ${favoriteTeam.name}` : ""}
+        </Text>
+        {persistenceError ? <Text style={styles.errorText}>{persistenceError}</Text> : null}
+        {persistenceStatus === "error" ? <PrimaryButton label="Retry Storage" onPress={retryHydration} /> : null}
+      </SectionCard>
+
       <PrimaryButton label="Log a Game" onPress={() => router.push("/(tabs)/log-game")} />
 
       <View style={styles.grid}>
@@ -97,5 +108,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: colors.slate500
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.red
   }
 });

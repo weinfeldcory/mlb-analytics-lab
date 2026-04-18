@@ -1,7 +1,8 @@
-import { createContext, ReactNode, useContext, useMemo, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { attendanceLogs as seededAttendanceLogs, games, mockUser, teams, venues } from "../lib/data/mockSportsData";
 import { buildAttendanceLog } from "../lib/api/attendanceService";
 import { searchGames as searchCatalogGames } from "../lib/api/catalogService";
+import { clearAppState, loadAppState, parseImportedAppState, saveAppState, serializeAppState } from "../lib/storage/appRepository";
 import { calculatePersonalStats } from "@mlb-attendance/domain";
 import type { AttendanceLog, CreateAttendanceInput, Game, PersonalStats, Team, UserProfile, Venue } from "@mlb-attendance/domain";
 
@@ -12,7 +13,11 @@ interface AppDataContextValue {
   games: Game[];
   attendanceLogs: AttendanceLog[];
   stats: PersonalStats;
+  isHydrated: boolean;
+  persistenceStatus: "idle" | "loading" | "saving" | "saved" | "error";
+  persistenceError: string | null;
   addAttendanceLog: (input: CreateAttendanceInput) => Promise<AttendanceLog>;
+  updateProfile: (updates: { displayName?: string; favoriteTeamId?: string }) => Promise<UserProfile>;
   updateAttendanceLog: (
     logId: string,
     updates: {
@@ -24,25 +29,104 @@ interface AppDataContextValue {
     }
   ) => Promise<AttendanceLog>;
   deleteAttendanceLog: (logId: string) => Promise<void>;
+  retryHydration: () => Promise<void>;
+  resetAppData: () => Promise<void>;
+  exportAppData: () => string;
+  importAppData: (raw: string) => Promise<void>;
   searchGames: (filters: { query?: string; date?: string; stadium?: string }) => Promise<Game[]>;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const [profile, setProfile] = useState<UserProfile>(mockUser);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>(
     [...seededAttendanceLogs].sort((left, right) => right.attendedOn.localeCompare(left.attendedOn))
   );
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [persistenceStatus, setPersistenceStatus] = useState<"idle" | "loading" | "saving" | "saved" | "error">("loading");
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stats = useMemo(() => {
     return calculatePersonalStats({
-      user: mockUser,
+      user: profile,
       attendanceLogs,
       games,
       teams,
       venues
     });
-  }, [attendanceLogs]);
+  }, [attendanceLogs, profile]);
+
+  async function hydrateFromStorage() {
+    setPersistenceStatus("loading");
+    setPersistenceError(null);
+
+    try {
+      const persistedState = await loadAppState();
+      setProfile(persistedState.profile);
+      setAttendanceLogs(persistedState.attendanceLogs);
+      setPersistenceStatus("idle");
+    } catch {
+      setPersistenceStatus("error");
+      setPersistenceError("We could not load your saved record from device storage.");
+    } finally {
+      setIsHydrated(true);
+    }
+  }
+
+  useEffect(() => {
+    hydrateFromStorage();
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    let canceled = false;
+
+    async function persist() {
+      setPersistenceStatus("saving");
+
+      try {
+        await saveAppState({
+          profile,
+          attendanceLogs,
+          seededDataImported: true
+        });
+        if (canceled) {
+          return;
+        }
+
+        setPersistenceStatus("saved");
+        setPersistenceError(null);
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+        saveTimeoutRef.current = setTimeout(() => {
+          setPersistenceStatus("idle");
+        }, 1200);
+      } catch {
+        if (!canceled) {
+          setPersistenceStatus("error");
+          setPersistenceError("We could not save your latest changes to device storage.");
+        }
+      }
+    }
+
+    persist();
+
+    return () => {
+      canceled = true;
+    };
+  }, [attendanceLogs, isHydrated, profile]);
 
   async function addAttendanceLog(input: CreateAttendanceInput) {
     if (attendanceLogs.some((existingLog) => existingLog.userId === input.userId && existingLog.gameId === input.gameId)) {
@@ -52,6 +136,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const log = await buildAttendanceLog(input);
     setAttendanceLogs((currentLogs) => [log, ...currentLogs]);
     return log;
+  }
+
+  async function updateProfile(updates: { displayName?: string; favoriteTeamId?: string }) {
+    const nextProfile: UserProfile = {
+      ...profile,
+      displayName: updates.displayName?.trim() || profile.displayName,
+      favoriteTeamId: updates.favoriteTeamId || undefined
+    };
+
+    setProfile(nextProfile);
+    return nextProfile;
   }
 
   async function updateAttendanceLog(
@@ -118,16 +213,58 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return searchCatalogGames(filters);
   }
 
+  async function retryHydration() {
+    await hydrateFromStorage();
+  }
+
+  async function resetAppData() {
+    await clearAppState();
+    setProfile(mockUser);
+    setAttendanceLogs([...seededAttendanceLogs].sort((left, right) => right.attendedOn.localeCompare(left.attendedOn)));
+    setPersistenceStatus("saved");
+    setPersistenceError(null);
+  }
+
+  function exportAppData() {
+    return serializeAppState({
+      profile,
+      attendanceLogs,
+      seededDataImported: true
+    });
+  }
+
+  async function importAppData(raw: string) {
+    try {
+      const importedState = parseImportedAppState(raw);
+      setProfile(importedState.profile);
+      setAttendanceLogs(importedState.attendanceLogs);
+      setPersistenceStatus("saved");
+      setPersistenceError(null);
+    } catch {
+      setPersistenceStatus("error");
+      setPersistenceError("That import payload is not valid app data.");
+      throw new Error("That import payload is not valid app data.");
+    }
+  }
+
   const value: AppDataContextValue = {
-    profile: mockUser,
+    profile,
     teams,
     venues,
     games,
     attendanceLogs,
     stats,
+    isHydrated,
+    persistenceStatus,
+    persistenceError,
     addAttendanceLog,
+    updateProfile,
     updateAttendanceLog,
     deleteAttendanceLog,
+    retryHydration,
+    resetAppData,
+    exportAppData,
+    importAppData,
     searchGames
   };
 
