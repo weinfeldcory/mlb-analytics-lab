@@ -26,6 +26,25 @@ function parseWinnerRows(value) {
     .filter(Boolean);
 }
 
+function formatOverUnderResultRow(result) {
+  return [result.game, result.line, result.outcome].join(" | ");
+}
+
+function parseOverUnderResultRows(value) {
+  return value
+    .split("\n")
+    .map((row) => row.trim())
+    .filter(Boolean)
+    .map((row) => {
+      const [game = "", line = "", outcome = ""] = row.split("|").map((part) => part.trim());
+      return {
+        game,
+        line,
+        outcome: outcome.toUpperCase()
+      };
+    });
+}
+
 function formatResultRow(result) {
   return [
     result.date,
@@ -160,8 +179,10 @@ function getSelectedWeekSummary(appData, currentWeek, currentOutcome, currentSco
     scoringRows,
     outcomeReady: Boolean(
       currentOutcome.potdWinner
+      || currentOutcome.potdWinners?.length
       || currentOutcome.overUnder?.game
       || currentOutcome.overUnder?.outcome
+      || currentOutcome.overUnderResults?.length
       || currentOutcome.dotdWinners?.length
     )
   };
@@ -263,7 +284,9 @@ export function renderWeeklyBoard(appData) {
     || appData.weeklyPicks.at(-1);
   const currentOutcome = appData.weeklyOutcomes?.find((week) => week.week === currentWeek.week) || {
     potdWinner: "",
+    potdWinners: [],
     overUnder: { game: "", line: "", outcome: "" },
+    overUnderResults: [],
     dotdWinners: [],
     finalized: false
   };
@@ -427,27 +450,22 @@ export function renderWeeklyBoard(appData) {
       </div>
       <div class="form-grid">
         <label class="field">
-          <span>POTD Winner</span>
-          <input id="outcome-potd-winner" type="text" value="${currentOutcome.potdWinner || ""}" placeholder="BUF -2.5" />
+          <span>POTD Winning Spreads</span>
+          <input id="outcome-potd-winners" type="text" value="${formatWinners(currentOutcome.potdWinners)}" placeholder="BUF -2.5, PHI -3" />
         </label>
-        <label class="field">
-          <span>Totals Game</span>
-          <input id="outcome-ou-game" type="text" value="${currentOutcome.overUnder?.game || ""}" placeholder="BUF/NYJ" />
+          <div class="field field-hint">
+            <span>POTD Format</span>
+            <p>Comma-separated winning spread picks. Leave blank to let posted results drive scoring.</p>
+          </div>
         </label>
       </div>
-      <div class="form-grid form-grid-tight">
-        <label class="field">
-          <span>Totals Line</span>
-          <input id="outcome-ou-line" type="text" value="${currentOutcome.overUnder?.line || ""}" placeholder="44.5" />
-        </label>
-        <label class="field">
-          <span>Totals Result</span>
-          <select id="outcome-ou-pick">
-            <option value="" ${!currentOutcome.overUnder?.outcome ? "selected" : ""}>—</option>
-            <option value="O" ${currentOutcome.overUnder?.outcome === "O" ? "selected" : ""}>Over</option>
-            <option value="U" ${currentOutcome.overUnder?.outcome === "U" ? "selected" : ""}>Under</option>
-          </select>
-        </label>
+      <label class="field">
+        <span>Totals Results</span>
+        <textarea id="outcome-ou-results" rows="5" placeholder="BUF/NYJ | 44.5 | O&#10;DAL/PHI | 48.5 | U">${(currentOutcome.overUnderResults || []).map(formatOverUnderResultRow).join("\n")}</textarea>
+      </label>
+      <div class="field field-hint">
+        <span>Totals Format</span>
+        <p>One game per line: <code>AWAY/HOME | Total Line | O or U</code>. Leave blank to derive totals outcomes from posted weekly results.</p>
       </div>
       <label class="field">
         <span>DOTD Winners</span>
@@ -603,12 +621,8 @@ export function renderWeeklyBoard(appData) {
     try {
       await actions.saveWeeklyOutcome({
         week: currentWeek.week,
-        potdWinner: document.querySelector("#outcome-potd-winner").value,
-        overUnder: {
-          game: document.querySelector("#outcome-ou-game").value,
-          line: document.querySelector("#outcome-ou-line").value,
-          outcome: document.querySelector("#outcome-ou-pick").value
-        },
+        potdWinners: parseWinnerRows(document.querySelector("#outcome-potd-winners").value),
+        overUnderResults: parseOverUnderResultRows(document.querySelector("#outcome-ou-results").value),
         dotdWinners: parseWinnerRows(document.querySelector("#outcome-dotd-winners").value),
         finalized: document.querySelector("#current-week-finalized").value === "true"
       });

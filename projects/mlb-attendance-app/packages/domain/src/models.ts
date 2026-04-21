@@ -5,6 +5,7 @@ export interface UserProfile {
   displayName: string;
   favoriteTeamId?: string;
   followingIds?: string[];
+  hasCompletedOnboarding?: boolean;
 }
 
 export interface FriendProfile {
@@ -34,6 +35,7 @@ export interface Game {
   id: string;
   sport: SportCode;
   startDate: string;
+  startDateTime?: string;
   venueId: string;
   homeTeamId: string;
   awayTeamId: string;
@@ -41,12 +43,21 @@ export interface Game {
   awayScore: number;
   homeHits: number;
   awayHits: number;
+  homeErrors?: number;
+  awayErrors?: number;
   status: "final";
   innings?: number;
+  lineScore?: InningLineScore[];
   walkOff?: boolean;
   featuredPlayerHomeRun?: string;
   pitchersUsed?: PitcherAppearance[];
   battersUsed?: BatterAppearance[];
+}
+
+export interface InningLineScore {
+  inning: number;
+  homeRuns: number;
+  awayRuns: number;
 }
 
 export interface PitcherAppearance {
@@ -63,6 +74,7 @@ export interface PitcherAppearance {
 export interface BatterAppearance {
   teamId: string;
   playerName: string;
+  position?: string;
   atBats: number;
   hits: number;
   homeRuns: number;
@@ -129,6 +141,7 @@ export interface PitcherSeenSummary {
 export interface PlayerBattingSummary {
   playerName: string;
   teams: string[];
+  positions: string[];
   gamesSeen: number;
   atBatsSeen: number;
   hitsSeen: number;
@@ -142,6 +155,7 @@ export interface PlayerBattingSummary {
 export interface PlayerPitchingSummary {
   pitcherName: string;
   teams: string[];
+  roles: string[];
   appearances: number;
   strikeoutsSeen: number;
   inningsSeen: number;

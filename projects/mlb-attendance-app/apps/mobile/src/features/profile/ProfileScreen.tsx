@@ -26,6 +26,7 @@ export function ProfileScreen() {
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [favoriteTeamId, setFavoriteTeamId] = useState(profile.favoriteTeamId ?? "");
   const [message, setMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [importExportText, setImportExportText] = useState("");
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export function ProfileScreen() {
   }, [profile.displayName, profile.favoriteTeamId]);
 
   async function handleSave() {
+    setErrorMessage(null);
     await updateProfile({
       displayName,
       favoriteTeamId
@@ -42,6 +44,7 @@ export function ProfileScreen() {
   }
 
   function handleExport() {
+    setErrorMessage(null);
     setImportExportText(exportAppData());
     setMessage("Current local record exported into the JSON box below.");
   }
@@ -49,8 +52,10 @@ export function ProfileScreen() {
   async function handleImport() {
     try {
       await importAppData(importExportText);
+      setErrorMessage(null);
       setMessage("Imported app data into this local record.");
-    } catch {
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "That import payload is not valid app data.");
       setMessage(null);
     }
   }
@@ -58,6 +63,7 @@ export function ProfileScreen() {
   async function handleReset() {
     await resetAppData();
     setImportExportText("");
+    setErrorMessage(null);
     setMessage("Reset the local record back to the seeded demo state.");
   }
 
@@ -87,7 +93,7 @@ export function ProfileScreen() {
                 return (
                   <Pressable
                     key={team.id}
-                    onPress={() => setFavoriteTeamId(team.id)}
+                    onPress={() => setFavoriteTeamId(isSelected ? "" : team.id)}
                     style={[styles.teamOption, isSelected ? styles.teamOptionSelected : null]}
                   >
                     <Text style={styles.teamTitle}>
@@ -154,6 +160,7 @@ export function ProfileScreen() {
               <PrimaryButton label="Import Pasted Record" onPress={handleImport} />
               <PrimaryButton label="Reset To Seeded Data" onPress={handleReset} />
             </View>
+            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
           </SectionCard>
         </View>
       </View>

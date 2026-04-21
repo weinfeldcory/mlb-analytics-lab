@@ -134,6 +134,24 @@ def names_for_game(game: dict) -> tuple[str, str]:
 def fetch_boxscore(game_pk: int) -> dict:
     return get_json(f"https://statsapi.mlb.com/api/v1/game/{game_pk}/boxscore")
 
+def fetch_linescore(game_pk: int) -> dict:
+    return get_json(f"https://statsapi.mlb.com/api/v1/game/{game_pk}/linescore")
+
+
+def build_line_score(linescore: dict) -> list[dict]:
+    innings = []
+
+    for inning in linescore.get("innings", []):
+        innings.append(
+            {
+                "inning": inning.get("num"),
+                "homeRuns": inning.get("home", {}).get("runs", 0),
+                "awayRuns": inning.get("away", {}).get("runs", 0),
+            }
+        )
+
+    return innings
+
 
 def build_batters(match: dict, boxscore: dict) -> list[dict]:
     batters = []
@@ -152,6 +170,7 @@ def build_batters(match: dict, boxscore: dict) -> list[dict]:
                 {
                     "teamId": team_id,
                     "playerName": player["person"]["fullName"],
+                    "position": position,
                     "atBats": batting.get("atBats", 0),
                     "hits": batting.get("hits", 0),
                     "homeRuns": batting.get("homeRuns", 0),
@@ -183,10 +202,13 @@ def build_output() -> list[dict]:
         raise RuntimeError(f"No game found for {seen.date} {seen.team_a} vs {seen.team_b}")
 
       boxscore = fetch_boxscore(match["gamePk"])
+      linescore = fetch_linescore(match["gamePk"])
       home_team = match["teams"]["home"]["team"]
       away_team = match["teams"]["away"]["team"]
       home_stats = boxscore["teams"]["home"]["teamStats"]["batting"]
       away_stats = boxscore["teams"]["away"]["teamStats"]["batting"]
+      home_fielding = boxscore["teams"]["home"]["teamStats"].get("fielding", {})
+      away_fielding = boxscore["teams"]["away"]["teamStats"].get("fielding", {})
 
       pitchers = []
       for side in ("home", "away"):
@@ -213,6 +235,7 @@ def build_output() -> list[dict]:
       results.append(
         {
           "date": seen.date,
+          "gameDate": match.get("gameDate"),
           "gamePk": match["gamePk"],
           "homeTeam": home_team,
           "awayTeam": away_team,
@@ -220,6 +243,9 @@ def build_output() -> list[dict]:
           "awayScore": match["teams"]["away"]["score"],
           "homeHits": home_stats.get("hits"),
           "awayHits": away_stats.get("hits"),
+          "homeErrors": home_fielding.get("errors", 0),
+          "awayErrors": away_fielding.get("errors", 0),
+          "lineScore": build_line_score(linescore),
           "venue": match["venue"],
           "pitchers": pitchers,
           "batters": build_batters(match, boxscore),

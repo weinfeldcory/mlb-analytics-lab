@@ -3,7 +3,7 @@ import { attendanceLogs as seededAttendanceLogs, mockUser } from "../data/mockSp
 import type { AttendanceLog, UserProfile } from "@mlb-attendance/domain";
 
 const STORAGE_KEY = "mlb-attendance-app:state";
-const STORAGE_VERSION = 3;
+const STORAGE_VERSION = 4;
 const SEEDED_DATA_VERSION = "real-mlb-history-v1";
 
 interface PersistedAppStateV1 {
@@ -22,6 +22,14 @@ interface PersistedAppStateV2 {
 
 interface PersistedAppStateV3 {
   version: 3;
+  profile: UserProfile;
+  attendanceLogs: AttendanceLog[];
+  seededDataImported: boolean;
+  seededDataVersion: string;
+}
+
+interface PersistedAppStateV4 {
+  version: 4;
   profile: UserProfile;
   attendanceLogs: AttendanceLog[];
   seededDataImported: boolean;
@@ -49,7 +57,8 @@ function normalizeProfile(input: UserProfile | null | undefined): UserProfile {
     id: input?.id || mockUser.id,
     displayName: input?.displayName?.trim() || mockUser.displayName,
     favoriteTeamId: input?.favoriteTeamId || undefined,
-    followingIds: [...new Set((input?.followingIds ?? mockUser.followingIds ?? []).filter(Boolean))]
+    followingIds: [...new Set((input?.followingIds ?? mockUser.followingIds ?? []).filter(Boolean))],
+    hasCompletedOnboarding: input?.hasCompletedOnboarding ?? false
   };
 }
 
@@ -81,7 +90,7 @@ function sanitizeState(input: AppRepositoryState): AppRepositoryState {
 
 export function serializeAppState(state: AppRepositoryState): string {
   const sanitizedState = sanitizeState(state);
-  const payload: PersistedAppStateV3 = {
+  const payload: PersistedAppStateV4 = {
     version: STORAGE_VERSION,
     profile: sanitizedState.profile,
     attendanceLogs: sanitizedState.attendanceLogs,
@@ -102,13 +111,19 @@ function migratePersistedState(parsed: unknown): AppRepositoryState {
     return createDefaultState();
   }
 
-  const candidate = parsed as Partial<PersistedAppStateV1 | PersistedAppStateV2 | PersistedAppStateV3>;
-  if ((candidate.version !== 1 && candidate.version !== 2 && candidate.version !== STORAGE_VERSION) || !candidate.profile || !Array.isArray(candidate.attendanceLogs)) {
+  const candidate = parsed as Partial<PersistedAppStateV1 | PersistedAppStateV2 | PersistedAppStateV3 | PersistedAppStateV4>;
+  if ((candidate.version !== 1 && candidate.version !== 2 && candidate.version !== 3 && candidate.version !== STORAGE_VERSION) || !candidate.profile || !Array.isArray(candidate.attendanceLogs)) {
     return createDefaultState();
   }
 
   if (candidate.version !== STORAGE_VERSION || candidate.seededDataVersion !== SEEDED_DATA_VERSION) {
-    return createDefaultState(candidate.profile);
+    return {
+      ...createDefaultState(candidate.profile),
+      profile: normalizeProfile({
+        ...candidate.profile,
+        hasCompletedOnboarding: true
+      })
+    };
   }
 
   return sanitizeState({

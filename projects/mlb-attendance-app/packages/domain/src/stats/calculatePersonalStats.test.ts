@@ -39,8 +39,8 @@ const games: Game[] = [
       { teamId: "team_bos", pitcherName: "Tanner Houck", role: "starter" }
     ],
     battersUsed: [
-      { teamId: "team_nyy", playerName: "Juan Soto", atBats: 4, hits: 2, homeRuns: 1, rbis: 3, strikeouts: 1, walks: 1 },
-      { teamId: "team_bos", playerName: "Rafael Devers", atBats: 4, hits: 1, homeRuns: 0, rbis: 0, strikeouts: 2, walks: 0 }
+      { teamId: "team_nyy", playerName: "Juan Soto", position: "RF", atBats: 4, hits: 2, homeRuns: 1, rbis: 3, strikeouts: 1, walks: 1 },
+      { teamId: "team_bos", playerName: "Rafael Devers", position: "3B", atBats: 4, hits: 1, homeRuns: 0, rbis: 0, strikeouts: 2, walks: 0 }
     ]
   },
   {
@@ -60,8 +60,8 @@ const games: Game[] = [
       { teamId: "team_bos", pitcherName: "Tanner Houck", role: "reliever" }
     ],
     battersUsed: [
-      { teamId: "team_nyy", playerName: "Juan Soto", atBats: 5, hits: 3, homeRuns: 0, rbis: 2, strikeouts: 0, walks: 0 },
-      { teamId: "team_bos", playerName: "Rafael Devers", atBats: 4, hits: 2, homeRuns: 1, rbis: 2, strikeouts: 1, walks: 0 }
+      { teamId: "team_nyy", playerName: "Juan Soto", position: "RF", atBats: 5, hits: 3, homeRuns: 0, rbis: 2, strikeouts: 0, walks: 0 },
+      { teamId: "team_bos", playerName: "Rafael Devers", position: "3B", atBats: 4, hits: 2, homeRuns: 1, rbis: 2, strikeouts: 1, walks: 0 }
     ]
   }
 ];
@@ -127,6 +127,7 @@ test("calculatePersonalStats derives totals, favorite team split, and recent mom
   assert.deepEqual(stats.playerBattingSummaries[0], {
     playerName: "Juan Soto",
     teams: ["Yankees"],
+    positions: ["RF"],
     gamesSeen: 2,
     atBatsSeen: 9,
     hitsSeen: 5,
@@ -139,6 +140,7 @@ test("calculatePersonalStats derives totals, favorite team split, and recent mom
   assert.deepEqual(stats.playerPitchingSummaries[0], {
     pitcherName: "Tanner Houck",
     teams: ["Red Sox"],
+    roles: ["starter", "reliever"],
     appearances: 2,
     strikeoutsSeen: 0,
     inningsSeen: 0,

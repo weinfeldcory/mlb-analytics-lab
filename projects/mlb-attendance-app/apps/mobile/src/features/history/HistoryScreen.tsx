@@ -6,8 +6,8 @@ import { PrimaryButton } from "../../components/common/PrimaryButton";
 import { SectionCard } from "../../components/common/SectionCard";
 import { useAppData } from "../../providers/AppDataProvider";
 import { colors, spacing } from "../../styles/tokens";
-import { formatGameLabel } from "../../lib/formatters";
-import type { AttendanceLog } from "@mlb-attendance/domain";
+import { formatBaseballInnings, formatGameLabel } from "../../lib/formatters";
+import type { AttendanceLog, BatterAppearance, Game, PitcherAppearance } from "@mlb-attendance/domain";
 
 function createDraft(log: AttendanceLog) {
   return {
@@ -19,6 +19,56 @@ function createDraft(log: AttendanceLog) {
     giveaway: log.giveaway ?? "",
     weather: log.weather ?? ""
   };
+}
+
+function getStartingPitcher(game: Game, teamId: string) {
+  const pitchers = game.pitchersUsed?.filter((pitcher) => pitcher.teamId === teamId) ?? [];
+  return pitchers.find((pitcher) => pitcher.role === "starter") ?? [...pitchers].sort((left, right) => (right.inningsPitched ?? 0) - (left.inningsPitched ?? 0))[0];
+}
+
+function getTopHitters(game: Game, teamId: string) {
+  const hitters = game.battersUsed?.filter((batter) => batter.teamId === teamId) ?? [];
+  return [...hitters]
+    .sort((left, right) => {
+      if (right.homeRuns !== left.homeRuns) {
+        return right.homeRuns - left.homeRuns;
+      }
+      if (right.hits !== left.hits) {
+        return right.hits - left.hits;
+      }
+      if (right.rbis !== left.rbis) {
+        return right.rbis - left.rbis;
+      }
+      if (right.walks !== left.walks) {
+        return right.walks - left.walks;
+      }
+      return right.atBats - left.atBats;
+    })
+    .slice(0, 2);
+}
+
+function formatPitcherLine(pitcher: PitcherAppearance | undefined) {
+  if (!pitcher) {
+    return "No starting pitcher data";
+  }
+
+  return `${formatBaseballInnings(pitcher.inningsPitched)} IP • ${pitcher.strikeouts ?? 0} K • ${pitcher.hitsAllowed ?? 0} H • ${pitcher.runsAllowed ?? 0} R`;
+}
+
+function formatHitterLine(hitter: BatterAppearance) {
+  const extras = [];
+  if (hitter.homeRuns) {
+    extras.push(`${hitter.homeRuns} HR`);
+  }
+  if (hitter.rbis) {
+    extras.push(`${hitter.rbis} RBI`);
+  }
+  if (hitter.walks) {
+    extras.push(`${hitter.walks} BB`);
+  }
+
+  const statTail = extras.length ? ` • ${extras.join(" • ")}` : "";
+  return `${hitter.hits}-${hitter.atBats}${statTail}`;
 }
 
 export function HistoryScreen() {
@@ -176,6 +226,19 @@ export function HistoryScreen() {
 
           const label = formatGameLabel(game, teamsById, venuesById);
           const isEditing = editingLogId === log.id;
+          const innings = game.lineScore?.length
+            ? game.lineScore
+            : Array.from({ length: Math.max(game.innings ?? 9, 9) }, (_, index) => ({
+                inning: index + 1,
+                homeRuns: -1,
+                awayRuns: -1
+              }));
+          const awayTeam = teamsById.get(game.awayTeamId);
+          const homeTeam = teamsById.get(game.homeTeamId);
+          const awayStarter = getStartingPitcher(game, game.awayTeamId);
+          const homeStarter = getStartingPitcher(game, game.homeTeamId);
+          const awayTopHitters = getTopHitters(game, game.awayTeamId);
+          const homeTopHitters = getTopHitters(game, game.homeTeamId);
 
           return (
             <SectionCard key={log.id} title={label.title}>
@@ -250,28 +313,69 @@ export function HistoryScreen() {
                     {log.seat.row ? ` • Row ${log.seat.row}` : ""}
                     {log.seat.seatNumber ? ` • Seat ${log.seat.seatNumber}` : ""}
                   </Text>
-                  <View style={styles.metricGrid}>
-                    <View style={styles.metricCard}>
-                      <Text style={styles.metricCardLabel}>Total Hits</Text>
-                      <Text style={styles.metricCardValue}>{game.homeHits + game.awayHits}</Text>
+                  <View style={styles.boxscoreCard}>
+                    <View style={styles.boxscoreHeader}>
+                      <Text style={[styles.boxscoreHeaderLabel, styles.boxscoreTeamCol]}>Team</Text>
+                      {innings.map((inning) => (
+                        <Text key={`${game.id}_inning_${inning.inning}`} style={styles.boxscoreHeaderLabel}>
+                          {inning.inning}
+                        </Text>
+                      ))}
+                      <Text style={styles.boxscoreHeaderLabel}>R</Text>
+                      <Text style={styles.boxscoreHeaderLabel}>H</Text>
+                      <Text style={styles.boxscoreHeaderLabel}>E</Text>
                     </View>
-                    <View style={styles.metricCard}>
-                      <Text style={styles.metricCardLabel}>Pitchers Used</Text>
-                      <Text style={styles.metricCardValue}>{game.pitchersUsed?.length ?? 0}</Text>
+                    <View style={styles.boxscoreRow}>
+                      <Text style={[styles.boxscoreTeam, styles.boxscoreTeamCol]}>{awayTeam?.abbreviation ?? "AWY"}</Text>
+                      {innings.map((inning) => (
+                        <Text key={`${game.id}_away_${inning.inning}`} style={styles.boxscoreCell}>
+                          {inning.awayRuns >= 0 ? inning.awayRuns : "-"}
+                        </Text>
+                      ))}
+                      <Text style={styles.boxscoreCellStrong}>{game.awayScore}</Text>
+                      <Text style={styles.boxscoreCellStrong}>{game.awayHits}</Text>
+                      <Text style={styles.boxscoreCellStrong}>{game.awayErrors ?? 0}</Text>
+                    </View>
+                    <View style={styles.boxscoreRow}>
+                      <Text style={[styles.boxscoreTeam, styles.boxscoreTeamCol]}>{homeTeam?.abbreviation ?? "HME"}</Text>
+                      {innings.map((inning) => (
+                        <Text key={`${game.id}_home_${inning.inning}`} style={styles.boxscoreCell}>
+                          {inning.homeRuns >= 0 ? inning.homeRuns : "-"}
+                        </Text>
+                      ))}
+                      <Text style={styles.boxscoreCellStrong}>{game.homeScore}</Text>
+                      <Text style={styles.boxscoreCellStrong}>{game.homeHits}</Text>
+                      <Text style={styles.boxscoreCellStrong}>{game.homeErrors ?? 0}</Text>
                     </View>
                   </View>
-                  {game.pitchersUsed?.length ? (
-                    <View style={styles.pitcherList}>
-                      {game.pitchersUsed.slice(0, 8).map((pitcher) => (
-                        <View key={`${game.id}_${pitcher.pitcherName}`} style={styles.pitcherRow}>
-                          <Text style={styles.pitcherName}>{pitcher.pitcherName}</Text>
-                          <Text style={styles.pitcherMeta}>
-                            {pitcher.role} • {pitcher.teamId.replace("team_", "").toUpperCase()} • {pitcher.inningsPitched?.toFixed(1) ?? "0.0"} IP
-                          </Text>
+                  <View style={[styles.performerGrid, isWide ? styles.performerGridWide : null]}>
+                    <View style={styles.performerCard}>
+                      <Text style={styles.performerTeam}>{awayTeam?.city} {awayTeam?.name}</Text>
+                      <Text style={styles.performerLabel}>Starter</Text>
+                      <Text style={styles.performerPrimary}>{awayStarter?.pitcherName ?? "No data"}</Text>
+                      <Text style={styles.performerMeta}>{formatPitcherLine(awayStarter)}</Text>
+                      <Text style={styles.performerLabel}>Top Hitters</Text>
+                      {awayTopHitters.length ? awayTopHitters.map((hitter) => (
+                        <View key={`${game.id}_${hitter.teamId}_${hitter.playerName}`} style={styles.performerRow}>
+                          <Text style={styles.performerPrimary}>{hitter.playerName}</Text>
+                          <Text style={styles.performerMeta}>{formatHitterLine(hitter)}</Text>
                         </View>
-                      ))}
+                      )) : <Text style={styles.performerMeta}>No batting lines available</Text>}
                     </View>
-                  ) : null}
+                    <View style={styles.performerCard}>
+                      <Text style={styles.performerTeam}>{homeTeam?.city} {homeTeam?.name}</Text>
+                      <Text style={styles.performerLabel}>Starter</Text>
+                      <Text style={styles.performerPrimary}>{homeStarter?.pitcherName ?? "No data"}</Text>
+                      <Text style={styles.performerMeta}>{formatPitcherLine(homeStarter)}</Text>
+                      <Text style={styles.performerLabel}>Top Hitters</Text>
+                      {homeTopHitters.length ? homeTopHitters.map((hitter) => (
+                        <View key={`${game.id}_${hitter.teamId}_${hitter.playerName}`} style={styles.performerRow}>
+                          <Text style={styles.performerPrimary}>{hitter.playerName}</Text>
+                          <Text style={styles.performerMeta}>{formatHitterLine(hitter)}</Text>
+                        </View>
+                      )) : <Text style={styles.performerMeta}>No batting lines available</Text>}
+                    </View>
+                  </View>
                   {log.memorableMoment ? <Text style={styles.noteText}>{log.memorableMoment}</Text> : null}
                   {log.companion ? <Text style={styles.metaText}>With: {log.companion}</Text> : null}
                   {log.giveaway ? <Text style={styles.metaText}>Giveaway: {log.giveaway}</Text> : null}
@@ -355,43 +459,95 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.slate700
   },
-  metricGrid: {
+  boxscoreCard: {
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    borderRadius: 14,
+    backgroundColor: colors.slate050,
+    padding: spacing.md,
+    gap: spacing.xs
+  },
+  boxscoreHeader: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.slate200
+  },
+  boxscoreHeaderLabel: {
+    width: 24,
+    textAlign: "right",
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: colors.slate500,
+    fontWeight: "700"
+  },
+  boxscoreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs
+  },
+  boxscoreTeamCol: {
+    flex: 1,
+    width: "auto",
+    textAlign: "left"
+  },
+  boxscoreTeam: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.slate900
+  },
+  boxscoreCell: {
+    width: 24,
+    textAlign: "right",
+    fontSize: 12,
+    color: colors.slate700
+  },
+  boxscoreCellStrong: {
+    width: 24,
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.navy
+  },
+  performerGrid: {
     gap: spacing.md
   },
-  metricCard: {
-    minWidth: 140,
-    backgroundColor: colors.slate050,
+  performerGridWide: {
+    flexDirection: "row",
+    alignItems: "flex-start"
+  },
+  performerCard: {
+    flex: 1,
+    gap: spacing.xs,
     borderWidth: 1,
     borderColor: colors.slate200,
     borderRadius: 14,
     padding: spacing.md,
-    gap: spacing.xs
+    backgroundColor: colors.white
   },
-  metricCardLabel: {
-    fontSize: 12,
+  performerTeam: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.slate900
+  },
+  performerLabel: {
+    fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 1,
     color: colors.slate500
   },
-  metricCardValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.navy
+  performerRow: {
+    gap: 2
   },
-  pitcherList: {
-    gap: spacing.sm
-  },
-  pitcherRow: {
-    gap: spacing.xs
-  },
-  pitcherName: {
+  performerPrimary: {
     fontSize: 14,
     fontWeight: "700",
     color: colors.slate900
   },
-  pitcherMeta: {
+  performerMeta: {
     fontSize: 13,
     color: colors.slate500
   },

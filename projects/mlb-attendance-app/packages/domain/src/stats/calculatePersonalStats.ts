@@ -136,6 +136,9 @@ export function calculatePersonalStats(params: {
         if (!existing.teams.includes(teamName)) {
           existing.teams.push(teamName);
         }
+        if (!existing.roles.includes(pitcher.role)) {
+          existing.roles.push(pitcher.role);
+        }
         return;
       }
 
@@ -143,6 +146,7 @@ export function calculatePersonalStats(params: {
         pitcherName: pitcher.pitcherName,
         appearances: 1,
         teams: [teamName],
+        roles: [pitcher.role],
         strikeoutsSeen: pitcher.strikeouts ?? 0,
         inningsSeen: pitcher.inningsPitched ?? 0,
         hitsAllowedSeen: pitcher.hitsAllowed ?? 0,
@@ -170,12 +174,16 @@ export function calculatePersonalStats(params: {
         if (!existing.teams.includes(teamName)) {
           existing.teams.push(teamName);
         }
+        if (batter.position && !existing.positions.includes(batter.position)) {
+          existing.positions.push(batter.position);
+        }
         return;
       }
 
       map.set(batter.playerName, {
         playerName: batter.playerName,
         teams: [teamName],
+        positions: batter.position ? [batter.position] : [],
         gamesSeen: 1,
         atBatsSeen: batter.atBats,
         hitsSeen: batter.hits,

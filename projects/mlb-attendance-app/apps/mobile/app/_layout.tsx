@@ -9,6 +9,7 @@ export default function RootLayout() {
       <AppDataProvider>
         <StatusBar style="dark" />
         <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="onboarding" />
           <Stack.Screen name="(tabs)" />
         </Stack>
       </AppDataProvider>

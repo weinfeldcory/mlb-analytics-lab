@@ -155,14 +155,64 @@ const seasonPicks = await updateWeeklyPicks({
 
 assert.equal(seasonPicks.standings[0].points, 0);
 
+const autoScored = await updateRecentResults({
+  week: 1,
+  results: [
+    {
+      date: "Sun 9/7/2027",
+      away: "Bills",
+      home: "Jets",
+      score: "BUF 31 NYJ 20",
+      odds: "BUF -2.5",
+      coveredBy: "BUF -2.5",
+      totalPoints: 51,
+      totalLine: 44.5,
+      winner: "Bills"
+    },
+    {
+      date: "Sun 9/7/2027",
+      away: "Cowboys",
+      home: "Eagles",
+      score: "PHI 27 DAL 20",
+      odds: "PHI -3",
+      coveredBy: "PHI -3",
+      totalPoints: 47,
+      totalLine: 48.5,
+      winner: "Eagles"
+    },
+    {
+      date: "Sun 9/7/2027",
+      away: "Lions",
+      home: "Packers",
+      score: "DET 34 GB 24",
+      odds: "DET -4.5",
+      coveredBy: "DET -4.5",
+      totalPoints: 58,
+      totalLine: 51.5,
+      winner: "Lions"
+    }
+  ]
+});
+
+assert.equal(autoScored.weeklyScorecards[0].owners.Cory.total, 3.45);
+assert.equal(autoScored.weeklyScorecards[0].owners.Jeremy.total, 2.83);
+assert.equal(autoScored.weeklyScorecards[0].owners.Taylor.total, 3.6);
+assert.equal(autoScored.weeklyScorecards[0].owners.Alex.total, 3.1);
+assert.equal(autoScored.standings[0].owner, "Taylor");
+assert.equal(autoScored.standings[1].owner, "Cory");
+assert.equal(autoScored.standings[2].owner, "Alex");
+assert.equal(autoScored.standings[3].owner, "Jeremy");
+
 const scored = await updateWeeklyOutcome({
   week: 1,
-  potdWinner: "BUF -2.5",
-  overUnder: {
-    game: "BUF/NYJ",
-    line: "44.5",
-    outcome: "O"
-  },
+  potdWinners: ["BUF -2.5"],
+  overUnderResults: [
+    {
+      game: "BUF/NYJ",
+      line: "44.5",
+      outcome: "O"
+    }
+  ],
   dotdWinners: ["BUF", "DET"],
   finalized: true
 });
@@ -172,6 +222,7 @@ assert.equal(scored.scoring.completedWeeks, 1);
 assert.equal(scored.weeklyScorecards[0].owners.Cory.total, 3.45);
 assert.equal(scored.weeklyScorecards[0].owners.Alex.total, 3.1);
 assert.equal(scored.weeklyScorecards[0].owners.Taylor.total, 1.6);
+assert.equal(scored.weeklyScorecards[0].owners.Jeremy.total, 0);
 assert.equal(scored.standings[0].owner, "Cory");
 assert.equal(scored.standings[0].breakdown.dotd, 1.45);
 assert.equal(scored.standings[1].owner, "Alex");
@@ -184,7 +235,9 @@ assert.equal(persisted.notes, "Fresh season");
 assert.equal(persisted.owners[3], "Alex");
 assert.equal(persisted.weeklyPicks[0].dotd.Alex.team, "BUF");
 assert.equal(persisted.weeklyOutcomes[0].potdWinner, "BUF -2.5");
-assert.equal(persisted.recentResults.length, 0);
+assert.deepEqual(persisted.weeklyOutcomes[0].potdWinners, ["BUF -2.5"]);
+assert.equal(persisted.weeklyOutcomes[0].overUnderResults[0].game, "BUF/NYJ");
+assert.equal(persisted.recentResults.length, 3);
 
 await rm(tempDir, { recursive: true, force: true });
 console.log("state tests passed");

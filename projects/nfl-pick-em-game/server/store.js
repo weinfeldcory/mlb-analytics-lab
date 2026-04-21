@@ -126,14 +126,32 @@ function normalizeWeeklyOutcomes(state) {
   const outcomesByWeek = new Map((state.weeklyOutcomes || []).map((entry) => [entry.week, entry]));
   return state.weeklyPicks.map((week) => {
     const existing = outcomesByWeek.get(week.week) || createEmptyWeeklyOutcome(week.week);
+    const potdWinners = [...new Set(
+      (existing.potdWinners?.length ? existing.potdWinners : [existing.potdWinner])
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    )];
+    const overUnderResults = (existing.overUnderResults?.length
+      ? existing.overUnderResults
+      : [existing.overUnder]
+    )
+      .map((entry) => ({
+        game: String(entry?.game || "").trim(),
+        line: String(entry?.line || "").trim(),
+        outcome: String(entry?.outcome || "").trim().toUpperCase()
+      }))
+      .filter((entry) => entry.game || entry.line || entry.outcome);
+
     return {
       week: week.week,
-      potdWinner: String(existing.potdWinner || "").trim(),
+      potdWinner: potdWinners[0] || String(existing.potdWinner || "").trim(),
+      potdWinners,
       overUnder: {
         game: String(existing.overUnder?.game || "").trim(),
         line: String(existing.overUnder?.line || "").trim(),
         outcome: String(existing.overUnder?.outcome || "").trim().toUpperCase()
       },
+      overUnderResults,
       dotdWinners: [...new Set((existing.dotdWinners || []).map((team) => String(team || "").trim()).filter(Boolean))],
       finalized: Boolean(existing.finalized)
     };
@@ -336,12 +354,27 @@ export async function updateWeeklyOutcome(payload) {
     throw new Error(`Unknown week: ${weekNumber}`);
   }
 
-  outcome.potdWinner = String(payload.potdWinner || "").trim();
+  const potdWinners = [...new Set(
+    ((Array.isArray(payload.potdWinners) ? payload.potdWinners : [payload.potdWinner]))
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+  )];
+  const overUnderResults = (Array.isArray(payload.overUnderResults) ? payload.overUnderResults : [payload.overUnder])
+    .map((entry) => ({
+      game: String(entry?.game || "").trim(),
+      line: String(entry?.line || "").trim(),
+      outcome: String(entry?.outcome || "").trim().toUpperCase()
+    }))
+    .filter((entry) => entry.game || entry.line || entry.outcome);
+
+  outcome.potdWinner = potdWinners[0] || "";
+  outcome.potdWinners = potdWinners;
   outcome.overUnder = {
     game: String(payload.overUnder?.game || "").trim(),
     line: String(payload.overUnder?.line || "").trim(),
     outcome: String(payload.overUnder?.outcome || "").trim().toUpperCase()
   };
+  outcome.overUnderResults = overUnderResults;
   outcome.dotdWinners = [...new Set((payload.dotdWinners || [])
     .map((team) => String(team || "").trim())
     .filter(Boolean))];

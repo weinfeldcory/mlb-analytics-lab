@@ -1,16 +1,20 @@
 import { StyleSheet, Text, View } from "react-native";
+import { PrimaryButton } from "./PrimaryButton";
 import { colors, radii, spacing } from "../../styles/tokens";
 
 interface PlaceholderPanelProps {
   title: string;
   body: string;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
-export function PlaceholderPanel({ title, body }: PlaceholderPanelProps) {
+export function PlaceholderPanel({ title, body, actionLabel, onAction }: PlaceholderPanelProps) {
   return (
     <View style={styles.panel}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.body}>{body}</Text>
+      {actionLabel && onAction ? <PrimaryButton label={actionLabel} onPress={onAction} /> : null}
     </View>
   );
 }
@@ -35,4 +39,3 @@ const styles = StyleSheet.create({
     color: colors.slate500
   }
 });
-

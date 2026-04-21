@@ -20,6 +20,7 @@ interface AppDataContextValue {
   persistenceError: string | null;
   addAttendanceLog: (input: CreateAttendanceInput) => Promise<AttendanceLog>;
   updateProfile: (updates: { displayName?: string; favoriteTeamId?: string; followingIds?: string[] }) => Promise<UserProfile>;
+  completeOnboarding: (updates: { displayName?: string; favoriteTeamId?: string }) => Promise<UserProfile>;
   toggleFollowFriend: (friendId: string) => Promise<UserProfile>;
   updateAttendanceLog: (
     logId: string,
@@ -154,6 +155,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return nextProfile;
   }
 
+  async function completeOnboarding(updates: { displayName?: string; favoriteTeamId?: string }) {
+    const nextProfile: UserProfile = {
+      ...profile,
+      displayName: updates.displayName?.trim() || profile.displayName,
+      favoriteTeamId: updates.favoriteTeamId || undefined,
+      hasCompletedOnboarding: true
+    };
+
+    setProfile(nextProfile);
+    return nextProfile;
+  }
+
   async function toggleFollowFriend(friendId: string) {
     const currentFollowing = profile.followingIds ?? [];
     const isFollowing = currentFollowing.includes(friendId);
@@ -236,7 +249,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   async function resetAppData() {
     await clearAppState();
-    setProfile(mockUser);
+    setProfile({
+      ...mockUser,
+      hasCompletedOnboarding: profile.hasCompletedOnboarding ?? true
+    });
     setAttendanceLogs([...seededAttendanceLogs].sort((left, right) => right.attendedOn.localeCompare(left.attendedOn)));
     setPersistenceStatus("saved");
     setPersistenceError(null);
@@ -254,7 +270,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   async function importAppData(raw: string) {
     try {
       const importedState = parseImportedAppState(raw);
-      setProfile(importedState.profile);
+      setProfile({
+        ...importedState.profile,
+        hasCompletedOnboarding: true
+      });
       setAttendanceLogs(importedState.attendanceLogs);
       setPersistenceStatus("saved");
       setPersistenceError(null);
@@ -279,6 +298,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     persistenceError,
     addAttendanceLog,
     updateProfile,
+    completeOnboarding,
     toggleFollowFriend,
     updateAttendanceLog,
     deleteAttendanceLog,

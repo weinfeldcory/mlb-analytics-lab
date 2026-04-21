@@ -5,8 +5,80 @@ function normalizeKey(value) {
     .replace(/[^A-Z0-9]/g, "");
 }
 
+const TEAM_ALIASES = {
+  ARI: ["ARI", "ARIZONA", "ARIZONA CARDINALS", "CARDINALS"],
+  ATL: ["ATL", "ATLANTA", "ATLANTA FALCONS", "FALCONS"],
+  BAL: ["BAL", "BALTIMORE", "BALTIMORE RAVENS", "RAVENS"],
+  BUF: ["BUF", "BUFFALO", "BUFFALO BILLS", "BILLS"],
+  CAR: ["CAR", "CAROLINA", "CAROLINA PANTHERS", "PANTHERS"],
+  CHI: ["CHI", "CHICAGO", "CHICAGO BEARS", "BEARS"],
+  CIN: ["CIN", "CINCINNATI", "CINCINNATI BENGALS", "BENGALS"],
+  CLE: ["CLE", "CLEVELAND", "CLEVELAND BROWNS", "BROWNS"],
+  DAL: ["DAL", "DALLAS", "DALLAS COWBOYS", "COWBOYS"],
+  DEN: ["DEN", "DENVER", "DENVER BRONCOS", "BRONCOS"],
+  DET: ["DET", "DETROIT", "DETROIT LIONS", "LIONS"],
+  GB: ["GB", "GREEN BAY", "GREEN BAY PACKERS", "PACKERS"],
+  HOU: ["HOU", "HOUSTON", "HOUSTON TEXANS", "TEXANS"],
+  IND: ["IND", "INDIANAPOLIS", "INDIANAPOLIS COLTS", "COLTS"],
+  JAX: ["JAX", "JAC", "JACKSONVILLE", "JACKSONVILLE JAGUARS", "JAGUARS"],
+  KC: ["KC", "KANSAS CITY", "KANSAS CITY CHIEFS", "CHIEFS"],
+  LAC: ["LAC", "LOS ANGELES CHARGERS", "LA CHARGERS", "CHARGERS"],
+  LAR: ["LAR", "LOS ANGELES RAMS", "LA RAMS", "RAMS"],
+  LV: ["LV", "LAS VEGAS", "LAS VEGAS RAIDERS", "RAIDERS"],
+  MIA: ["MIA", "MIAMI", "MIAMI DOLPHINS", "DOLPHINS"],
+  MIN: ["MIN", "MINNESOTA", "MINNESOTA VIKINGS", "VIKINGS"],
+  NE: ["NE", "NEW ENGLAND", "NEW ENGLAND PATRIOTS", "PATRIOTS"],
+  NO: ["NO", "NEW ORLEANS", "NEW ORLEANS SAINTS", "SAINTS"],
+  NYG: ["NYG", "NEW YORK GIANTS", "GIANTS"],
+  NYJ: ["NYJ", "NEW YORK JETS", "JETS"],
+  PHI: ["PHI", "PHILADELPHIA", "PHILADELPHIA EAGLES", "EAGLES"],
+  PIT: ["PIT", "PITTSBURGH", "PITTSBURGH STEELERS", "STEELERS"],
+  SEA: ["SEA", "SEATTLE", "SEATTLE SEAHAWKS", "SEAHAWKS"],
+  SF: ["SF", "SAN FRANCISCO", "SAN FRANCISCO 49ERS", "49ERS", "NINERS"],
+  TB: ["TB", "TAMPA BAY", "TAMPA BAY BUCCANEERS", "BUCCANEERS", "BUCS"],
+  TEN: ["TEN", "TENNESSEE", "TENNESSEE TITANS", "TITANS"],
+  WAS: ["WAS", "WASHINGTON", "WASHINGTON COMMANDERS", "WASHINGTON FOOTBALL TEAM", "COMMANDERS"]
+};
+
+const TEAM_ALIAS_TO_ABBREVIATION = new Map(
+  Object.entries(TEAM_ALIASES).flatMap(([abbreviation, aliases]) => aliases.map((alias) => [normalizeKey(alias), abbreviation]))
+);
+
 function normalizeLine(value) {
   return String(value || "").trim().replace(/\s+/g, "");
+}
+
+function toTeamAbbreviation(value) {
+  const normalized = normalizeKey(value);
+  if (!normalized) {
+    return "";
+  }
+
+  return TEAM_ALIAS_TO_ABBREVIATION.get(normalized) || "";
+}
+
+function normalizeMatchup(value) {
+  const parts = String(value || "")
+    .split("/")
+    .map((part) => toTeamAbbreviation(part))
+    .filter(Boolean);
+
+  if (parts.length !== 2) {
+    return "";
+  }
+
+  return `${parts[0]}/${parts[1]}`;
+}
+
+function buildResultMatchup(result) {
+  const away = toTeamAbbreviation(result?.away);
+  const home = toTeamAbbreviation(result?.home);
+
+  if (!away || !home) {
+    return "";
+  }
+
+  return `${away}/${home}`;
 }
 
 function roundPoints(value) {
@@ -44,8 +116,10 @@ function createOwnerTotals(owner) {
 function hasOutcomeData(outcome) {
   return Boolean(
     outcome?.potdWinner
+    || (Array.isArray(outcome?.potdWinners) && outcome.potdWinners.length)
     || outcome?.overUnder?.game
     || outcome?.overUnder?.outcome
+    || (Array.isArray(outcome?.overUnderResults) && outcome.overUnderResults.length)
     || (Array.isArray(outcome?.dotdWinners) && outcome.dotdWinners.length)
   );
 }
@@ -54,17 +128,86 @@ export function createEmptyWeeklyOutcome(weekNumber) {
   return {
     week: weekNumber,
     potdWinner: "",
+    potdWinners: [],
     overUnder: {
       game: "",
       line: "",
       outcome: ""
     },
+    overUnderResults: [],
     dotdWinners: [],
     finalized: false
   };
 }
 
-export function calculateWeekScorecard(owners, weekPicks, weekOutcome) {
+function normalizeWinnerList(values) {
+  return [...new Set((values || []).map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
+function normalizeOverUnderResults(values) {
+  return (values || [])
+    .map((entry) => ({
+      game: normalizeMatchup(entry?.game),
+      line: normalizeLine(entry?.line),
+      outcome: normalizeKey(entry?.outcome)
+    }))
+    .filter((entry) => entry.game && entry.outcome);
+}
+
+function derivePotdWinnersFromResults(weekResults) {
+  return normalizeWinnerList(
+    weekResults
+      .map((result) => String(result?.coveredBy || "").trim())
+      .filter((value) => value && !/push|no cover/i.test(value))
+  );
+}
+
+function deriveOverUnderResultsFromResults(weekResults) {
+  return weekResults
+    .map((result) => {
+      const game = buildResultMatchup(result);
+      const line = normalizeLine(result?.totalLine);
+      const totalPoints = Number(result?.totalPoints);
+      const totalLine = Number(result?.totalLine);
+
+      if (!game || !Number.isFinite(totalPoints) || !Number.isFinite(totalLine) || totalLine === 0 || totalPoints === totalLine) {
+        return null;
+      }
+
+      return {
+        game,
+        line,
+        outcome: totalPoints > totalLine ? "O" : "U"
+      };
+    })
+    .filter(Boolean);
+}
+
+function deriveDotdWinnersFromResults(weekResults) {
+  return normalizeWinnerList(
+    weekResults
+      .map((result) => toTeamAbbreviation(result?.winner))
+      .filter(Boolean)
+  );
+}
+
+function resolveWeekOutcomeContext(weekOutcome, weekResults) {
+  const manualPotdWinners = normalizeWinnerList(weekOutcome?.potdWinners?.length ? weekOutcome.potdWinners : [weekOutcome?.potdWinner]);
+  const manualOverUnderResults = normalizeOverUnderResults(
+    weekOutcome?.overUnderResults?.length
+      ? weekOutcome.overUnderResults
+      : [weekOutcome?.overUnder]
+  );
+  const manualDotdWinners = normalizeWinnerList(weekOutcome?.dotdWinners);
+
+  return {
+    potdWinners: manualPotdWinners.length ? manualPotdWinners : derivePotdWinnersFromResults(weekResults),
+    overUnderResults: manualOverUnderResults.length ? manualOverUnderResults : deriveOverUnderResultsFromResults(weekResults),
+    dotdWinners: manualDotdWinners.length ? manualDotdWinners : deriveDotdWinnersFromResults(weekResults)
+  };
+}
+
+export function calculateWeekScorecard(owners, weekPicks, weekOutcome, weekResults = []) {
   const scorecard = Object.fromEntries(owners.map((owner) => [owner, {
     potd: 0,
     overUnder: 0,
@@ -72,26 +215,27 @@ export function calculateWeekScorecard(owners, weekPicks, weekOutcome) {
     total: 0
   }]));
 
-  const normalizedPotdWinner = normalizeKey(weekOutcome?.potdWinner);
-  const normalizedOuGame = normalizeKey(weekOutcome?.overUnder?.game);
-  const normalizedOuLine = normalizeLine(weekOutcome?.overUnder?.line);
-  const normalizedOuOutcome = normalizeKey(weekOutcome?.overUnder?.outcome);
-  const normalizedDotdWinners = new Set((weekOutcome?.dotdWinners || []).map(normalizeKey).filter(Boolean));
+  const resolvedOutcome = resolveWeekOutcomeContext(weekOutcome, weekResults);
+  const normalizedPotdWinners = new Set(resolvedOutcome.potdWinners.map(normalizeKey).filter(Boolean));
+  const normalizedDotdWinners = new Set(resolvedOutcome.dotdWinners.map(normalizeKey).filter(Boolean));
+  const overUnderLookup = new Map(
+    resolvedOutcome.overUnderResults.map((entry) => [`${entry.game}|${entry.line}`, normalizeKey(entry.outcome)])
+  );
 
   owners.forEach((owner) => {
     const ownerPotd = normalizeKey(weekPicks?.potd?.[owner]);
     const ownerOu = weekPicks?.overUnder?.[owner] || {};
     const ownerDotd = weekPicks?.dotd?.[owner] || {};
 
-    if (normalizedPotdWinner && ownerPotd === normalizedPotdWinner) {
+    if (ownerPotd && normalizedPotdWinners.has(ownerPotd)) {
       scorecard[owner].potd = 1;
     }
 
-    const ownerOuGame = normalizeKey(ownerOu.game);
+    const ownerOuGame = normalizeMatchup(ownerOu.game);
     const ownerOuLine = normalizeLine(ownerOu.line);
     const ownerOuPick = normalizeKey(ownerOu.pick);
-    const lineMatches = !normalizedOuLine || !ownerOuLine || normalizedOuLine === ownerOuLine;
-    if (normalizedOuGame && normalizedOuOutcome && ownerOuGame === normalizedOuGame && ownerOuPick === normalizedOuOutcome && lineMatches) {
+    const ownerOuOutcome = overUnderLookup.get(`${ownerOuGame}|${ownerOuLine}`);
+    if (ownerOuGame && ownerOuLine && ownerOuPick && ownerOuOutcome && ownerOuPick === ownerOuOutcome) {
       scorecard[owner].overUnder = 1;
     }
 
@@ -125,7 +269,8 @@ export function deriveComputedState(state) {
 
   state.weeklyPicks.forEach((weekPicks) => {
     const outcome = weeklyOutcomes.find((entry) => entry.week === weekPicks.week) || createEmptyWeeklyOutcome(weekPicks.week);
-    const ownerScores = calculateWeekScorecard(owners, weekPicks, outcome);
+    const weekResults = (state.recentResults || []).filter((entry) => entry.week === weekPicks.label);
+    const ownerScores = calculateWeekScorecard(owners, weekPicks, outcome, weekResults);
 
     weeklyScorecards.push({
       week: weekPicks.week,

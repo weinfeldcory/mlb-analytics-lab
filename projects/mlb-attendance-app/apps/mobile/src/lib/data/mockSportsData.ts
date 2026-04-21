@@ -1,8 +1,9 @@
 import rawGameLogs from "./userGameLogs.json";
-import type { AttendanceLog, BatterAppearance, FriendProfile, Game, PitcherAppearance, Team, UserProfile, Venue } from "@mlb-attendance/domain";
+import type { AttendanceLog, BatterAppearance, FriendProfile, Game, InningLineScore, PitcherAppearance, Team, UserProfile, Venue } from "@mlb-attendance/domain";
 
 interface RawGameLog {
   date: string;
+  gameDate?: string;
   gamePk: number;
   homeTeam: {
     id: number;
@@ -16,6 +17,13 @@ interface RawGameLog {
   awayScore: number;
   homeHits: number;
   awayHits: number;
+  homeErrors?: number;
+  awayErrors?: number;
+  lineScore?: Array<{
+    inning: number;
+    homeRuns: number;
+    awayRuns: number;
+  }>;
   venue: {
     id: number;
     name: string;
@@ -31,6 +39,7 @@ interface RawGameLog {
   batters: Array<{
     teamId: string;
     playerName: string;
+    position?: string;
     atBats: number;
     hits: number;
     homeRuns: number;
@@ -135,12 +144,25 @@ function buildBatters(game: RawGameLog): BatterAppearance[] {
   return game.batters.map((batter) => ({
     teamId: toTeamId(Number(batter.teamId)),
     playerName: batter.playerName,
+    position: batter.position,
     atBats: batter.atBats,
     hits: batter.hits,
     homeRuns: batter.homeRuns,
     rbis: batter.rbis,
     strikeouts: batter.strikeouts,
     walks: batter.walks
+  }));
+}
+
+function buildLineScore(game: RawGameLog): InningLineScore[] | undefined {
+  if (!game.lineScore?.length) {
+    return undefined;
+  }
+
+  return game.lineScore.map((inning) => ({
+    inning: inning.inning,
+    homeRuns: inning.homeRuns,
+    awayRuns: inning.awayRuns
   }));
 }
 
@@ -272,6 +294,7 @@ export const games: Game[] = userGameLogs.map((game) => ({
   id: `game_${game.gamePk}`,
   sport: "MLB",
   startDate: game.date,
+  startDateTime: game.gameDate,
   venueId: toVenueId(game.venue.id),
   homeTeamId: toTeamId(game.homeTeam.id),
   awayTeamId: toTeamId(game.awayTeam.id),
@@ -279,7 +302,11 @@ export const games: Game[] = userGameLogs.map((game) => ({
   awayScore: game.awayScore,
   homeHits: game.homeHits,
   awayHits: game.awayHits,
+  homeErrors: game.homeErrors,
+  awayErrors: game.awayErrors,
   status: "final",
+  innings: game.lineScore?.length,
+  lineScore: buildLineScore(game),
   pitchersUsed: buildPitchers(game)
   ,
   battersUsed: buildBatters(game)
