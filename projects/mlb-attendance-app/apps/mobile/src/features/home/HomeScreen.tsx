@@ -10,6 +10,15 @@ import { useAppData } from "../../providers/AppDataProvider";
 import { colors, spacing } from "../../styles/tokens";
 import { formatGameLabel } from "../../lib/formatters";
 
+const SCORE_RULES = {
+  game: 10,
+  stadium: 40,
+  homeRun: 3,
+  extraInnings: 15,
+  walkOff: 20,
+  uniqueTeam: 5
+} as const;
+
 function getNextMilestone(totalGamesAttended: number) {
   const milestones = [1, 5, 10, 20, 30, 50];
   const nextTarget = milestones.find((milestone) => milestone > totalGamesAttended);
@@ -31,12 +40,86 @@ const easternDayFormatter = new Intl.DateTimeFormat("en-US", {
 });
 const levelThresholds = [
   { title: "Rookie Scorer", points: 0 },
-  { title: "Bleacher Regular", points: 12 },
-  { title: "Road Tripper", points: 28 },
-  { title: "Stadium Hunter", points: 50 },
-  { title: "Homer Historian", points: 78 },
-  { title: "Ledger Legend", points: 110 }
+  { title: "Bleacher Regular", points: 100 },
+  { title: "Series Tracker", points: 250 },
+  { title: "Road Tripper", points: 450 },
+  { title: "Stadium Hunter", points: 700 },
+  { title: "Homer Historian", points: 1000 },
+  { title: "Pennant Chaser", points: 1400 },
+  { title: "Ledger Legend", points: 1900 }
 ];
+
+function getWeekStart(input: string) {
+  const parsed = new Date(`${input}T12:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  const day = parsed.getUTCDay();
+  const diffToMonday = (day + 6) % 7;
+  parsed.setUTCDate(parsed.getUTCDate() - diffToMonday);
+  parsed.setUTCHours(0, 0, 0, 0);
+  return parsed;
+}
+
+function getAttendanceWeekStreak(logs: Array<{ attendedOn: string }>) {
+  const uniqueWeeks = [...new Set(logs.map((log) => getWeekStart(log.attendedOn)?.toISOString().slice(0, 10)).filter(Boolean))].sort();
+  if (!uniqueWeeks.length) {
+    return {
+      currentWeeks: 0,
+      bestWeeks: 0
+    };
+  }
+
+  let bestWeeks = 1;
+  let runningWeeks = 1;
+
+  for (let index = 1; index < uniqueWeeks.length; index += 1) {
+    const previous = new Date(`${uniqueWeeks[index - 1]}T00:00:00Z`);
+    const current = new Date(`${uniqueWeeks[index]}T00:00:00Z`);
+    const diffDays = Math.round((current.getTime() - previous.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 7) {
+      runningWeeks += 1;
+      bestWeeks = Math.max(bestWeeks, runningWeeks);
+    } else {
+      runningWeeks = 1;
+    }
+  }
+
+  let currentWeeks = 1;
+  for (let index = uniqueWeeks.length - 1; index > 0; index -= 1) {
+    const previous = new Date(`${uniqueWeeks[index - 1]}T00:00:00Z`);
+    const current = new Date(`${uniqueWeeks[index]}T00:00:00Z`);
+    const diffDays = Math.round((current.getTime() - previous.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 7) {
+      currentWeeks += 1;
+      continue;
+    }
+
+    break;
+  }
+
+  return {
+    currentWeeks,
+    bestWeeks
+  };
+}
+
+function getStreakBonus(bestWeeks: number) {
+  if (bestWeeks >= 10) {
+    return 60;
+  }
+  if (bestWeeks >= 6) {
+    return 30;
+  }
+  if (bestWeeks >= 3) {
+    return 15;
+  }
+
+  return 0;
+}
 
 function getTopFriendStat(friendStats: ReturnType<typeof calculatePersonalStats>) {
   if (friendStats.playerBattingSummaries[0]?.homeRunsSeen) {
@@ -112,19 +195,40 @@ function getPersistenceSummary(status: "idle" | "loading" | "saving" | "saved" |
   }
 }
 
-function getLevelProgress(stats: ReturnType<typeof calculatePersonalStats>) {
-  const points = stats.totalGamesAttended + stats.uniqueStadiumsVisited * 4 + stats.witnessedHomeRuns * 3;
+function buildLevelProgress(params: {
+  stats: ReturnType<typeof calculatePersonalStats>;
+  attendedGames: Array<{ innings?: number; walkOff?: boolean }>;
+  attendanceLogs: Array<{ attendedOn: string }>;
+}) {
+  const { stats, attendedGames, attendanceLogs } = params;
+  const extraInningsGames = attendedGames.filter((game) => (game.innings ?? 0) > 9).length;
+  const walkOffGames = attendedGames.filter((game) => Boolean(game.walkOff)).length;
+  const uniqueTeamsSeen = stats.teamSeenSummaries.length;
+  const streaks = getAttendanceWeekStreak(attendanceLogs);
+  const streakBonus = getStreakBonus(streaks.bestWeeks);
+  const breakdown = {
+    games: stats.totalGamesAttended * SCORE_RULES.game,
+    stadiums: stats.uniqueStadiumsVisited * SCORE_RULES.stadium,
+    homeRuns: stats.witnessedHomeRuns * SCORE_RULES.homeRun,
+    extraInnings: extraInningsGames * SCORE_RULES.extraInnings,
+    walkOffs: walkOffGames * SCORE_RULES.walkOff,
+    uniqueTeams: uniqueTeamsSeen * SCORE_RULES.uniqueTeam,
+    streakBonus
+  };
+  const points = Object.values(breakdown).reduce((total, value) => total + value, 0);
   const currentLevel = [...levelThresholds].reverse().find((level) => points >= level.points) ?? levelThresholds[0];
   const nextLevel = levelThresholds.find((level) => level.points > points) ?? null;
   const floor = currentLevel.points;
-  const ceiling = nextLevel?.points ?? floor + 20;
+  const ceiling = nextLevel?.points ?? floor + 300;
   const progress = ceiling === floor ? 1 : Math.min(1, Math.max(0, (points - floor) / (ceiling - floor)));
 
   return {
     points,
     currentLevel,
     nextLevel,
-    progress
+    progress,
+    breakdown,
+    streaks
   };
 }
 
@@ -230,7 +334,6 @@ export function HomeScreen() {
   const favoriteTeam = teams.find((team) => team.id === profile.favoriteTeamId);
   const hasLogs = attendanceLogs.length > 0;
   const nextMilestone = getNextMilestone(stats.totalGamesAttended);
-  const levelProgress = getLevelProgress(stats);
   const nextAction = getNextAction({
     hasLogs,
     favoriteTeamId: profile.favoriteTeamId,
@@ -241,6 +344,15 @@ export function HomeScreen() {
   const attendedGames = useMemo(
     () => attendanceLogs.map((log) => gamesById.get(log.gameId)).filter((game): game is NonNullable<typeof game> => Boolean(game)),
     [attendanceLogs, gamesById]
+  );
+  const levelProgress = useMemo(
+    () =>
+      buildLevelProgress({
+        stats,
+        attendedGames,
+        attendanceLogs
+      }),
+    [attendanceLogs, attendedGames, stats]
   );
   const attendancePattern = useMemo(() => buildAttendancePattern(attendedGames), [attendedGames]);
   const maxPatternCount = Math.max(0, ...attendancePattern.flatMap((bucket) => bucket.counts));
@@ -380,18 +492,40 @@ export function HomeScreen() {
                       ? `${levelProgress.nextLevel.points - levelProgress.points} more points until ${levelProgress.nextLevel.title}.`
                       : "Top level reached. Keep padding the ledger."}
                   </Text>
+                  <Text style={styles.heroSubText}>
+                    Best streak: {levelProgress.streaks.bestWeeks} weeks
+                    {levelProgress.breakdown.streakBonus
+                      ? ` • ${levelProgress.breakdown.streakBonus} streak bonus points`
+                      : " • no streak bonus yet"}
+                  </Text>
                   <View style={styles.levelBreakdown}>
                     <View style={styles.levelPill}>
                       <Text style={styles.levelPillLabel}>Games</Text>
-                      <Text style={styles.levelPillValue}>{stats.totalGamesAttended}</Text>
+                      <Text style={styles.levelPillValue}>{levelProgress.breakdown.games}</Text>
                     </View>
                     <View style={styles.levelPill}>
                       <Text style={styles.levelPillLabel}>Stadiums</Text>
-                      <Text style={styles.levelPillValue}>{stats.uniqueStadiumsVisited}</Text>
+                      <Text style={styles.levelPillValue}>{levelProgress.breakdown.stadiums}</Text>
                     </View>
                     <View style={styles.levelPill}>
                       <Text style={styles.levelPillLabel}>HR Seen</Text>
-                      <Text style={styles.levelPillValue}>{stats.witnessedHomeRuns}</Text>
+                      <Text style={styles.levelPillValue}>{levelProgress.breakdown.homeRuns}</Text>
+                    </View>
+                    <View style={styles.levelPill}>
+                      <Text style={styles.levelPillLabel}>Walk-Offs</Text>
+                      <Text style={styles.levelPillValue}>{levelProgress.breakdown.walkOffs}</Text>
+                    </View>
+                    <View style={styles.levelPill}>
+                      <Text style={styles.levelPillLabel}>Extra Inn.</Text>
+                      <Text style={styles.levelPillValue}>{levelProgress.breakdown.extraInnings}</Text>
+                    </View>
+                    <View style={styles.levelPill}>
+                      <Text style={styles.levelPillLabel}>Unique Teams</Text>
+                      <Text style={styles.levelPillValue}>{levelProgress.breakdown.uniqueTeams}</Text>
+                    </View>
+                    <View style={styles.levelPill}>
+                      <Text style={styles.levelPillLabel}>Streak Bonus</Text>
+                      <Text style={styles.levelPillValue}>{levelProgress.breakdown.streakBonus}</Text>
                     </View>
                   </View>
                 </View>
@@ -405,6 +539,9 @@ export function HomeScreen() {
                   </Text>
                   <Text style={styles.heroSubText}>
                     {stats.uniqueStadiumsVisited} stadiums visited and {stats.uniqueSectionsSatIn} seating sections tracked.
+                  </Text>
+                  <Text style={styles.heroSubText}>
+                    Score rules: {SCORE_RULES.game}/game, {SCORE_RULES.stadium}/stadium, {SCORE_RULES.uniqueTeam}/unique team, {SCORE_RULES.homeRun}/HR, {SCORE_RULES.extraInnings}/extra-innings, {SCORE_RULES.walkOff}/walk-off.
                   </Text>
                   <Text style={styles.heroSubText}>
                     {favoriteTeam
