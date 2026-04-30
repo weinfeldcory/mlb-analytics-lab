@@ -3,7 +3,7 @@ import { attendanceLogs as seededAttendanceLogs, mockUser } from "../data/mockSp
 import type { AttendanceLog, UserProfile } from "@mlb-attendance/domain";
 
 const STORAGE_KEY = "mlb-attendance-app:state";
-const STORAGE_VERSION = 4;
+const STORAGE_VERSION = 5;
 const SEEDED_DATA_VERSION = "real-mlb-history-v1";
 
 interface PersistedAppStateV1 {
@@ -36,11 +36,36 @@ interface PersistedAppStateV4 {
   seededDataVersion: string;
 }
 
+interface PersistedAppStateV5 {
+  version: 5;
+  currentAccountId: string | null;
+  accounts: LocalAccountRecord[];
+}
+
 export interface AppRepositoryState {
   profile: UserProfile;
   attendanceLogs: AttendanceLog[];
   seededDataImported: boolean;
   seededDataVersion: string;
+}
+
+export interface LocalAccountRecord extends AppRepositoryState {
+  id: string;
+  username: string;
+  password: string;
+}
+
+export interface PersistedRootState {
+  currentAccountId: string | null;
+  accounts: LocalAccountRecord[];
+}
+
+function normalizeUsername(username: string) {
+  return username.trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+function buildUserId(username: string) {
+  return `user_${normalizeUsername(username).replace(/[^a-z0-9-_]/g, "") || "local"}`;
 }
 
 function createDefaultState(profileOverride?: UserProfile): AppRepositoryState {
@@ -88,35 +113,58 @@ function sanitizeState(input: AppRepositoryState): AppRepositoryState {
   };
 }
 
-export function serializeAppState(state: AppRepositoryState): string {
-  const sanitizedState = sanitizeState(state);
-  const payload: PersistedAppStateV4 = {
-    version: STORAGE_VERSION,
-    profile: sanitizedState.profile,
-    attendanceLogs: sanitizedState.attendanceLogs,
-    seededDataImported: sanitizedState.seededDataImported,
-    seededDataVersion: sanitizedState.seededDataVersion
+function sanitizeAccount(account: LocalAccountRecord): LocalAccountRecord {
+  const sanitizedState = sanitizeState(account);
+
+  return {
+    id: account.id || buildUserId(account.username),
+    username: normalizeUsername(account.username),
+    password: account.password ?? "",
+    ...sanitizedState,
+    profile: {
+      ...sanitizedState.profile,
+      id: sanitizedState.profile.id || buildUserId(account.username)
+    }
   };
-
-  return JSON.stringify(payload, null, 2);
 }
 
-export function parseImportedAppState(raw: string): AppRepositoryState {
-  const parsed = JSON.parse(raw) as unknown;
-  return migratePersistedState(parsed);
+function createRootStateFromLegacy(state: AppRepositoryState): PersistedRootState {
+  const baseUsername = normalizeUsername(state.profile.displayName || "cory");
+  const account = sanitizeAccount({
+    id: state.profile.id || buildUserId(baseUsername),
+    username: baseUsername,
+    password: "",
+    ...state,
+    profile: {
+      ...state.profile,
+      id: state.profile.id || buildUserId(baseUsername)
+    }
+  });
+
+  return {
+    currentAccountId: account.id,
+    accounts: [account]
+  };
 }
 
-function migratePersistedState(parsed: unknown): AppRepositoryState {
+function migrateLegacyAppState(parsed: unknown): AppRepositoryState {
   if (!parsed || typeof parsed !== "object") {
     return createDefaultState();
   }
 
   const candidate = parsed as Partial<PersistedAppStateV1 | PersistedAppStateV2 | PersistedAppStateV3 | PersistedAppStateV4>;
-  if ((candidate.version !== 1 && candidate.version !== 2 && candidate.version !== 3 && candidate.version !== STORAGE_VERSION) || !candidate.profile || !Array.isArray(candidate.attendanceLogs)) {
+  if (
+    (candidate.version !== 1 &&
+      candidate.version !== 2 &&
+      candidate.version !== 3 &&
+      candidate.version !== 4) ||
+    !candidate.profile ||
+    !Array.isArray(candidate.attendanceLogs)
+  ) {
     return createDefaultState();
   }
 
-  if (candidate.version !== STORAGE_VERSION || candidate.seededDataVersion !== SEEDED_DATA_VERSION) {
+  if (candidate.version !== 4 || candidate.seededDataVersion !== SEEDED_DATA_VERSION) {
     return {
       ...createDefaultState(candidate.profile),
       profile: normalizeProfile({
@@ -134,24 +182,104 @@ function migratePersistedState(parsed: unknown): AppRepositoryState {
   });
 }
 
-export async function loadAppState(): Promise<AppRepositoryState> {
+function migratePersistedRootState(parsed: unknown): PersistedRootState {
+  if (!parsed || typeof parsed !== "object") {
+    return {
+      currentAccountId: null,
+      accounts: []
+    };
+  }
+
+  const candidate = parsed as Partial<PersistedAppStateV5>;
+  if (candidate.version === STORAGE_VERSION && Array.isArray(candidate.accounts)) {
+    const accounts = candidate.accounts.map(sanitizeAccount);
+    const currentAccountId = accounts.some((account) => account.id === candidate.currentAccountId)
+      ? candidate.currentAccountId ?? null
+      : accounts[0]?.id ?? null;
+
+    return {
+      currentAccountId,
+      accounts
+    };
+  }
+
+  return createRootStateFromLegacy(migrateLegacyAppState(parsed));
+}
+
+export function createLocalAccount(params: {
+  identifier: string;
+  password: string;
+  displayName?: string;
+}): LocalAccountRecord {
+  const username = normalizeUsername(params.identifier);
+  const userId = buildUserId(username);
+  const defaultState = createDefaultState({
+    ...mockUser,
+    id: userId,
+    displayName: params.displayName?.trim() || params.identifier.trim() || mockUser.displayName,
+    hasCompletedOnboarding: false
+  });
+
+  return sanitizeAccount({
+    id: userId,
+    username,
+    password: params.password,
+    ...defaultState,
+    profile: {
+      ...defaultState.profile,
+      id: userId
+    }
+  });
+}
+
+export function serializeAppState(state: AppRepositoryState): string {
+  const sanitizedState = sanitizeState(state);
+  const payload: PersistedAppStateV4 = {
+    version: 4,
+    profile: sanitizedState.profile,
+    attendanceLogs: sanitizedState.attendanceLogs,
+    seededDataImported: sanitizedState.seededDataImported,
+    seededDataVersion: sanitizedState.seededDataVersion
+  };
+
+  return JSON.stringify(payload, null, 2);
+}
+
+export function parseImportedAppState(raw: string): AppRepositoryState {
+  const parsed = JSON.parse(raw) as unknown;
+  return migrateLegacyAppState(parsed);
+}
+
+export async function loadRootState(): Promise<PersistedRootState> {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    return createDefaultState();
+    return {
+      currentAccountId: null,
+      accounts: []
+    };
   }
 
   try {
-    return migratePersistedState(JSON.parse(raw));
+    return migratePersistedRootState(JSON.parse(raw));
   } catch {
     await AsyncStorage.removeItem(STORAGE_KEY);
-    return createDefaultState();
+    return {
+      currentAccountId: null,
+      accounts: []
+    };
   }
 }
 
-export async function saveAppState(state: AppRepositoryState): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEY, serializeAppState(state));
+export async function saveRootState(state: PersistedRootState): Promise<void> {
+  const payload: PersistedAppStateV5 = {
+    version: STORAGE_VERSION,
+    currentAccountId: state.currentAccountId,
+    accounts: state.accounts.map(sanitizeAccount)
+  };
+
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload, null, 2));
 }
 
-export async function clearAppState(): Promise<void> {
+export async function clearAllAppState(): Promise<void> {
   await AsyncStorage.removeItem(STORAGE_KEY);
 }

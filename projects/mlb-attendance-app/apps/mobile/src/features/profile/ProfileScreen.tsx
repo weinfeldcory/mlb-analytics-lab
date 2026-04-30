@@ -10,9 +10,12 @@ import { colors, spacing } from "../../styles/tokens";
 export function ProfileScreen() {
   const { width } = useWindowDimensions();
   const {
+    storageMode,
+    currentAccountLabel,
     profile,
     teams,
     friends,
+    signOut,
     updateProfile,
     toggleFollowFriend,
     persistenceStatus,
@@ -22,6 +25,7 @@ export function ProfileScreen() {
     resetAppData,
     retryHydration
   } = useAppData();
+  const isHosted = storageMode === "hosted";
   const isWide = width >= 1024;
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [favoriteTeamId, setFavoriteTeamId] = useState(profile.favoriteTeamId ?? "");
@@ -70,18 +74,28 @@ export function ProfileScreen() {
   return (
     <Screen
       title="Profile And Network"
-      subtitle="Set your identity, manage who you follow, and control the imported attendance ledger stored on this device."
+      subtitle={
+        isHosted
+          ? "Set your identity, manage who you follow, and control the attendance ledger tied to your hosted account."
+          : "Set your identity, manage who you follow, and control the imported attendance ledger stored on this device."
+      }
     >
       <View style={[styles.layout, isWide ? styles.layoutWide : null]}>
         <View style={styles.mainColumn}>
           <SectionCard title="Identity">
+            <Text style={styles.helperText}>
+              Signed in as {currentAccountLabel ?? (isHosted ? "hosted user" : "local user")}
+            </Text>
             <LabeledInput
               label="Display name"
               value={displayName}
               onChangeText={setDisplayName}
               placeholder="Your name"
             />
-            <PrimaryButton label="Save Profile" onPress={handleSave} />
+            <View style={styles.actionStack}>
+              <PrimaryButton label="Save Profile" onPress={handleSave} />
+              <PrimaryButton label="Sign Out" onPress={signOut} />
+            </View>
             {message ? <Text style={styles.successText}>{message}</Text> : null}
           </SectionCard>
 
@@ -134,7 +148,9 @@ export function ProfileScreen() {
           <SectionCard title="Storage">
             <Text style={styles.storageText}>Save status: {persistenceStatus}</Text>
             <Text style={styles.helperText}>
-              Your real attendance history, follow graph, and local edits persist in browser or device storage.
+              {isHosted
+                ? "Your real attendance history, follow graph, and profile now sync through the hosted backend."
+                : "Your real attendance history, follow graph, and local edits persist in browser or device storage."}
             </Text>
             {persistenceError ? <Text style={styles.errorText}>{persistenceError}</Text> : null}
             {persistenceStatus === "error" ? (

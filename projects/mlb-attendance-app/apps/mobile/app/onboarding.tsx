@@ -1,4 +1,5 @@
 import { Redirect } from "expo-router";
+import type { Href } from "expo-router";
 import { useState } from "react";
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { PrimaryButton } from "../src/components/common/PrimaryButton";
@@ -9,7 +10,7 @@ import { colors, spacing } from "../src/styles/tokens";
 
 export default function OnboardingScreen() {
   const { width } = useWindowDimensions();
-  const { isHydrated, profile, teams, completeOnboarding } = useAppData();
+  const { isHydrated, isAuthenticated, profile, teams, completeOnboarding } = useAppData();
   const isWide = width >= 1024;
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [favoriteTeamId, setFavoriteTeamId] = useState(profile.favoriteTeamId ?? "");
@@ -23,6 +24,10 @@ export default function OnboardingScreen() {
         </View>
       </SafeAreaView>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href={"/auth" as Href} />;
   }
 
   if (profile.hasCompletedOnboarding) {

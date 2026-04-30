@@ -1,0 +1,11 @@
+{
+  "framework": null,
+  "buildCommand": "corepack pnpm run build:web",
+  "outputDirectory": "apps/mobile/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

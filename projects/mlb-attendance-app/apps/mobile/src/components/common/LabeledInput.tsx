@@ -10,6 +10,8 @@ interface LabeledInputProps {
   error?: string;
   multiline?: boolean;
   numberOfLines?: number;
+  secureTextEntry?: boolean;
+  keyboardType?: "default" | "email-address";
 }
 
 export function LabeledInput({
@@ -20,7 +22,9 @@ export function LabeledInput({
   autoCapitalize = "sentences",
   error,
   multiline = false,
-  numberOfLines
+  numberOfLines,
+  secureTextEntry = false,
+  keyboardType = "default"
 }: LabeledInputProps) {
   return (
     <View style={styles.wrapper}>
@@ -32,6 +36,8 @@ export function LabeledInput({
         autoCapitalize={autoCapitalize}
         multiline={multiline}
         numberOfLines={numberOfLines}
+        secureTextEntry={secureTextEntry}
+        keyboardType={keyboardType}
         textAlignVertical={multiline ? "top" : "center"}
         style={[styles.input, multiline ? styles.inputMultiline : null, error ? styles.inputError : null]}
         placeholderTextColor={colors.slate400}

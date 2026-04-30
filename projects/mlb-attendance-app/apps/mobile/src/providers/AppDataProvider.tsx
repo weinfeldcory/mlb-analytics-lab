@@ -2,11 +2,19 @@ import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useSt
 import { attendanceLogs as seededAttendanceLogs, friendAttendanceLogs, friends, games, mockUser, teams, venues } from "../lib/data/mockSportsData";
 import { buildAttendanceLog } from "../lib/api/attendanceService";
 import { searchGames as searchCatalogGames } from "../lib/api/catalogService";
-import { clearAppState, loadAppState, parseImportedAppState, saveAppState, serializeAppState } from "../lib/storage/appRepository";
+import {
+  parseImportedAppState,
+  serializeAppState
+} from "../lib/storage/appRepository";
+import { appDataStore } from "../lib/persistence";
+import type { AppSessionAccount, HydratedAppDataState } from "../lib/persistence/appDataStore";
 import { calculatePersonalStats } from "@mlb-attendance/domain";
 import type { AttendanceLog, CreateAttendanceInput, FriendProfile, Game, PersonalStats, Team, UserProfile, Venue } from "@mlb-attendance/domain";
 
 interface AppDataContextValue {
+  storageMode: "local" | "hosted";
+  currentAccountLabel: string | null;
+  isAuthenticated: boolean;
   profile: UserProfile;
   friends: FriendProfile[];
   teams: Team[];
@@ -18,6 +26,9 @@ interface AppDataContextValue {
   isHydrated: boolean;
   persistenceStatus: "idle" | "loading" | "saving" | "saved" | "error";
   persistenceError: string | null;
+  signIn: (params: { identifier: string; password: string }) => Promise<void>;
+  signUp: (params: { identifier: string; password: string; displayName?: string }) => Promise<void>;
+  signOut: () => Promise<void>;
   addAttendanceLog: (input: CreateAttendanceInput) => Promise<AttendanceLog>;
   updateProfile: (updates: { displayName?: string; favoriteTeamId?: string; followingIds?: string[] }) => Promise<UserProfile>;
   completeOnboarding: (updates: { displayName?: string; favoriteTeamId?: string }) => Promise<UserProfile>;
@@ -41,16 +52,41 @@ interface AppDataContextValue {
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
+const SEEDED_DATA_VERSION = "real-mlb-history-v1";
+
+function sortAttendanceLogs(logs: AttendanceLog[]) {
+  return [...logs].sort((left, right) => right.attendedOn.localeCompare(left.attendedOn));
+}
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const [accounts, setAccounts] = useState<AppSessionAccount[]>([]);
+  const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile>(mockUser);
-  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>(
-    [...seededAttendanceLogs].sort((left, right) => right.attendedOn.localeCompare(left.attendedOn))
-  );
+  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>(sortAttendanceLogs(seededAttendanceLogs));
   const [isHydrated, setIsHydrated] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState<"idle" | "loading" | "saving" | "saved" | "error">("loading");
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const currentAccount = useMemo(
+    () => accounts.find((account) => account.id === currentAccountId) ?? null,
+    [accounts, currentAccountId]
+  );
+
+  function getCurrentSessionState() {
+    return {
+      currentAccountId,
+      profile,
+      attendanceLogs
+    };
+  }
+
+  function applyHydratedState(nextState: HydratedAppDataState) {
+    setAccounts(nextState.accounts);
+    setCurrentAccountId(nextState.currentAccount?.id ?? null);
+    setProfile(nextState.profile);
+    setAttendanceLogs(sortAttendanceLogs(nextState.attendanceLogs));
+  }
 
   const stats = useMemo(() => {
     return calculatePersonalStats({
@@ -67,9 +103,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setPersistenceError(null);
 
     try {
-      const persistedState = await loadAppState();
-      setProfile(persistedState.profile);
-      setAttendanceLogs(persistedState.attendanceLogs);
+      const hydratedState = await appDataStore.hydrate();
+      applyHydratedState(hydratedState);
       setPersistenceStatus("idle");
     } catch {
       setPersistenceStatus("error");
@@ -100,11 +135,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setPersistenceStatus("saving");
 
       try {
-        await saveAppState({
+        await appDataStore.persistCurrentUser({
+          currentAccountId,
           profile,
-          attendanceLogs,
-          seededDataImported: true,
-          seededDataVersion: "real-mlb-history-v1"
+          attendanceLogs
         });
         if (canceled) {
           return;
@@ -131,7 +165,36 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return () => {
       canceled = true;
     };
-  }, [attendanceLogs, isHydrated, profile]);
+  }, [accounts, attendanceLogs, currentAccountId, isHydrated, profile]);
+
+  async function signIn(params: { identifier: string; password: string }) {
+    const nextState = await appDataStore.signIn({
+      ...params,
+      currentSession: getCurrentSessionState()
+    });
+    applyHydratedState(nextState);
+    setPersistenceStatus("saved");
+    setPersistenceError(null);
+  }
+
+  async function signUp(params: { identifier: string; password: string; displayName?: string }) {
+    const nextState = await appDataStore.signUp({
+      ...params,
+      currentSession: getCurrentSessionState()
+    });
+    applyHydratedState(nextState);
+    setPersistenceStatus("saved");
+    setPersistenceError(null);
+  }
+
+  async function signOut() {
+    const nextState = await appDataStore.signOut({
+      currentSession: getCurrentSessionState()
+    });
+    applyHydratedState(nextState);
+    setPersistenceStatus("saved");
+    setPersistenceError(null);
+  }
 
   async function addAttendanceLog(input: CreateAttendanceInput) {
     if (attendanceLogs.some((existingLog) => existingLog.userId === input.userId && existingLog.gameId === input.gameId)) {
@@ -248,12 +311,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }
 
   async function resetAppData() {
-    await clearAppState();
-    setProfile({
+    if (!currentAccount) {
+      return;
+    }
+
+    const nextProfile = {
       ...mockUser,
+      id: profile.id,
+      displayName: profile.displayName,
       hasCompletedOnboarding: profile.hasCompletedOnboarding ?? true
-    });
-    setAttendanceLogs([...seededAttendanceLogs].sort((left, right) => right.attendedOn.localeCompare(left.attendedOn)));
+    };
+    const nextAttendanceLogs = sortAttendanceLogs(seededAttendanceLogs);
+
+    setProfile(nextProfile);
+    setAttendanceLogs(nextAttendanceLogs);
     setPersistenceStatus("saved");
     setPersistenceError(null);
   }
@@ -263,7 +334,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       profile,
       attendanceLogs,
       seededDataImported: true,
-      seededDataVersion: "real-mlb-history-v1"
+      seededDataVersion: SEEDED_DATA_VERSION
     });
   }
 
@@ -272,9 +343,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const importedState = parseImportedAppState(raw);
       setProfile({
         ...importedState.profile,
+        id: profile.id,
         hasCompletedOnboarding: true
       });
-      setAttendanceLogs(importedState.attendanceLogs);
+      setAttendanceLogs(sortAttendanceLogs(importedState.attendanceLogs.map((log) => ({ ...log, userId: profile.id }))));
       setPersistenceStatus("saved");
       setPersistenceError(null);
     } catch {
@@ -285,6 +357,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }
 
   const value: AppDataContextValue = {
+    storageMode: appDataStore.kind,
+    currentAccountLabel: currentAccount?.label ?? null,
+    isAuthenticated: Boolean(currentAccountId),
     profile,
     friends,
     teams,
@@ -296,6 +371,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     isHydrated,
     persistenceStatus,
     persistenceError,
+    signIn,
+    signUp,
+    signOut,
     addAttendanceLog,
     updateProfile,
     completeOnboarding,

@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import type { PlayerBattingSummary, PlayerPitchingSummary } from "@mlb-attendance/domain";
+import type { AttendanceLog, Game, PlayerBattingSummary, PlayerPitchingSummary, Team, Venue } from "@mlb-attendance/domain";
 import { PlaceholderPanel } from "../../components/common/PlaceholderPanel";
 import { Screen } from "../../components/common/Screen";
 import { SectionCard } from "../../components/common/SectionCard";
+import { DropdownField, type DropdownOption } from "../../components/common/DropdownField";
 import { formatBaseballInnings } from "../../lib/formatters";
 import { useAppData } from "../../providers/AppDataProvider";
 import { colors, spacing } from "../../styles/tokens";
@@ -26,11 +27,18 @@ type PitcherSortKey =
   | "runsAllowedSeen"
   | "eraSeen";
 type SortDirection = "desc" | "asc";
+type SplitKey = "season" | "opponent" | "stadium" | "weekday" | "favorite-side";
 
-type FilterOption<T extends string | number> = {
+interface SplitSummary {
+  key: string;
   label: string;
-  value: T;
-};
+  games: number;
+  wins: number;
+  losses: number;
+  hitsSeen: number;
+  runsSeen: number;
+  homeRunsSeen: number;
+}
 
 function formatWinPct(wins: number, losses: number) {
   const total = wins + losses;
@@ -47,6 +55,116 @@ function formatAverage(value: number) {
 
 function formatEra(value: number) {
   return value.toFixed(2);
+}
+
+function getWeekdayLabel(date: string) {
+  const parsed = new Date(`${date}T12:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Unknown";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    timeZone: "America/New_York"
+  }).format(parsed);
+}
+
+function buildSplitSummaries(params: {
+  splitKey: SplitKey;
+  attendanceLogs: AttendanceLog[];
+  games: Game[];
+  teams: Team[];
+  venues: Venue[];
+  favoriteTeamId?: string;
+}): SplitSummary[] {
+  const { splitKey, attendanceLogs, games, teams, venues, favoriteTeamId } = params;
+  const gamesById = new Map(games.map((game) => [game.id, game]));
+  const teamsById = new Map(teams.map((team) => [team.id, team]));
+  const venuesById = new Map(venues.map((venue) => [venue.id, venue]));
+  const splitMap = new Map<string, SplitSummary>();
+
+  attendanceLogs.forEach((log) => {
+    const game = gamesById.get(log.gameId);
+    if (!game) {
+      return;
+    }
+
+    let bucketKey = "";
+    let label = "";
+
+    switch (splitKey) {
+      case "season":
+        bucketKey = log.attendedOn.slice(0, 4);
+        label = bucketKey || "Unknown season";
+        break;
+      case "opponent": {
+        const opponentId = favoriteTeamId
+          ? game.homeTeamId === favoriteTeamId
+            ? game.awayTeamId
+            : game.awayTeamId === favoriteTeamId
+              ? game.homeTeamId
+              : game.awayTeamId
+          : game.awayTeamId;
+        const opponent = teamsById.get(opponentId);
+        bucketKey = opponentId;
+        label = opponent ? `${opponent.city} ${opponent.name}` : "Unknown opponent";
+        break;
+      }
+      case "stadium": {
+        const venue = venuesById.get(game.venueId);
+        bucketKey = game.venueId;
+        label = venue ? venue.name : "Unknown venue";
+        break;
+      }
+      case "weekday":
+        bucketKey = getWeekdayLabel(log.attendedOn);
+        label = bucketKey;
+        break;
+      case "favorite-side":
+        if (!favoriteTeamId) {
+          return;
+        }
+
+        if (game.homeTeamId === favoriteTeamId) {
+          bucketKey = "favorite-home";
+          label = "Favorite team at home";
+        } else if (game.awayTeamId === favoriteTeamId) {
+          bucketKey = "favorite-away";
+          label = "Favorite team on the road";
+        } else {
+          bucketKey = "favorite-absent";
+          label = "Games without favorite team";
+        }
+        break;
+    }
+
+    const existing = splitMap.get(bucketKey) ?? {
+      key: bucketKey,
+      label,
+      games: 0,
+      wins: 0,
+      losses: 0,
+      hitsSeen: 0,
+      runsSeen: 0,
+      homeRunsSeen: 0
+    };
+
+    existing.games += 1;
+    existing.wins += log.witnessedEvents.some((event) => event.type === "team_win") ? 1 : 0;
+    existing.losses += log.witnessedEvents.some((event) => event.type === "team_loss") ? 1 : 0;
+    existing.hitsSeen += game.homeHits + game.awayHits;
+    existing.runsSeen += game.homeScore + game.awayScore;
+    existing.homeRunsSeen += game.battersUsed?.reduce((total, batter) => total + batter.homeRuns, 0) ?? 0;
+    splitMap.set(bucketKey, existing);
+  });
+
+  return [...splitMap.values()].sort((left, right) => {
+    if (right.games !== left.games) {
+      return right.games - left.games;
+    }
+
+    return left.label.localeCompare(right.label);
+  });
 }
 
 function sortNumeric<T>(
@@ -115,43 +233,6 @@ function HeaderCell(props: {
   );
 }
 
-function SelectFilter<T extends string | number>(props: {
-  label: string;
-  options: Array<FilterOption<T>>;
-  value: T;
-  onChange: (value: T) => void;
-  isOpen: boolean;
-  onToggle: () => void;
-}) {
-  const { label, options, value, onChange, isOpen, onToggle } = props;
-  const activeOption = options.find((option) => option.value === value) ?? options[0];
-
-  return (
-    <View style={styles.filterGroup}>
-      <Text style={styles.filterLabel}>{label}</Text>
-      <Pressable onPress={onToggle} style={styles.selectTrigger}>
-        <Text style={styles.selectTriggerText}>{activeOption?.label ?? "Select"}</Text>
-        <Text style={styles.selectCaret}>{isOpen ? "▲" : "▼"}</Text>
-      </Pressable>
-      {isOpen ? (
-        <View style={styles.selectMenu}>
-          {options.map((option) => (
-            <Pressable
-              key={`${label}-${option.value}`}
-              onPress={() => onChange(option.value)}
-              style={[styles.selectOption, option.value === value ? styles.selectOptionActive : null]}
-            >
-              <Text style={[styles.selectOptionText, option.value === value ? styles.selectOptionTextActive : null]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
 function BatterRow({ player }: { player: PlayerBattingSummary }) {
   return (
     <View style={styles.tableRow}>
@@ -191,7 +272,7 @@ function PitcherRow({ pitcher }: { pitcher: PlayerPitchingSummary }) {
 export function StatsScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { stats } = useAppData();
+  const { stats, attendanceLogs, games, teams, venues, profile } = useAppData();
   const isWide = width >= 1080;
   const [batterSortKey, setBatterSortKey] = useState<BatterSortKey>("homeRunsSeen");
   const [batterSortDirection, setBatterSortDirection] = useState<SortDirection>("desc");
@@ -205,9 +286,10 @@ export function StatsScreen() {
   const [batterPositionFilter, setBatterPositionFilter] = useState("all");
   const [pitcherTeamFilter, setPitcherTeamFilter] = useState("all");
   const [pitcherRoleFilter, setPitcherRoleFilter] = useState("all");
+  const [splitKey, setSplitKey] = useState<SplitKey>("season");
   const [openFilter, setOpenFilter] = useState<string | null>(null);
 
-  const batterGameOptions = useMemo<Array<FilterOption<number>>>(() => {
+  const batterGameOptions = useMemo<Array<DropdownOption<number>>>(() => {
     const values = [0, ...new Set(stats.playerBattingSummaries.map((player) => player.gamesSeen).sort((left, right) => left - right))];
     return values.map((value) => ({
       value,
@@ -215,7 +297,7 @@ export function StatsScreen() {
     }));
   }, [stats.playerBattingSummaries]);
 
-  const batterAbOptions = useMemo<Array<FilterOption<number>>>(() => {
+  const batterAbOptions = useMemo<Array<DropdownOption<number>>>(() => {
     const values = [0, ...new Set(stats.playerBattingSummaries.map((player) => player.atBatsSeen).sort((left, right) => left - right))];
     return values.map((value) => ({
       value,
@@ -223,7 +305,7 @@ export function StatsScreen() {
     }));
   }, [stats.playerBattingSummaries]);
 
-  const pitcherAppearanceOptions = useMemo<Array<FilterOption<number>>>(() => {
+  const pitcherAppearanceOptions = useMemo<Array<DropdownOption<number>>>(() => {
     const values = [0, ...new Set(stats.playerPitchingSummaries.map((pitcher) => pitcher.appearances).sort((left, right) => left - right))];
     return values.map((value) => ({
       value,
@@ -231,7 +313,7 @@ export function StatsScreen() {
     }));
   }, [stats.playerPitchingSummaries]);
 
-  const pitcherInningOptions = useMemo<Array<FilterOption<number>>>(() => {
+  const pitcherInningOptions = useMemo<Array<DropdownOption<number>>>(() => {
     const values = [0, ...new Set(stats.playerPitchingSummaries.map((pitcher) => pitcher.inningsSeen).sort((left, right) => left - right))];
     return values.map((value) => ({
       value,
@@ -239,22 +321,22 @@ export function StatsScreen() {
     }));
   }, [stats.playerPitchingSummaries]);
 
-  const batterTeamOptions = useMemo<Array<FilterOption<string>>>(() => {
+  const batterTeamOptions = useMemo<Array<DropdownOption<string>>>(() => {
     const teams = [...new Set(stats.playerBattingSummaries.flatMap((player) => player.teams))].sort((left, right) => left.localeCompare(right));
     return [{ label: "All teams", value: "all" }, ...teams.map((team) => ({ label: team, value: team }))];
   }, [stats.playerBattingSummaries]);
 
-  const batterPositionOptions = useMemo<Array<FilterOption<string>>>(() => {
+  const batterPositionOptions = useMemo<Array<DropdownOption<string>>>(() => {
     const positions = [...new Set(stats.playerBattingSummaries.flatMap((player) => player.positions))].sort((left, right) => left.localeCompare(right));
     return [{ label: "All positions", value: "all" }, ...positions.map((position) => ({ label: position, value: position }))];
   }, [stats.playerBattingSummaries]);
 
-  const pitcherTeamOptions = useMemo<Array<FilterOption<string>>>(() => {
+  const pitcherTeamOptions = useMemo<Array<DropdownOption<string>>>(() => {
     const teams = [...new Set(stats.playerPitchingSummaries.flatMap((pitcher) => pitcher.teams))].sort((left, right) => left.localeCompare(right));
     return [{ label: "All teams", value: "all" }, ...teams.map((team) => ({ label: team, value: team }))];
   }, [stats.playerPitchingSummaries]);
 
-  const pitcherRoleOptions = useMemo<Array<FilterOption<string>>>(() => {
+  const pitcherRoleOptions = useMemo<Array<DropdownOption<string>>>(() => {
     const roles = [...new Set(stats.playerPitchingSummaries.flatMap((pitcher) => pitcher.roles))].sort((left, right) => left.localeCompare(right));
     return [{ label: "All roles", value: "all" }, ...roles.map((role) => ({ label: role, value: role }))];
   }, [stats.playerPitchingSummaries]);
@@ -287,6 +369,57 @@ export function StatsScreen() {
     return sortNumeric(filteredPitchers, pitcherSortKey, pitcherSortDirection, "strikeoutsSeen", "pitcherName");
   }, [filteredPitchers, pitcherSortDirection, pitcherSortKey]);
 
+  const splitOptions: Array<DropdownOption<SplitKey>> = [
+    { label: "Season", value: "season" },
+    { label: "Opponent", value: "opponent" },
+    { label: "Stadium", value: "stadium" },
+    { label: "Weekday", value: "weekday" },
+    { label: "Favorite team home/away", value: "favorite-side" }
+  ];
+
+  const splitSummaries = useMemo(() => {
+    return buildSplitSummaries({
+      splitKey,
+      attendanceLogs,
+      games,
+      teams,
+      venues,
+      favoriteTeamId: profile.favoriteTeamId
+    });
+  }, [attendanceLogs, games, profile.favoriteTeamId, splitKey, teams, venues]);
+
+  const topSplitSummaries = splitSummaries.slice(0, 3);
+
+  const summaryCards = useMemo(() => {
+    const topBatter = stats.playerBattingSummaries[0];
+    const topPitcher = stats.playerPitchingSummaries[0];
+    const topTeam = stats.teamSeenSummaries[0];
+
+    return [
+      {
+        label: "Best Opposing Bat Seen",
+        value: topBatter ? topBatter.playerName : "No batter data",
+        detail: topBatter
+          ? `${topBatter.homeRunsSeen} HR • ${topBatter.hitsSeen} hits • ${topBatter.gamesSeen} games`
+          : "Save games with batter lines to unlock this."
+      },
+      {
+        label: "Most-Seen Pitcher",
+        value: topPitcher ? topPitcher.pitcherName : "No pitcher data",
+        detail: topPitcher
+          ? `${topPitcher.appearances} apps • ${topPitcher.strikeoutsSeen} K • ${formatBaseballInnings(topPitcher.inningsSeen)} IP`
+          : "Save games with pitcher lines to unlock this."
+      },
+      {
+        label: "Most-Seen Team",
+        value: topTeam ? topTeam.teamName : "No team data",
+        detail: topTeam
+          ? `${topTeam.gamesSeen} games • ${topTeam.winsSeen}-${topTeam.lossesSeen} seen • ${topTeam.runsSeen} runs`
+          : "Log games to build team coverage."
+      }
+    ];
+  }, [stats.playerBattingSummaries, stats.playerPitchingSummaries, stats.teamSeenSummaries]);
+
   const favoriteTeamLabel = stats.favoriteTeamSplit?.teamName ?? "Favorite Team";
   const hasAnyStats = stats.totalGamesAttended > 0;
   const hasFilteredBatters = sortedBatters.length > 0;
@@ -303,27 +436,108 @@ export function StatsScreen() {
           <Text style={styles.topStatValue}>
             {stats.favoriteTeamSplit?.wins ?? stats.wins}-{stats.favoriteTeamSplit?.losses ?? stats.losses}
           </Text>
+          <Text style={styles.topStatMeta}>{formatWinPct(stats.favoriteTeamSplit?.wins ?? stats.wins, stats.favoriteTeamSplit?.losses ?? stats.losses)} win pct</Text>
         </View>
         <View style={styles.topStat}>
           <Text style={styles.topStatLabel}>Hits Seen</Text>
           <Text style={styles.topStatValue}>{stats.totalHitsSeen}</Text>
+          <Text style={styles.topStatMeta}>{formatAverage(stats.averageHitsPerGame)} per game</Text>
         </View>
         <View style={styles.topStat}>
-          <Text style={styles.topStatLabel}>Filtered Hitters</Text>
-          <Text style={styles.topStatValue}>{sortedBatters.length}</Text>
+          <Text style={styles.topStatLabel}>Home Runs Seen</Text>
+          <Text style={styles.topStatValue}>{stats.witnessedHomeRuns}</Text>
+          <Text style={styles.topStatMeta}>{stats.totalGamesAttended} games logged</Text>
         </View>
         <View style={styles.topStat}>
-          <Text style={styles.topStatLabel}>Filtered Pitchers</Text>
-          <Text style={styles.topStatValue}>{sortedPitchers.length}</Text>
+          <Text style={styles.topStatLabel}>Pitchers Seen</Text>
+          <Text style={styles.topStatValue}>{stats.uniquePitchersSeen}</Text>
+          <Text style={styles.topStatMeta}>{sortedPitchers.length} match current table filters</Text>
         </View>
       </View>
       <View style={[styles.layout, isWide ? styles.layoutWide : null]}>
         <View style={styles.mainColumn}>
+          <SectionCard title="What Stands Out">
+            {hasAnyStats ? (
+              <View style={styles.summaryCardGrid}>
+                {summaryCards.map((card) => (
+                  <View key={card.label} style={styles.summaryCard}>
+                    <Text style={styles.summaryCardLabel}>{card.label}</Text>
+                    <Text style={styles.summaryCardValue}>{card.value}</Text>
+                    <Text style={styles.summaryCardMeta}>{card.detail}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <PlaceholderPanel
+                title="No standout stats yet"
+                body="As soon as you save games, this section will summarize the most interesting player and team signals from your personal attendance history."
+                actionLabel="Log First Game"
+                onAction={() => router.push("/(tabs)/log-game")}
+              />
+            )}
+          </SectionCard>
+
+          <SectionCard title="Split View">
+            {hasAnyStats ? (
+              <>
+                <View style={styles.splitHeader}>
+                  <DropdownField
+                    label="Split by"
+                    options={splitOptions}
+                    value={splitKey}
+                    onChange={(value) => {
+                      setSplitKey(value);
+                      setOpenFilter(null);
+                    }}
+                    isOpen={openFilter === "split-key"}
+                    onToggle={() => setOpenFilter((current) => current === "split-key" ? null : "split-key")}
+                    minWidth={220}
+                  />
+                  <Text style={styles.splitHelper}>
+                    Quick ledger slices so you can answer where, when, and against whom your record is strongest.
+                  </Text>
+                </View>
+                {topSplitSummaries.length ? (
+                  <View style={styles.splitGrid}>
+                    {topSplitSummaries.map((split) => (
+                      <View key={split.key} style={styles.splitCard}>
+                        <Text style={styles.splitCardLabel}>{split.label}</Text>
+                        <Text style={styles.splitCardValue}>{split.games} games</Text>
+                        <Text style={styles.splitCardMeta}>
+                          {split.wins}-{split.losses} record • {split.hitsSeen} hits seen
+                        </Text>
+                        <Text style={styles.splitCardMeta}>
+                          {split.runsSeen} runs seen • {split.homeRunsSeen} HR seen
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <PlaceholderPanel
+                    title="This split is not available yet"
+                    body={splitKey === "favorite-side"
+                      ? "Set a favorite team first, then this view can compare home and road attendance."
+                      : "Save more games to populate this split."}
+                    actionLabel={splitKey === "favorite-side" ? "Open Profile" : "Log Game"}
+                    onAction={() => router.push(splitKey === "favorite-side" ? "/(tabs)/profile" : "/(tabs)/log-game")}
+                  />
+                )}
+              </>
+            ) : (
+              <PlaceholderPanel
+                title="No split data yet"
+                body="Split views turn on after your saved ledger has enough games to compare by season, stadium, weekday, or opponent."
+                actionLabel="Log First Game"
+                onAction={() => router.push("/(tabs)/log-game")}
+              />
+            )}
+          </SectionCard>
+
           <SectionCard title="Hitters Seen">
             {hasAnyStats ? (
               <>
                 <View style={styles.filtersBlock}>
-                  <SelectFilter
+                  <DropdownField
                     label="Min games"
                     options={batterGameOptions}
                     value={minBatterGames}
@@ -334,7 +548,7 @@ export function StatsScreen() {
                     isOpen={openFilter === "batter-games"}
                     onToggle={() => setOpenFilter((current) => current === "batter-games" ? null : "batter-games")}
                   />
-                  <SelectFilter
+                  <DropdownField
                     label="Min AB"
                     options={batterAbOptions}
                     value={minBatterAtBats}
@@ -345,7 +559,7 @@ export function StatsScreen() {
                     isOpen={openFilter === "batter-abs"}
                     onToggle={() => setOpenFilter((current) => current === "batter-abs" ? null : "batter-abs")}
                   />
-                  <SelectFilter
+                  <DropdownField
                     label="Team"
                     options={batterTeamOptions}
                     value={batterTeamFilter}
@@ -356,7 +570,7 @@ export function StatsScreen() {
                     isOpen={openFilter === "batter-team"}
                     onToggle={() => setOpenFilter((current) => current === "batter-team" ? null : "batter-team")}
                   />
-                  <SelectFilter
+                  <DropdownField
                     label="Position"
                     options={batterPositionOptions}
                     value={batterPositionFilter}
@@ -461,7 +675,7 @@ export function StatsScreen() {
             {hasAnyStats ? (
               <>
                 <View style={styles.filtersBlock}>
-                  <SelectFilter
+                  <DropdownField
                     label="Min apps"
                     options={pitcherAppearanceOptions}
                     value={minPitcherAppearances}
@@ -472,7 +686,7 @@ export function StatsScreen() {
                     isOpen={openFilter === "pitcher-apps"}
                     onToggle={() => setOpenFilter((current) => current === "pitcher-apps" ? null : "pitcher-apps")}
                   />
-                  <SelectFilter
+                  <DropdownField
                     label="Min IP"
                     options={pitcherInningOptions}
                     value={minPitcherInnings}
@@ -483,7 +697,7 @@ export function StatsScreen() {
                     isOpen={openFilter === "pitcher-ip"}
                     onToggle={() => setOpenFilter((current) => current === "pitcher-ip" ? null : "pitcher-ip")}
                   />
-                  <SelectFilter
+                  <DropdownField
                     label="Team"
                     options={pitcherTeamOptions}
                     value={pitcherTeamFilter}
@@ -494,7 +708,7 @@ export function StatsScreen() {
                     isOpen={openFilter === "pitcher-team"}
                     onToggle={() => setOpenFilter((current) => current === "pitcher-team" ? null : "pitcher-team")}
                   />
-                  <SelectFilter
+                  <DropdownField
                     label="Role"
                     options={pitcherRoleOptions}
                     value={pitcherRoleFilter}
@@ -637,6 +851,11 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontWeight: "800"
   },
+  topStatMeta: {
+    fontSize: 12,
+    color: colors.slate500,
+    lineHeight: 17
+  },
   layout: {
     gap: spacing.md
   },
@@ -648,66 +867,74 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.md
   },
-  filtersBlock: {
+  summaryCardGrid: {
     gap: spacing.sm
   },
-  filterGroup: {
+  summaryCard: {
     gap: spacing.xs,
-    minWidth: 180
+    padding: spacing.md,
+    borderRadius: 16,
+    backgroundColor: colors.slate050,
+    borderWidth: 1,
+    borderColor: colors.slate200
   },
-  filterLabel: {
+  summaryCardLabel: {
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 1,
     color: colors.slate500,
     fontWeight: "700"
   },
-  selectTrigger: {
-    minHeight: 42,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.slate200,
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  summaryCardValue: {
+    fontSize: 18,
+    lineHeight: 23,
+    color: colors.slate900,
+    fontWeight: "800"
+  },
+  summaryCardMeta: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.slate700
+  },
+  splitHeader: {
     gap: spacing.sm
   },
-  selectTriggerText: {
-    flex: 1,
+  splitHelper: {
     fontSize: 13,
-    color: colors.slate900,
-    fontWeight: "600"
+    lineHeight: 18,
+    color: colors.slate500
   },
-  selectCaret: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.slate700
+  splitGrid: {
+    gap: spacing.sm
   },
-  selectMenu: {
+  splitCard: {
+    gap: spacing.xs,
+    padding: spacing.md,
+    borderRadius: 16,
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.slate200,
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: colors.white
+    borderColor: colors.slate200
   },
-  selectOption: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.slate100
+  splitCardLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: colors.slate500,
+    fontWeight: "700"
   },
-  selectOptionActive: {
-    backgroundColor: colors.slate050
+  splitCardValue: {
+    fontSize: 18,
+    lineHeight: 22,
+    color: colors.navy,
+    fontWeight: "800"
   },
-  selectOptionText: {
+  splitCardMeta: {
     fontSize: 13,
+    lineHeight: 18,
     color: colors.slate700
   },
-  selectOptionTextActive: {
-    color: colors.navy,
-    fontWeight: "700"
+  filtersBlock: {
+    gap: spacing.sm
   },
   tableHeader: {
     flexDirection: "row",

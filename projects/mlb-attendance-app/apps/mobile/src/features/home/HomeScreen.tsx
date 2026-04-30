@@ -25,12 +25,6 @@ function getNextMilestone(totalGamesAttended: number) {
 }
 
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const easternTimeFormatter = new Intl.DateTimeFormat("en-US", {
-  hour: "numeric",
-  minute: "2-digit",
-  hour12: true,
-  timeZone: "America/New_York"
-});
 const easternDayFormatter = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
   timeZone: "America/New_York"
@@ -56,12 +50,66 @@ function getTopFriendStat(friendStats: ReturnType<typeof calculatePersonalStats>
   return `${friendStats.totalHitsSeen} hits seen`;
 }
 
+function getNextAction(params: {
+  hasLogs: boolean;
+  favoriteTeamId?: string;
+  persistenceStatus: "idle" | "loading" | "saving" | "saved" | "error";
+}) {
+  const { hasLogs, favoriteTeamId, persistenceStatus } = params;
+
+  if (persistenceStatus === "error") {
+    return {
+      label: "Retry Storage",
+      route: null as string | null,
+      summary: "Storage needs attention before the ledger feels safe."
+    };
+  }
+
+  if (!hasLogs) {
+    return {
+      label: "Log First Game",
+      route: "/(tabs)/log-game",
+      summary: "Your first save unlocks stats, progress, and a real home dashboard."
+    };
+  }
+
+  if (!favoriteTeamId) {
+    return {
+      label: "Set Favorite Team",
+      route: "/(tabs)/profile",
+      summary: "Favorite-team splits and cleaner comparisons unlock once this is set."
+    };
+  }
+
+  return {
+    label: "Backfill Another Game",
+    route: "/(tabs)/log-game",
+    summary: "The fastest way to deepen the ledger now is to add another attended game."
+  };
+}
+
 function getSortIndicator(active: boolean, direction: "asc" | "desc") {
   if (!active) {
     return "";
   }
 
   return direction === "asc" ? " ↑" : " ↓";
+}
+
+function getPersistenceSummary(status: "idle" | "loading" | "saving" | "saved" | "error") {
+  switch (status) {
+    case "loading":
+      return "Loading your saved local record.";
+    case "saving":
+      return "Saving your latest ledger changes now.";
+    case "saved":
+      return "Your latest ledger changes are stored locally.";
+    case "error":
+      return "Storage needs attention before this record feels safe.";
+    case "idle":
+    default:
+      return "Your local ledger is ready for the next update.";
+  }
 }
 
 function getLevelProgress(stats: ReturnType<typeof calculatePersonalStats>) {
@@ -81,7 +129,22 @@ function getLevelProgress(stats: ReturnType<typeof calculatePersonalStats>) {
 }
 
 function buildAttendancePattern(games: Array<{ startDateTime?: string }>) {
-  const patternMap = new Map<string, { label: string; sortValue: number; counts: number[] }>();
+  const patternBuckets = [
+    { key: "day", label: "1-4 PM", sortValue: 13 },
+    { key: "late", label: "4-7 PM", sortValue: 16 },
+    { key: "night", label: "7-10 PM", sortValue: 19 }
+  ] as const;
+  type PatternBucketKey = (typeof patternBuckets)[number]["key"];
+  const patternMap = new Map(
+    patternBuckets.map((bucket) => [
+      bucket.key,
+      {
+        label: bucket.label,
+        sortValue: bucket.sortValue,
+        counts: dayLabels.map(() => 0)
+      }
+    ])
+  );
 
   games.forEach((game) => {
     if (!game.startDateTime) {
@@ -93,37 +156,35 @@ function buildAttendancePattern(games: Array<{ startDateTime?: string }>) {
       return;
     }
 
-    const timeLabel = easternTimeFormatter.format(parsed);
     const dayLabel = easternDayFormatter.format(parsed);
     const dayIndex = dayLabels.indexOf(dayLabel);
-    const minutes = Number(
+    const easternHour = Number(
       new Intl.DateTimeFormat("en-US", {
         hour: "numeric",
-        minute: "numeric",
         hour12: false,
         timeZone: "America/New_York"
-      })
-        .format(parsed)
-        .replace(":", ".")
+      }).format(parsed)
     );
 
     if (dayIndex >= 0) {
-      const existing = patternMap.get(timeLabel);
+      let bucketKey: PatternBucketKey = "night";
+
+      if (easternHour < 16) {
+        bucketKey = "day";
+      } else if (easternHour < 19) {
+        bucketKey = "late";
+      }
+
+      const existing = patternMap.get(bucketKey);
       if (existing) {
         existing.counts[dayIndex] += 1;
-      } else {
-        const counts = dayLabels.map(() => 0);
-        counts[dayIndex] = 1;
-        patternMap.set(timeLabel, {
-          label: timeLabel,
-          sortValue: minutes,
-          counts
-        });
       }
     }
   });
 
-  return [...patternMap.values()].sort((left, right) => left.sortValue - right.sortValue);
+  return [...patternMap.values()]
+    .filter((bucket) => bucket.counts.some((count) => count > 0))
+    .sort((left, right) => left.sortValue - right.sortValue);
 }
 
 function getPatternColor(count: number, maxCount: number) {
@@ -170,6 +231,11 @@ export function HomeScreen() {
   const hasLogs = attendanceLogs.length > 0;
   const nextMilestone = getNextMilestone(stats.totalGamesAttended);
   const levelProgress = getLevelProgress(stats);
+  const nextAction = getNextAction({
+    hasLogs,
+    favoriteTeamId: profile.favoriteTeamId,
+    persistenceStatus
+  });
   const [teamSortKey, setTeamSortKey] = useState<"teamName" | "gamesSeen" | "winsSeen" | "lossesSeen" | "hitsSeen" | "runsSeen">("gamesSeen");
   const [teamSortDirection, setTeamSortDirection] = useState<"asc" | "desc">("desc");
   const attendedGames = useMemo(
@@ -237,80 +303,155 @@ export function HomeScreen() {
       title="Ballpark Ledger"
       subtitle="A compact view of your real attendance history, the next useful action, and the friend or player detail worth checking."
     >
-      <View style={styles.topSummary}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Games</Text>
-          <Text style={styles.summaryValue}>{stats.totalGamesAttended}</Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>{favoriteTeam?.name ?? "Favorite Team"} Record</Text>
-          <Text style={styles.summaryValue}>
-            {stats.favoriteTeamSplit?.wins ?? stats.wins}-{stats.favoriteTeamSplit?.losses ?? stats.losses}
-          </Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Hits Seen</Text>
-          <Text style={styles.summaryValue}>{stats.totalHitsSeen}</Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Pitchers Seen</Text>
-          <Text style={styles.summaryValue}>{stats.uniquePitchersSeen}</Text>
-        </View>
+      <View style={styles.ledgerHero}>
+        {isHydrated ? (
+          <View style={styles.heroStack}>
+            <View style={[styles.heroRow, isWide ? styles.heroRowWide : null]}>
+              <View style={styles.heroLead}>
+                <Text style={styles.heroEyebrow}>{profile.displayName}</Text>
+                <Text style={styles.heroTitle}>{hasLogs ? levelProgress.currentLevel.title : "Start Your Ledger"}</Text>
+                <Text style={styles.heroBody}>
+                  {hasLogs
+                    ? `${stats.totalGamesAttended} games logged, ${stats.uniqueStadiumsVisited} stadiums visited, and ${stats.witnessedHomeRuns} home runs seen in person.`
+                    : "Log your first attended game to turn this into a durable baseball record with stats, progress, and memory detail."}
+                </Text>
+                <View style={styles.heroActionRow}>
+                  {nextAction.route ? (
+                    <PrimaryButton label={nextAction.label} onPress={() => router.push(nextAction.route as never)} />
+                  ) : (
+                    <PrimaryButton label={nextAction.label} onPress={retryHydration} />
+                  )}
+                  <View style={styles.heroActionCopy}>
+                    <Text style={styles.heroActionLabel}>Next Best Action</Text>
+                    <Text style={styles.heroActionText}>{nextAction.summary}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.heroRail}>
+                <View style={styles.heroStatusBlock}>
+                  <Text style={styles.heroStatusLabel}>Favorite Team</Text>
+                  <Text style={styles.heroStatusValue}>{favoriteTeam?.name ?? "Not set yet"}</Text>
+                  <Text style={styles.heroStatusMeta}>
+                    {favoriteTeam
+                      ? `${stats.favoriteTeamSplit?.wins ?? stats.wins}-${stats.favoriteTeamSplit?.losses ?? stats.losses} in-person record`
+                      : "Set this in Profile for cleaner splits."}
+                  </Text>
+                </View>
+                <View style={styles.heroStatusBlock}>
+                  <Text style={styles.heroStatusLabel}>Storage</Text>
+                  <Text style={styles.heroStatusValue}>{persistenceStatus}</Text>
+                  <Text style={styles.heroStatusMeta}>{getPersistenceSummary(persistenceStatus)}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.heroMetrics}>
+              <View style={styles.heroMetricCard}>
+                <Text style={styles.heroMetricLabel}>Games</Text>
+                <Text style={styles.heroMetricValue}>{stats.totalGamesAttended}</Text>
+              </View>
+              <View style={styles.heroMetricCard}>
+                <Text style={styles.heroMetricLabel}>{favoriteTeam?.name ?? "Favorite Team"} Record</Text>
+                <Text style={styles.heroMetricValue}>
+                  {stats.favoriteTeamSplit?.wins ?? stats.wins}-{stats.favoriteTeamSplit?.losses ?? stats.losses}
+                </Text>
+              </View>
+              <View style={styles.heroMetricCard}>
+                <Text style={styles.heroMetricLabel}>Hits Seen</Text>
+                <Text style={styles.heroMetricValue}>{stats.totalHitsSeen}</Text>
+              </View>
+              <View style={styles.heroMetricCard}>
+                <Text style={styles.heroMetricLabel}>Pitchers Seen</Text>
+                <Text style={styles.heroMetricValue}>{stats.uniquePitchersSeen}</Text>
+              </View>
+            </View>
+
+            {hasLogs ? (
+              <View style={[styles.heroLowerGrid, isWide ? styles.heroLowerGridWide : null]}>
+                <View style={styles.heroSubPanel}>
+                  <Text style={styles.heroSubLabel}>Level Progress</Text>
+                  <Text style={styles.heroSubTitle}>{levelProgress.points} total points</Text>
+                  <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: `${levelProgress.progress * 100}%` }]} />
+                  </View>
+                  <Text style={styles.heroSubText}>
+                    {levelProgress.nextLevel
+                      ? `${levelProgress.nextLevel.points - levelProgress.points} more points until ${levelProgress.nextLevel.title}.`
+                      : "Top level reached. Keep padding the ledger."}
+                  </Text>
+                  <View style={styles.levelBreakdown}>
+                    <View style={styles.levelPill}>
+                      <Text style={styles.levelPillLabel}>Games</Text>
+                      <Text style={styles.levelPillValue}>{stats.totalGamesAttended}</Text>
+                    </View>
+                    <View style={styles.levelPill}>
+                      <Text style={styles.levelPillLabel}>Stadiums</Text>
+                      <Text style={styles.levelPillValue}>{stats.uniqueStadiumsVisited}</Text>
+                    </View>
+                    <View style={styles.levelPill}>
+                      <Text style={styles.levelPillLabel}>HR Seen</Text>
+                      <Text style={styles.levelPillValue}>{stats.witnessedHomeRuns}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.heroSubPanel}>
+                  <Text style={styles.heroSubLabel}>Ledger Health</Text>
+                  <Text style={styles.heroSubTitle}>
+                    {nextMilestone
+                      ? `${nextMilestone.remaining} more ${nextMilestone.remaining === 1 ? "game" : "games"} until ${nextMilestone.target}.`
+                      : "Current milestone ladder cleared."}
+                  </Text>
+                  <Text style={styles.heroSubText}>
+                    {stats.uniqueStadiumsVisited} stadiums visited and {stats.uniqueSectionsSatIn} seating sections tracked.
+                  </Text>
+                  <Text style={styles.heroSubText}>
+                    {favoriteTeam
+                      ? `${favoriteTeam.name} appears in ${stats.favoriteTeamSplit?.gamesAttended ?? 0} games in your ledger.`
+                      : "Set a favorite team in Profile to unlock cleaner team-specific comparisons."}
+                  </Text>
+                  <View style={styles.inlineActions}>
+                    <PrimaryButton label="Stats" onPress={() => router.push("/(tabs)/stats")} />
+                    <PrimaryButton label="History" onPress={() => router.push("/(tabs)/history")} />
+                    <PrimaryButton label="Profile" onPress={() => router.push("/(tabs)/profile")} />
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
+            {persistenceError ? <Text style={styles.errorText}>{persistenceError}</Text> : null}
+          </View>
+        ) : (
+          <Text style={styles.primaryText}>Loading your local record...</Text>
+        )}
       </View>
 
       <View style={[styles.grid, isWide ? styles.gridWide : null]}>
         <View style={styles.mainColumn}>
-          <SectionCard title="Now">
-            <Text style={styles.primaryText}>
-              {isHydrated
-                ? hasLogs
-                  ? `${profile.displayName} • ${favoriteTeam?.name ?? "No favorite team set"} • ${persistenceStatus}`
-                  : `${profile.displayName} • Log your first game to turn this into a real record.`
-                : "Loading your local record..."}
-            </Text>
-            <View style={styles.inlineActions}>
-              <PrimaryButton label={hasLogs ? "Log Game" : "Log First Game"} onPress={() => router.push("/(tabs)/log-game")} />
-              <PrimaryButton label="Stats" onPress={() => router.push("/(tabs)/stats")} />
-              <PrimaryButton label="History" onPress={() => router.push("/(tabs)/history")} />
-            </View>
-            {persistenceError ? <Text style={styles.errorText}>{persistenceError}</Text> : null}
-            {persistenceStatus === "error" ? <PrimaryButton label="Retry Storage" onPress={retryHydration} /> : null}
-          </SectionCard>
-
-          <SectionCard title="Level Progress">
-            {hasLogs ? (
-              <View style={styles.levelStack}>
-                <Text style={styles.primaryText}>{levelProgress.currentLevel.title}</Text>
-                <Text style={styles.secondaryText}>
-                  {levelProgress.points} ledger points from {stats.totalGamesAttended} games, {stats.uniqueStadiumsVisited} stadiums, and {stats.witnessedHomeRuns} home runs seen.
-                </Text>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${levelProgress.progress * 100}%` }]} />
+          <SectionCard title="Latest Game">
+            {latestGame && latestGameLabel ? (
+              <View style={styles.compactStack}>
+                <Text style={styles.primaryText}>{latestGameLabel.title}</Text>
+                <Text style={styles.secondaryText}>{latestGameLabel.subtitle} • Final {latestGameLabel.score}</Text>
+                <View style={styles.inlineMetrics}>
+                  <Text style={styles.metricChip}>Hits {latestGame.homeHits + latestGame.awayHits}</Text>
+                  <Text style={styles.metricChip}>Pitchers {latestGame.pitchersUsed?.length ?? 0}</Text>
+                  <Text style={styles.metricChip}>Batters {latestGame.battersUsed?.length ?? 0}</Text>
                 </View>
                 <Text style={styles.secondaryText}>
-                  {levelProgress.nextLevel
-                    ? `${levelProgress.nextLevel.points - levelProgress.points} more points until ${levelProgress.nextLevel.title}.`
-                    : "Top level reached. Keep padding the ledger."}
+                  {stats.playerBattingSummaries[0]
+                    ? `Top hitter seen: ${stats.playerBattingSummaries[0].playerName} (${stats.playerBattingSummaries[0].homeRunsSeen} HR seen)`
+                    : "No player summary available yet."}
                 </Text>
-                <View style={styles.levelBreakdown}>
-                  <View style={styles.levelPill}>
-                    <Text style={styles.levelPillLabel}>Games</Text>
-                    <Text style={styles.levelPillValue}>{stats.totalGamesAttended}</Text>
-                  </View>
-                  <View style={styles.levelPill}>
-                    <Text style={styles.levelPillLabel}>Stadiums</Text>
-                    <Text style={styles.levelPillValue}>{stats.uniqueStadiumsVisited}</Text>
-                  </View>
-                  <View style={styles.levelPill}>
-                    <Text style={styles.levelPillLabel}>HR Seen</Text>
-                    <Text style={styles.levelPillValue}>{stats.witnessedHomeRuns}</Text>
-                  </View>
-                </View>
+                {latestLog.memorableMoment ? <Text style={styles.noteText}>{latestLog.memorableMoment}</Text> : null}
               </View>
             ) : (
               <PlaceholderPanel
-                title="No level yet"
-                body="Your custom level starts moving after the first logged game and climbs faster as you add new parks and witness more home runs."
+                title="No saved games yet"
+                body="Your latest attended game will show up here after the first successful save, along with the scoreline, quick box-score context, and your memory note."
+                actionLabel="Log First Game"
+                onAction={() => router.push("/(tabs)/log-game")}
               />
             )}
           </SectionCard>
@@ -337,33 +478,6 @@ export function HomeScreen() {
                 title="Start the ledger"
                 body="Search for the matchup you attended, save the seat details, and the home screen will start tracking milestones and derived stats from that first log onward."
                 actionLabel="Open Log Game"
-                onAction={() => router.push("/(tabs)/log-game")}
-              />
-            )}
-          </SectionCard>
-
-          <SectionCard title="Latest Game">
-            {latestGame && latestGameLabel ? (
-              <View style={styles.compactStack}>
-                <Text style={styles.primaryText}>{latestGameLabel.title}</Text>
-                <Text style={styles.secondaryText}>{latestGameLabel.subtitle} • Final {latestGameLabel.score}</Text>
-                <View style={styles.inlineMetrics}>
-                  <Text style={styles.metricChip}>Hits {latestGame.homeHits + latestGame.awayHits}</Text>
-                  <Text style={styles.metricChip}>Pitchers {latestGame.pitchersUsed?.length ?? 0}</Text>
-                  <Text style={styles.metricChip}>Batters {latestGame.battersUsed?.length ?? 0}</Text>
-                </View>
-                <Text style={styles.secondaryText}>
-                  {stats.playerBattingSummaries[0]
-                    ? `Top hitter seen: ${stats.playerBattingSummaries[0].playerName} (${stats.playerBattingSummaries[0].homeRunsSeen} HR seen)`
-                    : "No player summary available yet."}
-                </Text>
-                {latestLog.memorableMoment ? <Text style={styles.noteText}>{latestLog.memorableMoment}</Text> : null}
-              </View>
-            ) : (
-              <PlaceholderPanel
-                title="No saved games yet"
-                body="Your latest attended game will show up here after the first successful save, along with the scoreline, quick box-score context, and your memory note."
-                actionLabel="Log First Game"
                 onAction={() => router.push("/(tabs)/log-game")}
               />
             )}
@@ -498,34 +612,6 @@ export function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  topSummary: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  summaryCard: {
-    flexGrow: 1,
-    minWidth: 130,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.slate200,
-    borderRadius: 14,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    gap: 2
-  },
-  summaryLabel: {
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: colors.slate500,
-    fontWeight: "700"
-  },
-  summaryValue: {
-    fontSize: 24,
-    color: colors.navy,
-    fontWeight: "800"
-  },
   grid: {
     gap: spacing.md
   },
@@ -543,6 +629,163 @@ const styles = StyleSheet.create({
   },
   compactStack: {
     gap: spacing.xs
+  },
+  ledgerHero: {
+    gap: spacing.md,
+    padding: spacing.xl,
+    borderRadius: 28,
+    backgroundColor: colors.navy,
+    borderWidth: 1,
+    borderColor: "rgba(255,253,248,0.12)",
+    shadowColor: colors.navy,
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 5
+  },
+  heroStack: {
+    gap: spacing.md
+  },
+  heroRow: {
+    gap: spacing.lg
+  },
+  heroRowWide: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "stretch"
+  },
+  heroLead: {
+    flex: 1.3,
+    gap: spacing.md
+  },
+  heroRail: {
+    flex: 0.8,
+    gap: spacing.md
+  },
+  heroActionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: spacing.md
+  },
+  heroActionCopy: {
+    flex: 1,
+    gap: spacing.xs
+  },
+  heroActionLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: colors.amber,
+    fontWeight: "700"
+  },
+  heroActionText: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.slate050
+  },
+  heroEyebrow: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: colors.amber,
+    fontWeight: "700"
+  },
+  heroTitle: {
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: "800",
+    color: colors.white
+  },
+  heroBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.slate050
+  },
+  heroStatusBlock: {
+    minWidth: 140,
+    padding: spacing.md,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,253,248,0.12)",
+    gap: 4
+  },
+  heroStatusLabel: {
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: colors.slate100,
+    fontWeight: "700"
+  },
+  heroStatusValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.white
+  },
+  heroStatusMeta: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.slate100
+  },
+  heroMetrics: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
+  },
+  heroMetricCard: {
+    flexGrow: 1,
+    minWidth: 150,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,253,248,0.12)",
+    backgroundColor: "rgba(255,253,248,0.08)",
+    gap: 2
+  },
+  heroMetricLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: colors.slate100,
+    fontWeight: "700"
+  },
+  heroMetricValue: {
+    fontSize: 24,
+    color: colors.white,
+    fontWeight: "800"
+  },
+  heroLowerGrid: {
+    gap: spacing.md
+  },
+  heroLowerGridWide: {
+    flexDirection: "row"
+  },
+  heroSubPanel: {
+    flex: 1,
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,253,248,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,253,248,0.12)"
+  },
+  heroSubLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: colors.amber,
+    fontWeight: "700"
+  },
+  heroSubTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "800",
+    color: colors.white
+  },
+  heroSubText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.slate100
   },
   inlineActions: {
     flexDirection: "row",
@@ -640,13 +883,13 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 12,
     borderRadius: 999,
-    backgroundColor: colors.slate100,
+    backgroundColor: "rgba(255,253,248,0.12)",
     overflow: "hidden"
   },
   progressFill: {
     height: "100%",
     borderRadius: 999,
-    backgroundColor: colors.navy
+    backgroundColor: colors.amber
   },
   levelBreakdown: {
     flexDirection: "row",
@@ -658,22 +901,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 14,
-    backgroundColor: colors.slate050,
+    backgroundColor: "rgba(255,253,248,0.08)",
     borderWidth: 1,
-    borderColor: colors.slate200,
+    borderColor: "rgba(255,253,248,0.12)",
     gap: 2
   },
   levelPillLabel: {
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 1,
-    color: colors.slate500,
+    color: colors.slate100,
     fontWeight: "700"
   },
   levelPillValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: colors.navy
+    color: colors.white
   },
   patternWrap: {
     gap: spacing.sm

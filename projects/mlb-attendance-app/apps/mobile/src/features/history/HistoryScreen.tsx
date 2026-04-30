@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Screen } from "../../components/common/Screen";
+import { DropdownField, type DropdownOption } from "../../components/common/DropdownField";
 import { LabeledInput } from "../../components/common/LabeledInput";
 import { PrimaryButton } from "../../components/common/PrimaryButton";
 import { SectionCard } from "../../components/common/SectionCard";
@@ -73,13 +74,17 @@ function formatHitterLine(hitter: BatterAppearance) {
 
 export function HistoryScreen() {
   const { width } = useWindowDimensions();
-  const { attendanceLogs, games, teams, venues, updateAttendanceLog, deleteAttendanceLog } = useAppData();
+  const { attendanceLogs, games, teams, venues, profile, updateAttendanceLog, deleteAttendanceLog } = useAppData();
   const isWide = width >= 1024;
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const venuesById = useMemo(() => new Map(venues.map((venue) => [venue.id, venue])), [venues]);
   const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [pendingDeleteLogId, setPendingDeleteLogId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const [sortKey, setSortKey] = useState<"newest" | "oldest" | "venue" | "matchup">("newest");
+  const [viewKey, setViewKey] = useState<"all" | "favorite-team" | "latest-season">("all");
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [draft, setDraft] = useState(createDraft(attendanceLogs[0] ?? {
     id: "",
     userId: "",
@@ -91,15 +96,42 @@ export function HistoryScreen() {
   }));
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const latestSeason = attendanceLogs[0]?.attendedOn.slice(0, 4) ?? "";
+  const sortOptions: Array<DropdownOption<typeof sortKey>> = [
+    { label: "Newest first", value: "newest" },
+    { label: "Oldest first", value: "oldest" },
+    { label: "Venue", value: "venue" },
+    { label: "Matchup", value: "matchup" }
+  ];
+  const viewOptions: Array<DropdownOption<typeof viewKey>> = [
+    { label: "All games", value: "all" },
+    { label: "Favorite team games", value: "favorite-team" },
+    { label: latestSeason ? `${latestSeason} only` : "Latest season", value: "latest-season" }
+  ];
 
   const filteredLogs = useMemo(() => {
     const query = filter.trim().toLowerCase();
-    if (!query) {
-      return attendanceLogs;
-    }
-
-    return attendanceLogs.filter((log) => {
+    const baseLogs = attendanceLogs.filter((log) => {
       const game = gamesById.get(log.gameId);
+      if (!game) {
+        return false;
+      }
+
+      if (viewKey === "favorite-team" && profile.favoriteTeamId) {
+        const isFavoriteGame = game.homeTeamId === profile.favoriteTeamId || game.awayTeamId === profile.favoriteTeamId;
+        if (!isFavoriteGame) {
+          return false;
+        }
+      }
+
+      if (viewKey === "latest-season" && latestSeason && !log.attendedOn.startsWith(latestSeason)) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
       const homeTeam = game ? teamsById.get(game.homeTeamId) : undefined;
       const awayTeam = game ? teamsById.get(game.awayTeamId) : undefined;
       const venue = venuesById.get(log.venueId);
@@ -124,10 +156,36 @@ export function HistoryScreen() {
 
       return haystack.includes(query);
     });
-  }, [attendanceLogs, filter, gamesById, teamsById, venuesById]);
+
+    return [...baseLogs].sort((left, right) => {
+      const leftGame = gamesById.get(left.gameId);
+      const rightGame = gamesById.get(right.gameId);
+      if (!leftGame || !rightGame) {
+        return 0;
+      }
+
+      if (sortKey === "newest") {
+        return right.attendedOn.localeCompare(left.attendedOn);
+      }
+
+      if (sortKey === "oldest") {
+        return left.attendedOn.localeCompare(right.attendedOn);
+      }
+
+      if (sortKey === "venue") {
+        const venueCompare = (venuesById.get(left.venueId)?.name ?? "").localeCompare(venuesById.get(right.venueId)?.name ?? "");
+        return venueCompare || right.attendedOn.localeCompare(left.attendedOn);
+      }
+
+      const leftLabel = `${teamsById.get(leftGame.awayTeamId)?.abbreviation ?? ""} at ${teamsById.get(leftGame.homeTeamId)?.abbreviation ?? ""}`;
+      const rightLabel = `${teamsById.get(rightGame.awayTeamId)?.abbreviation ?? ""} at ${teamsById.get(rightGame.homeTeamId)?.abbreviation ?? ""}`;
+      return leftLabel.localeCompare(rightLabel) || right.attendedOn.localeCompare(left.attendedOn);
+    });
+  }, [attendanceLogs, filter, gamesById, latestSeason, profile.favoriteTeamId, sortKey, teamsById, venuesById, viewKey]);
 
   function beginEditing(log: AttendanceLog) {
     setEditingLogId(log.id);
+    setPendingDeleteLogId(null);
     setDraft(createDraft(log));
     setMessage(null);
     setError(null);
@@ -135,6 +193,7 @@ export function HistoryScreen() {
 
   function cancelEditing() {
     setEditingLogId(null);
+    setPendingDeleteLogId(null);
     setMessage(null);
     setError(null);
   }
@@ -172,6 +231,7 @@ export function HistoryScreen() {
       if (editingLogId === logId) {
         setEditingLogId(null);
       }
+      setPendingDeleteLogId(null);
       setError(null);
       setMessage("Attendance log deleted.");
     } catch (deleteError) {
@@ -196,6 +256,30 @@ export function HistoryScreen() {
           <Text style={styles.helperText}>
             Showing {filteredLogs.length} of {attendanceLogs.length} saved games.
           </Text>
+          <View style={[styles.controlsRow, isWide ? styles.controlsRowWide : null]}>
+            <DropdownField
+              label="Sort"
+              options={sortOptions}
+              value={sortKey}
+              onChange={(value) => {
+                setSortKey(value);
+                setOpenDropdown(null);
+              }}
+              isOpen={openDropdown === "sort"}
+              onToggle={() => setOpenDropdown((current) => current === "sort" ? null : "sort")}
+            />
+            <DropdownField
+              label="View"
+              options={viewOptions}
+              value={viewKey}
+              onChange={(value) => {
+                setViewKey(value);
+                setOpenDropdown(null);
+              }}
+              isOpen={openDropdown === "view"}
+              onToggle={() => setOpenDropdown((current) => current === "view" ? null : "view")}
+            />
+          </View>
         </SectionCard>
 
         <SectionCard title="Coverage">
@@ -226,6 +310,7 @@ export function HistoryScreen() {
 
           const label = formatGameLabel(game, teamsById, venuesById);
           const isEditing = editingLogId === log.id;
+          const isConfirmingDelete = pendingDeleteLogId === log.id;
           const innings = game.lineScore?.length
             ? game.lineScore
             : Array.from({ length: Math.max(game.innings ?? 9, 9) }, (_, index) => ({
@@ -391,10 +476,24 @@ export function HistoryScreen() {
                     <Pressable onPress={() => beginEditing(log)}>
                       <Text style={styles.linkText}>Edit</Text>
                     </Pressable>
-                    <Pressable onPress={() => handleDelete(log.id)}>
+                    <Pressable onPress={() => setPendingDeleteLogId(log.id)}>
                       <Text style={styles.deleteText}>Delete</Text>
                     </Pressable>
                   </View>
+                  {isConfirmingDelete ? (
+                    <View style={styles.confirmDeleteCard}>
+                      <View style={styles.confirmDeleteCopy}>
+                        <Text style={styles.confirmDeleteTitle}>Delete this saved game?</Text>
+                        <Text style={styles.metaText}>This removes the attendance record from your ledger and updates derived stats immediately.</Text>
+                      </View>
+                      <View style={styles.actionRow}>
+                        <PrimaryButton label="Confirm Delete" onPress={() => handleDelete(log.id)} />
+                        <Pressable onPress={() => setPendingDeleteLogId(null)}>
+                          <Text style={styles.linkText}>Cancel</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ) : null}
                 </>
               )}
             </SectionCard>
@@ -448,6 +547,13 @@ const styles = StyleSheet.create({
     gap: spacing.md
   },
   formGridWide: {
+    flexDirection: "row",
+    alignItems: "flex-start"
+  },
+  controlsRow: {
+    gap: spacing.sm
+  },
+  controlsRowWide: {
     flexDirection: "row",
     alignItems: "flex-start"
   },
@@ -580,6 +686,22 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     alignItems: "center",
     gap: spacing.lg
+  },
+  confirmDeleteCard: {
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.red,
+    backgroundColor: colors.slate050
+  },
+  confirmDeleteCopy: {
+    gap: spacing.xs
+  },
+  confirmDeleteTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.slate900
   },
   linkText: {
     fontSize: 14,

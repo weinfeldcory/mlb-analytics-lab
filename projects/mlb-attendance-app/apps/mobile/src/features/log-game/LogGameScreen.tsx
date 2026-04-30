@@ -33,6 +33,7 @@ export function LogGameScreen() {
   const isWide = width >= 1024;
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const venuesById = useMemo(() => new Map(venues.map((venue) => [venue.id, venue])), [venues]);
+  const favoriteTeam = teams.find((team) => team.id === profile.favoriteTeamId);
   const [query, setQuery] = useState("");
   const [date, setDate] = useState("");
   const [stadium, setStadium] = useState("");
@@ -48,14 +49,64 @@ export function LogGameScreen() {
   const [searchError, setSearchError] = useState("");
   const [seatError, setSeatError] = useState("");
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const selectedGameLabel = selectedGame ? formatGameLabel(selectedGame, teamsById, venuesById) : null;
+  const latestSeason = useMemo(() => {
+    const years = games
+      .map((game) => Number(game.startDate.slice(0, 4)))
+      .filter((year) => Number.isFinite(year));
+    return years.length ? String(Math.max(...years)) : "";
+  }, [games]);
+
+  const quickFinds = [
+    favoriteTeam ? { label: favoriteTeam.abbreviation, action: () => applyQuickSearch({ query: favoriteTeam.abbreviation }) } : null,
+    latestSeason ? { label: latestSeason, action: () => applyQuickSearch({ date: latestSeason }) } : null,
+    { label: "Recent games", action: () => applyQuickSearch({}) }
+  ].filter(Boolean) as Array<{ label: string; action: () => void }>;
 
   async function handleSearch() {
-    const matches = await searchGames({ query, date, stadium });
-    setResults(matches);
-    setSearchError(matches.length ? "" : "No games matched those filters. Try team, date, or stadium.");
-    setSelectedGame(null);
+    setIsSearching(true);
     setConfirmation(null);
+
+    try {
+      const trimmedQuery = query.trim();
+      const trimmedDate = date.trim();
+      const trimmedStadium = stadium.trim();
+      const hasFilters = Boolean(trimmedQuery || trimmedDate || trimmedStadium);
+      const matches = await searchGames({
+        query: trimmedQuery,
+        date: trimmedDate,
+        stadium: trimmedStadium
+      });
+      const orderedMatches = [...matches].sort((left, right) => right.startDate.localeCompare(left.startDate));
+      const visibleMatches = hasFilters ? orderedMatches : orderedMatches.slice(0, 12);
+
+      setResults(visibleMatches);
+      setSearchError(visibleMatches.length ? "" : "No games matched those filters. Try team, date, or stadium.");
+      setSelectedGame(null);
+    } finally {
+      setIsSearching(false);
+    }
+  }
+
+  async function applyQuickSearch(next: { query?: string; date?: string; stadium?: string }) {
+    setQuery(next.query ?? "");
+    setDate(next.date ?? "");
+    setStadium(next.stadium ?? "");
+    setConfirmation(null);
+    setIsSearching(true);
+
+    try {
+      const matches = await searchGames(next);
+      const orderedMatches = [...matches].sort((left, right) => right.startDate.localeCompare(left.startDate));
+      const visibleMatches = next.query || next.date || next.stadium ? orderedMatches : orderedMatches.slice(0, 12);
+      setResults(visibleMatches);
+      setSelectedGame(null);
+      setSearchError(visibleMatches.length ? "" : "No games matched that quick find. Try a manual search.");
+    } finally {
+      setIsSearching(false);
+    }
   }
 
   async function handleSave() {
@@ -68,6 +119,8 @@ export function LogGameScreen() {
       setSeatError("Section is required. Row and seat can stay blank.");
       return;
     }
+
+    setIsSaving(true);
 
     try {
       const savedLog = await addAttendanceLog({
@@ -101,29 +154,41 @@ export function LogGameScreen() {
     } catch (error) {
       setConfirmation(null);
       setSearchError(error instanceof Error ? error.message : "We could not save that game.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
   return (
     <Screen
       title="Log a Game"
-      subtitle="Search the seeded MLB schedule, select the matchup you attended, and save the seat and memory details in a browser-friendly flow."
+      subtitle="Find the game fast, save it with just a seat section, and add the extra memory detail only if it helps."
     >
       <View style={[styles.topGrid, isWide ? styles.topGridWide : null]}>
-        <SectionCard title="1. Find the Game">
+        <SectionCard title="1. Find the Game Fast">
+          <View style={styles.quickFindHeader}>
+            <Text style={styles.helperText}>Start from a quick lane, then narrow only if you need to.</Text>
+            <View style={styles.quickFindRow}>
+              {quickFinds.map((quickFind) => (
+                <Pressable key={quickFind.label} onPress={quickFind.action} style={styles.quickFindChip}>
+                  <Text style={styles.quickFindChipText}>{quickFind.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
           <View style={[styles.formGrid, isWide ? styles.formGridWide : null]}>
             <View style={styles.formColumn}>
               <LabeledInput
                 label="Team or matchup"
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Yankees, Red Sox, BAL..."
+                placeholder="Yankees, Mets, Red Sox, BAL..."
               />
               <LabeledInput
                 label="Date"
                 value={date}
                 onChangeText={setDate}
-                placeholder="2025-07-20"
+                placeholder="2025-07-20 or 2025"
                 autoCapitalize="none"
               />
             </View>
@@ -137,10 +202,11 @@ export function LogGameScreen() {
               <View style={styles.searchMetaCard}>
                 <Text style={styles.searchMetaLabel}>Seeded catalog</Text>
                 <Text style={styles.searchMetaValue}>{games.length} MLB finals ready to log</Text>
+                <Text style={styles.searchMetaCopy}>No filter also works. We will show the most recent games first.</Text>
               </View>
             </View>
           </View>
-          <PrimaryButton label="Search Games" onPress={handleSearch} />
+          <PrimaryButton label={isSearching ? "Searching..." : "Search Games"} onPress={handleSearch} disabled={isSearching} />
           {searchError ? <Text style={styles.errorText}>{searchError}</Text> : null}
         </SectionCard>
 
@@ -157,15 +223,21 @@ export function LogGameScreen() {
                   </View>
                 ))}
               </View>
+              <Text style={styles.helperText}>
+                Save with just the seat section now. You can add or edit the memory details later in History.
+              </Text>
             </>
           ) : (
-            <Text style={styles.helperText}>Search and choose a game to unlock the seat and memory form.</Text>
+            <Text style={styles.helperText}>Use quick find or search, then choose one game and save it with only a seat section if you want speed.</Text>
           )}
         </SectionCard>
       </View>
 
       {results.length ? (
         <SectionCard title={`2. Select a Game (${results.length})`}>
+          <Text style={styles.helperText}>
+            Pick the exact game you attended. Most recent matching games show first.
+          </Text>
           <View style={styles.resultsGrid}>
             {results.map((game) => {
               const label = formatGameLabel(game, teamsById, venuesById);
@@ -193,7 +265,10 @@ export function LogGameScreen() {
 
       <View style={[styles.bottomGrid, isWide ? styles.bottomGridWide : null]}>
         <View style={styles.formColumn}>
-          <SectionCard title="3. Enter Seat Details">
+          <SectionCard title="3. Save It Fast">
+            <Text style={styles.helperText}>
+              Section is the only required field. Everything else is optional and can wait.
+            </Text>
             <LabeledInput
               label="Section"
               value={section}
@@ -222,11 +297,16 @@ export function LogGameScreen() {
                 />
               </View>
             </View>
+            <PrimaryButton
+              label={isSaving ? "Saving..." : "Save Attendance Log"}
+              onPress={handleSave}
+              disabled={!selectedGame || isSaving}
+            />
           </SectionCard>
         </View>
 
         <View style={styles.formColumn}>
-          <SectionCard title="4. Add the Memory (Optional)">
+          <SectionCard title="4. Add the Memory Now Or Later">
             <LabeledInput
               label="Memorable moment"
               value={memorableMoment}
@@ -259,7 +339,6 @@ export function LogGameScreen() {
                 />
               </View>
             </View>
-            <PrimaryButton label="Save Attendance Log" onPress={handleSave} disabled={!selectedGame} />
           </SectionCard>
         </View>
       </View>
@@ -315,6 +394,32 @@ const styles = StyleSheet.create({
   },
   searchMetaValue: {
     fontSize: 18,
+    fontWeight: "700",
+    color: colors.navy
+  },
+  searchMetaCopy: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.slate500
+  },
+  quickFindHeader: {
+    gap: spacing.sm
+  },
+  quickFindRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
+  quickFindChip: {
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  quickFindChipText: {
+    fontSize: 13,
     fontWeight: "700",
     color: colors.navy
   },
