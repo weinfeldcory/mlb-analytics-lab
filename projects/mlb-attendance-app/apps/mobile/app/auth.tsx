@@ -110,6 +110,7 @@ export default function AuthScreen() {
                 placeholder={identifierPlaceholder}
                 autoCapitalize="none"
                 keyboardType={isHosted ? "email-address" : "default"}
+                returnKeyType={mode === "signin" ? "next" : "next"}
               />
               <LabeledInput
                 label="Password"
@@ -118,6 +119,12 @@ export default function AuthScreen() {
                 placeholder="Password"
                 autoCapitalize="none"
                 secureTextEntry
+                returnKeyType={mode === "signin" ? "go" : "done"}
+                onSubmitEditing={() => {
+                  if (!isSubmitting) {
+                    void handleSubmit();
+                  }
+                }}
               />
               <PrimaryButton
                 label={

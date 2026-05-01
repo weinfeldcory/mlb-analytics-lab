@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, TextInputSubmitEditingEventData, NativeSyntheticEvent, View } from "react-native";
 import { colors, radii, spacing } from "../../styles/tokens";
 
 interface LabeledInputProps {
@@ -12,6 +12,9 @@ interface LabeledInputProps {
   numberOfLines?: number;
   secureTextEntry?: boolean;
   keyboardType?: "default" | "email-address";
+  returnKeyType?: "done" | "go" | "next" | "search" | "send";
+  blurOnSubmit?: boolean;
+  onSubmitEditing?: (event: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => void;
 }
 
 export function LabeledInput({
@@ -24,7 +27,10 @@ export function LabeledInput({
   multiline = false,
   numberOfLines,
   secureTextEntry = false,
-  keyboardType = "default"
+  keyboardType = "default",
+  returnKeyType,
+  blurOnSubmit,
+  onSubmitEditing
 }: LabeledInputProps) {
   return (
     <View style={styles.wrapper}>
@@ -38,6 +44,9 @@ export function LabeledInput({
         numberOfLines={numberOfLines}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
+        returnKeyType={returnKeyType}
+        blurOnSubmit={blurOnSubmit}
+        onSubmitEditing={onSubmitEditing}
         textAlignVertical={multiline ? "top" : "center"}
         style={[styles.input, multiline ? styles.inputMultiline : null, error ? styles.inputError : null]}
         placeholderTextColor={colors.slate400}

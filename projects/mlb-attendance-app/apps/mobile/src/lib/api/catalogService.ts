@@ -13,6 +13,34 @@ export interface CatalogBundle {
   venues: Venue[];
 }
 
+function normalizeSearchValue(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function buildVenueAliases(venue: Venue | undefined) {
+  if (!venue) {
+    return [];
+  }
+
+  return [
+    venue.name,
+    venue.city,
+    venue.state ? `${venue.city} ${venue.state}` : ""
+  ].filter(Boolean);
+}
+
+function matchesDate(gameDate: string, rawDate?: string) {
+  const date = rawDate?.trim();
+  if (!date) {
+    return true;
+  }
+
+  const compactQuery = date.replace(/[^\d]/g, "");
+  const compactGameDate = gameDate.replace(/[^\d]/g, "");
+
+  return gameDate.includes(date) || compactGameDate.includes(compactQuery);
+}
+
 export async function getCatalog(): Promise<CatalogBundle> {
   return {
     games,
@@ -25,6 +53,8 @@ export async function searchGames(filters: GameSearchFilters): Promise<Game[]> {
   const query = filters.query?.trim().toLowerCase();
   const date = filters.date?.trim();
   const stadium = filters.stadium?.trim().toLowerCase();
+  const normalizedQuery = query ? normalizeSearchValue(query) : "";
+  const normalizedStadium = stadium ? normalizeSearchValue(stadium) : "";
 
   const teamMap = new Map(teams.map((team) => [team.id, team]));
   const venueMap = new Map(venues.map((venue) => [venue.id, venue]));
@@ -34,17 +64,33 @@ export async function searchGames(filters: GameSearchFilters): Promise<Game[]> {
     const awayTeam = teamMap.get(game.awayTeamId);
     const venue = venueMap.get(game.venueId);
 
+    const searchHaystack = [
+      homeTeam ? `${homeTeam.city} ${homeTeam.name}` : "",
+      awayTeam ? `${awayTeam.city} ${awayTeam.name}` : "",
+      homeTeam?.abbreviation ?? "",
+      awayTeam?.abbreviation ?? "",
+      homeTeam && awayTeam ? `${awayTeam.abbreviation} at ${homeTeam.abbreviation}` : "",
+      homeTeam && awayTeam ? `${awayTeam.name} vs ${homeTeam.name}` : "",
+      homeTeam && awayTeam ? `${awayTeam.city} ${awayTeam.name} ${homeTeam.city} ${homeTeam.name}` : "",
+      venue?.name ?? "",
+      ...buildVenueAliases(venue)
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    const normalizedHaystack = normalizeSearchValue(searchHaystack);
+
     const matchesQuery =
       !query ||
-      homeTeam?.name.toLowerCase().includes(query) ||
-      awayTeam?.name.toLowerCase().includes(query) ||
-      homeTeam?.abbreviation.toLowerCase().includes(query) ||
-      awayTeam?.abbreviation.toLowerCase().includes(query) ||
-      venue?.name.toLowerCase().includes(query);
+      searchHaystack.includes(query) ||
+      normalizedHaystack.includes(normalizedQuery);
 
-    const matchesDate = !date || game.startDate.includes(date);
-    const matchesStadium = !stadium || venue?.name.toLowerCase().includes(stadium);
+    const matchesDateValue = matchesDate(game.startDate, date);
+    const matchesStadium =
+      !stadium ||
+      buildVenueAliases(venue).some((alias) => alias.toLowerCase().includes(stadium)) ||
+      buildVenueAliases(venue).some((alias) => normalizeSearchValue(alias).includes(normalizedStadium));
 
-    return Boolean(matchesQuery && matchesDate && matchesStadium);
+    return Boolean(matchesQuery && matchesDateValue && matchesStadium);
   });
 }

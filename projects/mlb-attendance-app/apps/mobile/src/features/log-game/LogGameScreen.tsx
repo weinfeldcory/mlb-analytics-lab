@@ -10,6 +10,8 @@ import { colors, spacing } from "../../styles/tokens";
 import { formatGameLabel } from "../../lib/formatters";
 import type { Game } from "@mlb-attendance/domain";
 
+type StatusTone = "idle" | "info" | "success" | "error";
+
 function buildGameNotes(game: Game) {
   const notes = [];
 
@@ -51,6 +53,8 @@ export function LogGameScreen() {
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [searchStatus, setSearchStatus] = useState<{ tone: StatusTone; message: string } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<{ tone: StatusTone; message: string } | null>(null);
   const selectedGameLabel = selectedGame ? formatGameLabel(selectedGame, teamsById, venuesById) : null;
   const latestSeason = useMemo(() => {
     const years = games
@@ -68,6 +72,11 @@ export function LogGameScreen() {
   async function handleSearch() {
     setIsSearching(true);
     setConfirmation(null);
+    setSaveStatus(null);
+    setSearchStatus({
+      tone: "info",
+      message: "Searching the MLB catalog now."
+    });
 
     try {
       const trimmedQuery = query.trim();
@@ -84,7 +93,23 @@ export function LogGameScreen() {
 
       setResults(visibleMatches);
       setSearchError(visibleMatches.length ? "" : "No games matched those filters. Try team, date, or stadium.");
+      setSearchStatus(
+        visibleMatches.length
+          ? {
+              tone: "success",
+              message: `${visibleMatches.length} game${visibleMatches.length === 1 ? "" : "s"} ready to review.`
+            }
+          : {
+              tone: "error",
+              message: "No games matched that search."
+            }
+      );
       setSelectedGame(null);
+    } catch {
+      setSearchStatus({
+        tone: "error",
+        message: "Search failed. Try again."
+      });
     } finally {
       setIsSearching(false);
     }
@@ -96,6 +121,11 @@ export function LogGameScreen() {
     setStadium(next.stadium ?? "");
     setConfirmation(null);
     setIsSearching(true);
+    setSaveStatus(null);
+    setSearchStatus({
+      tone: "info",
+      message: "Searching the MLB catalog now."
+    });
 
     try {
       const matches = await searchGames(next);
@@ -104,6 +134,22 @@ export function LogGameScreen() {
       setResults(visibleMatches);
       setSelectedGame(null);
       setSearchError(visibleMatches.length ? "" : "No games matched that quick find. Try a manual search.");
+      setSearchStatus(
+        visibleMatches.length
+          ? {
+              tone: "success",
+              message: `${visibleMatches.length} game${visibleMatches.length === 1 ? "" : "s"} ready to review.`
+            }
+          : {
+              tone: "error",
+              message: "No games matched that quick find."
+            }
+      );
+    } catch {
+      setSearchStatus({
+        tone: "error",
+        message: "Search failed. Try again."
+      });
     } finally {
       setIsSearching(false);
     }
@@ -112,15 +158,27 @@ export function LogGameScreen() {
   async function handleSave() {
     if (!selectedGame) {
       setSearchError("Select a game before saving.");
+      setSaveStatus({
+        tone: "error",
+        message: "Choose a game before saving."
+      });
       return;
     }
 
     if (!section.trim()) {
       setSeatError("Section is required. Row and seat can stay blank.");
+      setSaveStatus({
+        tone: "error",
+        message: "Section is required before save."
+      });
       return;
     }
 
     setIsSaving(true);
+    setSaveStatus({
+      tone: "info",
+      message: "Saving this game to your ledger now."
+    });
 
     try {
       const savedLog = await addAttendanceLog({
@@ -142,6 +200,10 @@ export function LogGameScreen() {
       setConfirmation(
         `Saved ${savedLog.attendedOn} in section ${savedLog.seat.section}. You can review it in History and Stats now.`
       );
+      setSaveStatus({
+        tone: "success",
+        message: "Saved to your ledger."
+      });
       setSelectedGame(null);
       setResults([]);
       setSection("");
@@ -153,7 +215,12 @@ export function LogGameScreen() {
       setWeather("");
     } catch (error) {
       setConfirmation(null);
-      setSearchError(error instanceof Error ? error.message : "We could not save that game.");
+      const message = error instanceof Error ? error.message : "We could not save that game.";
+      setSearchError(message);
+      setSaveStatus({
+        tone: "error",
+        message
+      });
     } finally {
       setIsSaving(false);
     }
@@ -183,6 +250,10 @@ export function LogGameScreen() {
                 value={query}
                 onChangeText={setQuery}
                 placeholder="Yankees, Mets, Red Sox, BAL..."
+                returnKeyType="search"
+                onSubmitEditing={() => {
+                  void handleSearch();
+                }}
               />
               <LabeledInput
                 label="Date"
@@ -190,6 +261,10 @@ export function LogGameScreen() {
                 onChangeText={setDate}
                 placeholder="2025-07-20 or 2025"
                 autoCapitalize="none"
+                returnKeyType="search"
+                onSubmitEditing={() => {
+                  void handleSearch();
+                }}
               />
             </View>
             <View style={styles.formColumn}>
@@ -198,6 +273,10 @@ export function LogGameScreen() {
                 value={stadium}
                 onChangeText={setStadium}
                 placeholder="Fenway, Yankee Stadium..."
+                returnKeyType="search"
+                onSubmitEditing={() => {
+                  void handleSearch();
+                }}
               />
               <View style={styles.searchMetaCard}>
                 <Text style={styles.searchMetaLabel}>MLB catalog</Text>
@@ -207,6 +286,13 @@ export function LogGameScreen() {
             </View>
           </View>
           <PrimaryButton label={isSearching ? "Searching..." : "Search Games"} onPress={handleSearch} disabled={isSearching} />
+          {searchStatus ? (
+            <View style={[styles.statusCard, searchStatus.tone === "success" ? styles.statusCardSuccess : null, searchStatus.tone === "error" ? styles.statusCardError : null]}>
+              <Text style={[styles.statusText, searchStatus.tone === "success" ? styles.statusTextSuccess : null, searchStatus.tone === "error" ? styles.statusTextError : null]}>
+                {searchStatus.message}
+              </Text>
+            </View>
+          ) : null}
           {searchError ? <Text style={styles.errorText}>{searchError}</Text> : null}
         </SectionCard>
 
@@ -302,6 +388,13 @@ export function LogGameScreen() {
               onPress={handleSave}
               disabled={!selectedGame || isSaving}
             />
+            {saveStatus ? (
+              <View style={[styles.statusCard, saveStatus.tone === "success" ? styles.statusCardSuccess : null, saveStatus.tone === "error" ? styles.statusCardError : null]}>
+                <Text style={[styles.statusText, saveStatus.tone === "success" ? styles.statusTextSuccess : null, saveStatus.tone === "error" ? styles.statusTextError : null]}>
+                  {saveStatus.message}
+                </Text>
+              </View>
+            ) : null}
           </SectionCard>
         </View>
 
@@ -470,6 +563,33 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 13,
+    color: colors.red
+  },
+  statusCard: {
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    backgroundColor: colors.slate050,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  statusCardSuccess: {
+    borderColor: colors.sky,
+    backgroundColor: colors.slate100
+  },
+  statusCardError: {
+    borderColor: colors.red,
+    backgroundColor: colors.slate050
+  },
+  statusText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.slate700
+  },
+  statusTextSuccess: {
+    color: colors.navy
+  },
+  statusTextError: {
     color: colors.red
   },
   successText: {
