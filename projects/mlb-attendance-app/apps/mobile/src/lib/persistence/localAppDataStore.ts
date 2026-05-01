@@ -153,5 +153,8 @@ export const localAppDataStore: AppDataStore = {
   persistCurrentUser: persistSignedInState,
   signIn,
   signUp,
-  signOut
+  signOut,
+  async requestPasswordReset() {
+    throw new Error("Local accounts do not support password recovery yet.");
+  }
 };

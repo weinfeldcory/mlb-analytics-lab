@@ -9,14 +9,16 @@ import { colors, spacing } from "../src/styles/tokens";
 
 export default function AuthScreen() {
   const { width } = useWindowDimensions();
-  const { storageMode, isHydrated, isAuthenticated, profile, signIn, signUp } = useAppData();
+  const { storageMode, isHydrated, isAuthenticated, profile, signIn, signUp, requestPasswordReset } = useAppData();
   const isWide = width >= 1024;
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [helpMessage, setHelpMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRequestingReset, setIsRequestingReset] = useState(false);
   const isHosted = storageMode === "hosted";
   const identifierLabel = isHosted ? "Email" : "Username";
   const identifierPlaceholder = isHosted ? "fan@example.com" : "cory";
@@ -38,6 +40,7 @@ export default function AuthScreen() {
 
   async function handleSubmit() {
     setError(null);
+    setHelpMessage(null);
     setIsSubmitting(true);
 
     try {
@@ -56,6 +59,21 @@ export default function AuthScreen() {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handlePasswordHelp() {
+    setError(null);
+    setHelpMessage(null);
+    setIsRequestingReset(true);
+
+    try {
+      const message = await requestPasswordReset(identifier);
+      setHelpMessage(message);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "We could not start password help.");
+    } finally {
+      setIsRequestingReset(false);
     }
   }
 
@@ -112,6 +130,16 @@ export default function AuthScreen() {
                 onPress={handleSubmit}
                 disabled={isSubmitting}
               />
+              {mode === "signin" ? (
+                <View style={styles.secondaryActionRow}>
+                  <Text style={styles.secondaryActionCopy}>Forgot your password?</Text>
+                  <Pressable onPress={handlePasswordHelp} disabled={isRequestingReset}>
+                    <Text style={styles.secondaryActionLink}>
+                      {isRequestingReset ? "Sending reset..." : isHosted ? "Reset password" : "Get help"}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
               <View style={styles.secondaryActionRow}>
                 <Text style={styles.secondaryActionCopy}>
                   {mode === "signin" ? "Need an account?" : "Already have an account?"}
@@ -122,6 +150,7 @@ export default function AuthScreen() {
                   </Text>
                 </Pressable>
               </View>
+              {helpMessage ? <Text style={styles.helpText}>{helpMessage}</Text> : null}
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
             </SectionCard>
           </View>
@@ -222,5 +251,9 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     color: colors.red
+  },
+  helpText: {
+    fontSize: 14,
+    color: colors.slate700
   }
 });

@@ -45,4 +45,5 @@ export interface AppDataStore {
   signIn: (params: SignInParams) => Promise<HydratedAppDataState>;
   signUp: (params: SignUpParams) => Promise<HydratedAppDataState>;
   signOut: (params: SignOutParams) => Promise<HydratedAppDataState>;
+  requestPasswordReset: (identifier: string) => Promise<string>;
 }

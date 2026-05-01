@@ -37,6 +37,8 @@ type ProfileRow = {
   has_completed_onboarding: boolean;
 };
 
+type AttendanceLogUpsertRow = Omit<AttendanceLogRow, "id">;
+
 const RECOVERY_EMAILS = new Set(["weinfeldcory@gmail.com"]);
 
 function sortAttendanceLogs(logs: AttendanceLog[]) {
@@ -110,6 +112,23 @@ function mapLogToAttendanceRow(log: AttendanceLog): AttendanceLogRow {
   };
 }
 
+function mapLogToAttendanceUpsertRow(log: AttendanceLog): AttendanceLogUpsertRow {
+  return {
+    user_id: log.userId,
+    game_id: log.gameId,
+    venue_id: log.venueId,
+    attended_on: log.attendedOn,
+    seat_section: log.seat.section.trim(),
+    seat_row: log.seat.row?.trim() || null,
+    seat_number: log.seat.seatNumber?.trim() || null,
+    witnessed_events: log.witnessedEvents ?? [],
+    memorable_moment: log.memorableMoment?.trim() || null,
+    companion: log.companion?.trim() || null,
+    giveaway: log.giveaway?.trim() || null,
+    weather: log.weather?.trim() || null
+  };
+}
+
 function buildAccount(userId: string, email: string): AppSessionAccount {
   return {
     id: userId,
@@ -118,10 +137,9 @@ function buildAccount(userId: string, email: string): AppSessionAccount {
 }
 
 function buildRecoveryAttendanceRows(userId: string) {
-  return seededAttendanceLogs.map((log, index) =>
-    mapLogToAttendanceRow({
+  return seededAttendanceLogs.map((log) =>
+    mapLogToAttendanceUpsertRow({
       ...log,
-      id: `recovery_${index + 1}_${log.gameId}`,
       userId
     })
   );
@@ -134,7 +152,9 @@ async function maybeRecoverSeededLedger(userId: string, email: string, attendanc
 
   const client = requireSupabaseClient();
   const recoveryRows = buildRecoveryAttendanceRows(userId);
-  const { error: recoveryError } = await client.from("attendance_logs").upsert(recoveryRows);
+  const { error: recoveryError } = await client
+    .from("attendance_logs")
+    .upsert(recoveryRows, { onConflict: "user_id,game_id" });
 
   if (recoveryError) {
     throw new Error(recoveryError.message);
@@ -259,7 +279,7 @@ async function syncHostedState(params: PersistCurrentUserParams) {
   }
 
   const nextRows = params.attendanceLogs.map((log) =>
-    mapLogToAttendanceRow({
+    mapLogToAttendanceUpsertRow({
       ...log,
       userId: session.user.id
     })
@@ -267,30 +287,32 @@ async function syncHostedState(params: PersistCurrentUserParams) {
 
   const { data: existingRows, error: existingRowsError } = await client
     .from("attendance_logs")
-    .select("id")
+    .select("game_id")
     .eq("user_id", session.user.id)
-    .returns<Array<{ id: string }>>();
+    .returns<Array<{ game_id: string }>>();
 
   if (existingRowsError) {
     throw new Error(existingRowsError.message);
   }
 
-  const nextIds = new Set(nextRows.map((row) => row.id));
-  const idsToDelete = (existingRows ?? []).map((row) => row.id).filter((id) => !nextIds.has(id));
+  const nextGameIds = new Set(nextRows.map((row) => row.game_id));
+  const gameIdsToDelete = (existingRows ?? []).map((row) => row.game_id).filter((gameId) => !nextGameIds.has(gameId));
 
   if (nextRows.length > 0) {
-    const { error: upsertLogsError } = await client.from("attendance_logs").upsert(nextRows);
+    const { error: upsertLogsError } = await client
+      .from("attendance_logs")
+      .upsert(nextRows, { onConflict: "user_id,game_id" });
     if (upsertLogsError) {
       throw new Error(upsertLogsError.message);
     }
   }
 
-  if (idsToDelete.length > 0) {
+  if (gameIdsToDelete.length > 0) {
     const { error: deleteLogsError } = await client
       .from("attendance_logs")
       .delete()
       .eq("user_id", session.user.id)
-      .in("id", idsToDelete);
+      .in("game_id", gameIdsToDelete);
 
     if (deleteLogsError) {
       throw new Error(deleteLogsError.message);
@@ -379,5 +401,20 @@ export const hostedAppDataStore: AppDataStore = {
     }
 
     return createSignedOutState();
+  },
+  async requestPasswordReset(identifier: string) {
+    const client = requireSupabaseClient();
+    const email = identifier.trim().toLowerCase();
+
+    if (!email) {
+      throw new Error("Enter your email first.");
+    }
+
+    const { error } = await client.auth.resetPasswordForEmail(email);
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return "If that email has a hosted account, a password reset email is on the way.";
   }
 };

@@ -30,6 +30,7 @@ interface AppDataContextValue {
   signIn: (params: { identifier: string; password: string }) => Promise<void>;
   signUp: (params: { identifier: string; password: string; displayName?: string }) => Promise<void>;
   signOut: () => Promise<void>;
+  requestPasswordReset: (identifier: string) => Promise<string>;
   addAttendanceLog: (input: CreateAttendanceInput) => Promise<AttendanceLog>;
   updateProfile: (updates: { displayName?: string; favoriteTeamId?: string; followingIds?: string[] }) => Promise<UserProfile>;
   completeOnboarding: (updates: { displayName?: string; favoriteTeamId?: string }) => Promise<UserProfile>;
@@ -195,6 +196,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     applyHydratedState(nextState);
     setPersistenceStatus("saved");
     setPersistenceError(null);
+  }
+
+  async function requestPasswordReset(identifier: string) {
+    return appDataStore.requestPasswordReset(identifier);
   }
 
   async function addAttendanceLog(input: CreateAttendanceInput) {
@@ -390,6 +395,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     signOut,
+    requestPasswordReset,
     addAttendanceLog,
     updateProfile,
     completeOnboarding,
