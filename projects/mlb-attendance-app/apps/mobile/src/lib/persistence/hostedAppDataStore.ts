@@ -45,6 +45,7 @@ function createSignedOutState(): HydratedAppDataState {
   return {
     accounts: [],
     currentAccount: null,
+    currentUserId: null,
     profile: mockUser,
     attendanceLogs: sortAttendanceLogs(seededAttendanceLogs)
   };
@@ -171,13 +172,14 @@ async function fetchHydratedStateForUser(userId: string, email: string, fallback
   return {
     accounts: [buildAccount(userId, email)],
     currentAccount: buildAccount(userId, email),
+    currentUserId: userId,
     profile: mapProfileRowToProfile(profileRow),
     attendanceLogs: (attendanceRows ?? []).map(mapAttendanceRowToLog)
   } satisfies HydratedAppDataState;
 }
 
 async function syncHostedState(params: PersistCurrentUserParams) {
-  if (!params.currentAccountId) {
+  if (!params.currentUserId) {
     return;
   }
 

@@ -3,8 +3,12 @@ import { attendanceLogs as seededAttendanceLogs, mockUser } from "../data/mockSp
 import type { AttendanceLog, UserProfile } from "@mlb-attendance/domain";
 
 const STORAGE_KEY = "mlb-attendance-app:state";
-const STORAGE_VERSION = 6;
+const STORAGE_VERSION = 7;
 const SEEDED_DATA_VERSION = "real-mlb-history-v1";
+const LEGACY_PROFILE_KEY = "profile";
+const LEGACY_ATTENDANCE_LOGS_KEY = "attendanceLogs";
+const LEGACY_SEEDED_DATA_IMPORTED_KEY = "seededDataImported";
+const LEGACY_SEEDED_DATA_VERSION_KEY = "seededDataVersion";
 
 interface PersistedAppStateV1 {
   version: 1;
@@ -54,7 +58,14 @@ interface PersistedAccountMetadataV6 {
 
 interface PersistedRootStateV6 {
   version: 6;
-  currentAccountId: string | null;
+  currentUserId: string | null;
+  accounts: PersistedAccountMetadataV6[];
+}
+
+interface PersistedRootStateV7 {
+  version: 7;
+  currentUserId: string | null;
+  hasMigratedLegacyUserScope: boolean;
   accounts: PersistedAccountMetadataV6[];
 }
 
@@ -72,7 +83,7 @@ export interface LocalAccountRecord extends AppRepositoryState {
 }
 
 export interface PersistedRootState {
-  currentAccountId: string | null;
+  currentUserId: string | null;
   accounts: LocalAccountRecord[];
 }
 
@@ -86,6 +97,21 @@ function buildAttendanceLogsStorageKey(accountId: string) {
 
 function buildAccountMetaStorageKey(accountId: string) {
   return `accountMeta_${accountId}`;
+}
+
+function dedupeAttendanceLogs(logs: AttendanceLog[]) {
+  const seenIds = new Set<string>();
+  const seenGameIds = new Set<string>();
+
+  return logs.filter((log) => {
+    if (seenIds.has(log.id) || seenGameIds.has(log.gameId)) {
+      return false;
+    }
+
+    seenIds.add(log.id);
+    seenGameIds.add(log.gameId);
+    return true;
+  });
 }
 
 function normalizeUsername(username: string) {
@@ -139,8 +165,9 @@ function normalizeAttendanceLog(log: AttendanceLog): AttendanceLog {
 function sanitizeState(input: AppRepositoryState): AppRepositoryState {
   return {
     profile: normalizeProfile(input.profile),
-    attendanceLogs: input.attendanceLogs
-      .map((log) => normalizeAttendanceLog(log))
+    attendanceLogs: dedupeAttendanceLogs(
+      input.attendanceLogs.map((log) => normalizeAttendanceLog(log))
+    )
       .sort((left, right) => right.attendedOn.localeCompare(left.attendedOn)),
     seededDataImported: input.seededDataImported,
     seededDataVersion: input.seededDataVersion
@@ -181,7 +208,7 @@ function createRootStateFromLegacy(state: AppRepositoryState): PersistedRootStat
   });
 
   return {
-    currentAccountId: account.id,
+    currentUserId: account.id,
     accounts: [account]
   };
 }
@@ -224,20 +251,20 @@ function migrateLegacyAppState(parsed: unknown): AppRepositoryState {
 function migratePersistedRootState(parsed: unknown): PersistedRootState {
   if (!parsed || typeof parsed !== "object") {
     return {
-      currentAccountId: null,
+      currentUserId: null,
       accounts: []
     };
   }
 
-  const candidate = parsed as Partial<PersistedAppStateV5>;
-  if (candidate.version === 5 && Array.isArray(candidate.accounts)) {
-    const accounts = candidate.accounts.map(sanitizeAccount);
-    const currentAccountId = accounts.some((account) => account.id === candidate.currentAccountId)
-      ? candidate.currentAccountId ?? null
+  const legacyCandidate = parsed as Partial<PersistedAppStateV5>;
+  if (legacyCandidate.version === 5 && Array.isArray(legacyCandidate.accounts)) {
+    const accounts = legacyCandidate.accounts.map(sanitizeAccount);
+    const currentUserId = accounts.some((account) => account.id === legacyCandidate.currentAccountId)
+      ? legacyCandidate.currentAccountId ?? null
       : accounts[0]?.id ?? null;
 
     return {
-      currentAccountId,
+      currentUserId,
       accounts
     };
   }
@@ -314,6 +341,112 @@ async function loadAccountState(
   });
 }
 
+async function loadLegacyUnscopedState(userId: string): Promise<AppRepositoryState | null> {
+  const entries = await AsyncStorage.multiGet([
+    LEGACY_PROFILE_KEY,
+    LEGACY_ATTENDANCE_LOGS_KEY,
+    LEGACY_SEEDED_DATA_IMPORTED_KEY,
+    LEGACY_SEEDED_DATA_VERSION_KEY
+  ]);
+  const profileValue = entries[0]?.[1];
+  const attendanceLogsValue = entries[1]?.[1];
+  const seededDataImportedValue = entries[2]?.[1];
+  const seededDataVersionValue = entries[3]?.[1];
+
+  if (!profileValue && !attendanceLogsValue && !seededDataImportedValue && !seededDataVersionValue) {
+    return null;
+  }
+
+  try {
+    const parsedAttendanceLogs = attendanceLogsValue ? JSON.parse(attendanceLogsValue) : [];
+    return sanitizeState({
+      profile: normalizeProfile({
+        ...(profileValue ? JSON.parse(profileValue) : {}),
+        id: userId
+      }),
+      attendanceLogs: Array.isArray(parsedAttendanceLogs)
+        ? (parsedAttendanceLogs as AttendanceLog[]).map((log) => ({
+            ...log,
+            userId
+          }))
+        : [],
+      seededDataImported: seededDataImportedValue ? JSON.parse(seededDataImportedValue) : true,
+      seededDataVersion: seededDataVersionValue ? JSON.parse(seededDataVersionValue) : SEEDED_DATA_VERSION
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function removeLegacyUnscopedKeys() {
+  const keys = await AsyncStorage.getAllKeys();
+  const removableKeys = [
+    LEGACY_PROFILE_KEY,
+    LEGACY_ATTENDANCE_LOGS_KEY,
+    LEGACY_SEEDED_DATA_IMPORTED_KEY,
+    LEGACY_SEEDED_DATA_VERSION_KEY
+  ].filter((key) => keys.includes(key));
+
+  if (removableKeys.length) {
+    await AsyncStorage.multiRemove(removableKeys);
+  }
+}
+
+async function migrateLegacyUnscopedStateIntoAccounts(
+  accounts: LocalAccountRecord[],
+  currentUserId: string | null
+): Promise<{ accounts: LocalAccountRecord[]; hasMigratedLegacyUserScope: boolean }> {
+  const targetUserId = currentUserId ?? accounts[0]?.id ?? null;
+  if (!targetUserId) {
+    return {
+      accounts,
+      hasMigratedLegacyUserScope: false
+    };
+  }
+
+  const legacyState = await loadLegacyUnscopedState(targetUserId);
+  if (!legacyState) {
+    return {
+      accounts,
+      hasMigratedLegacyUserScope: true
+    };
+  }
+
+  const nextAccounts = accounts.map((account) => {
+    if (account.id !== targetUserId) {
+      return account;
+    }
+
+    return sanitizeAccount({
+      ...account,
+      profile: {
+        ...account.profile,
+        ...legacyState.profile,
+        id: targetUserId
+      },
+      attendanceLogs: [
+        ...legacyState.attendanceLogs.map((log) => ({
+          ...log,
+          userId: targetUserId
+        })),
+        ...account.attendanceLogs.map((log) => ({
+          ...log,
+          userId: targetUserId
+        }))
+      ],
+      seededDataImported: legacyState.seededDataImported,
+      seededDataVersion: legacyState.seededDataVersion
+    });
+  });
+
+  await removeLegacyUnscopedKeys();
+
+  return {
+    accounts: nextAccounts,
+    hasMigratedLegacyUserScope: true
+  };
+}
+
 export function createLocalAccount(params: {
   identifier: string;
   password: string;
@@ -362,7 +495,7 @@ export async function loadRootState(): Promise<PersistedRootState> {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   if (!raw) {
     return {
-      currentAccountId: null,
+      currentUserId: null,
       accounts: []
     };
   }
@@ -370,15 +503,16 @@ export async function loadRootState(): Promise<PersistedRootState> {
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (parsed && typeof parsed === "object") {
-      const candidate = parsed as Partial<PersistedRootStateV6>;
-      if (candidate.version === STORAGE_VERSION && Array.isArray(candidate.accounts)) {
+      const candidate = parsed as Partial<PersistedRootStateV6 | PersistedRootStateV7>;
+      if ((candidate.version === 6 || candidate.version === STORAGE_VERSION) && Array.isArray(candidate.accounts)) {
         const accounts = await Promise.all(candidate.accounts.map((account) => loadAccountState(account)));
-        const currentAccountId = accounts.some((account) => account.id === candidate.currentAccountId)
-          ? candidate.currentAccountId ?? null
+        const persistedCurrentUserId = candidate.currentUserId;
+        const currentUserId = accounts.some((account) => account.id === persistedCurrentUserId)
+          ? persistedCurrentUserId ?? null
           : accounts[0]?.id ?? null;
 
         return {
-          currentAccountId,
+          currentUserId,
           accounts
         };
       }
@@ -388,17 +522,28 @@ export async function loadRootState(): Promise<PersistedRootState> {
   } catch {
     await AsyncStorage.removeItem(STORAGE_KEY);
     return {
-      currentAccountId: null,
+      currentUserId: null,
       accounts: []
     };
   }
 }
 
 export async function saveRootState(state: PersistedRootState): Promise<void> {
-  const accounts = state.accounts.map(sanitizeAccount);
-  const payload: PersistedRootStateV6 = {
+  const sanitizedAccounts = state.accounts.map(sanitizeAccount);
+  const rootRaw = await AsyncStorage.getItem(STORAGE_KEY);
+  const parsedRoot = rootRaw ? (JSON.parse(rootRaw) as Partial<PersistedRootStateV7>) : null;
+  const hasMigratedLegacyUserScope = parsedRoot?.version === STORAGE_VERSION && parsedRoot.hasMigratedLegacyUserScope === true;
+  const migrationResult = hasMigratedLegacyUserScope
+    ? {
+        accounts: sanitizedAccounts,
+        hasMigratedLegacyUserScope
+      }
+    : await migrateLegacyUnscopedStateIntoAccounts(sanitizedAccounts, state.currentUserId);
+  const accounts = migrationResult.accounts.map(sanitizeAccount);
+  const payload: PersistedRootStateV7 = {
     version: STORAGE_VERSION,
-    currentAccountId: state.currentAccountId,
+    currentUserId: state.currentUserId,
+    hasMigratedLegacyUserScope: migrationResult.hasMigratedLegacyUserScope,
     accounts: accounts.map((account) => ({
       id: account.id,
       username: account.username,
@@ -454,6 +599,10 @@ export async function clearAllAppState(): Promise<void> {
   const removableKeys = keys.filter(
     (key) =>
       key === STORAGE_KEY ||
+      key === LEGACY_PROFILE_KEY ||
+      key === LEGACY_ATTENDANCE_LOGS_KEY ||
+      key === LEGACY_SEEDED_DATA_IMPORTED_KEY ||
+      key === LEGACY_SEEDED_DATA_VERSION_KEY ||
       key.startsWith("profile_") ||
       key.startsWith("attendanceLogs_") ||
       key.startsWith("accountMeta_")
