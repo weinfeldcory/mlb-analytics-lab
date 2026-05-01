@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { attendanceLogs as seededAttendanceLogs, friendAttendanceLogs, friends, games, mockUser, teams, venues } from "../lib/data/mockSportsData";
+import { attendanceLogs as seededAttendanceLogs, games, mockUser, teams, venues } from "../lib/data/mockSportsData";
 import { buildAttendanceLog } from "../lib/api/attendanceService";
 import { searchGames as searchCatalogGames } from "../lib/api/catalogService";
 import {
@@ -7,9 +7,10 @@ import {
   serializeAppState
 } from "../lib/storage/appRepository";
 import { appDataStore } from "../lib/persistence";
+import { socialGraphService } from "../lib/social";
 import type { AppSessionAccount, HydratedAppDataState } from "../lib/persistence/appDataStore";
 import { calculatePersonalStats } from "@mlb-attendance/domain";
-import type { AttendanceLog, CreateAttendanceInput, FriendProfile, Game, PersonalStats, Team, UserProfile, Venue } from "@mlb-attendance/domain";
+import type { AttendanceLog, CreateAttendanceInput, FollowRequest, FriendProfile, Game, PersonalStats, Team, UserProfile, Venue } from "@mlb-attendance/domain";
 
 interface AppDataContextValue {
   storageMode: "local" | "hosted";
@@ -18,6 +19,8 @@ interface AppDataContextValue {
   isAuthenticated: boolean;
   profile: UserProfile;
   friends: FriendProfile[];
+  followers: FriendProfile[];
+  pendingFollowRequests: FollowRequest[];
   teams: Team[];
   venues: Venue[];
   games: Game[];
@@ -37,6 +40,12 @@ interface AppDataContextValue {
   updateProfile: (updates: { displayName?: string; favoriteTeamId?: string; followingIds?: string[] }) => Promise<UserProfile>;
   completeOnboarding: (updates: { displayName?: string; favoriteTeamId?: string }) => Promise<UserProfile>;
   toggleFollowFriend: (friendId: string) => Promise<UserProfile>;
+  searchProfiles: (query: string) => Promise<FriendProfile[]>;
+  requestFollow: (userId: string) => Promise<void>;
+  acceptFollowRequest: (requestId: string) => Promise<void>;
+  rejectFollowRequest: (requestId: string) => Promise<void>;
+  unfollowUser: (userId: string) => Promise<void>;
+  getFriendProfile: (userId: string) => Promise<FriendProfile | null>;
   updateAttendanceLog: (
     logId: string,
     updates: {
@@ -68,6 +77,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile>(mockUser);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>(sortAttendanceLogs(seededAttendanceLogs));
+  const [friends, setFriends] = useState<FriendProfile[]>([]);
+  const [followers, setFollowers] = useState<FriendProfile[]>([]);
+  const [pendingFollowRequests, setPendingFollowRequests] = useState<FollowRequest[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState<"idle" | "loading" | "saving" | "saved" | "error">("loading");
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
@@ -93,6 +105,53 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCurrentUserId(nextState.currentUserId ?? nextState.currentAccount?.id ?? null);
     setProfile(nextState.profile);
     setAttendanceLogs(sortAttendanceLogs(nextState.attendanceLogs));
+  }
+
+  function clearSocialGraph() {
+    setFriends([]);
+    setFollowers([]);
+    setPendingFollowRequests([]);
+  }
+
+  async function refreshSocialGraph(nextCurrentUserId = currentUserId, nextProfile = profile) {
+    if (!nextCurrentUserId) {
+      clearSocialGraph();
+      return;
+    }
+
+    const [nextFriends, nextFollowers, nextPendingRequests] = await Promise.all([
+      socialGraphService.getFollowing({
+        currentUserId: nextCurrentUserId,
+        followingIds: nextProfile.followingIds
+      }),
+      socialGraphService.getFollowers({
+        currentUserId: nextCurrentUserId
+      }),
+      socialGraphService.getPendingFollowRequests({
+        currentUserId: nextCurrentUserId
+      })
+    ]);
+
+    setFriends(nextFriends);
+    setFollowers(nextFollowers);
+    setPendingFollowRequests(nextPendingRequests);
+
+    const acceptedFollowingIds = nextFriends.map((friend) => friend.id);
+    setProfile((currentProfile) => {
+      const currentFollowingIds = currentProfile.followingIds ?? [];
+      const isSameList =
+        currentFollowingIds.length === acceptedFollowingIds.length &&
+        currentFollowingIds.every((value, index) => value === acceptedFollowingIds[index]);
+
+      if (isSameList) {
+        return currentProfile;
+      }
+
+      return {
+        ...currentProfile,
+        followingIds: acceptedFollowingIds
+      };
+    });
   }
 
   const stats = useMemo(() => {
@@ -132,6 +191,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     try {
       const hydratedState = await appDataStore.hydrate();
       applyHydratedState(hydratedState);
+      await refreshSocialGraph(hydratedState.currentUserId ?? hydratedState.currentAccount?.id ?? null, hydratedState.profile);
       markHydratedNow();
       setPersistenceStatus("idle");
     } catch {
@@ -202,6 +262,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       currentSession: getCurrentSessionState()
     });
     applyHydratedState(nextState);
+    await refreshSocialGraph(nextState.currentUserId ?? nextState.currentAccount?.id ?? null, nextState.profile);
     markHydratedNow();
     setPersistenceStatus("idle");
     setPersistenceError(null);
@@ -213,6 +274,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       currentSession: getCurrentSessionState()
     });
     applyHydratedState(nextState);
+    await refreshSocialGraph(nextState.currentUserId ?? nextState.currentAccount?.id ?? null, nextState.profile);
     markHydratedNow();
     markSavedNow();
     setPersistenceStatus("saved");
@@ -224,6 +286,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       currentSession: getCurrentSessionState()
     });
     applyHydratedState(nextState);
+    clearSocialGraph();
     markHydratedNow();
     markSavedNow();
     setPersistenceStatus("saved");
@@ -276,14 +339,118 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }
 
   async function toggleFollowFriend(friendId: string) {
-    const currentFollowing = profile.followingIds ?? [];
-    const isFollowing = currentFollowing.includes(friendId);
-    const nextFollowing = isFollowing
-      ? currentFollowing.filter((existingId) => existingId !== friendId)
-      : [...currentFollowing, friendId];
+    if (!currentUserId) {
+      throw new Error("Log in to manage follows.");
+    }
 
-    return updateProfile({
-      followingIds: nextFollowing
+    const isFollowing = friends.some((friend) => friend.id === friendId);
+    if (storageMode === "local") {
+      const currentFollowing = profile.followingIds ?? [];
+      const nextFollowing = isFollowing
+        ? currentFollowing.filter((existingId) => existingId !== friendId)
+        : [...currentFollowing, friendId];
+
+      return updateProfile({
+        followingIds: nextFollowing
+      });
+    }
+
+    if (isFollowing) {
+      await socialGraphService.unfollowUser({
+        currentUserId,
+        targetUserId: friendId
+      });
+    } else {
+      await socialGraphService.requestFollow({
+        currentUserId,
+        targetUserId: friendId
+      });
+    }
+
+    await refreshSocialGraph(currentUserId, profile);
+    return {
+      ...profile,
+      followingIds: friends.filter((friend) => friend.id !== friendId).map((friend) => friend.id)
+    };
+  }
+
+  async function searchProfiles(query: string) {
+    if (!currentUserId) {
+      return [];
+    }
+
+    return socialGraphService.searchProfiles({
+      currentUserId,
+      query
+    });
+  }
+
+  async function requestFollow(userId: string) {
+    if (!currentUserId) {
+      throw new Error("Log in to request a follow.");
+    }
+
+    if (storageMode === "local") {
+      await toggleFollowFriend(userId);
+      return;
+    }
+
+    await socialGraphService.requestFollow({
+      currentUserId,
+      targetUserId: userId
+    });
+    await refreshSocialGraph(currentUserId, profile);
+  }
+
+  async function acceptFollowRequest(requestId: string) {
+    if (!currentUserId) {
+      throw new Error("Log in to manage follow requests.");
+    }
+
+    await socialGraphService.acceptFollowRequest({
+      currentUserId,
+      requestId
+    });
+    await refreshSocialGraph(currentUserId, profile);
+  }
+
+  async function rejectFollowRequest(requestId: string) {
+    if (!currentUserId) {
+      throw new Error("Log in to manage follow requests.");
+    }
+
+    await socialGraphService.rejectFollowRequest({
+      currentUserId,
+      requestId
+    });
+    await refreshSocialGraph(currentUserId, profile);
+  }
+
+  async function unfollowUser(userId: string) {
+    if (!currentUserId) {
+      throw new Error("Log in to manage follows.");
+    }
+
+    if (storageMode === "local") {
+      await toggleFollowFriend(userId);
+      return;
+    }
+
+    await socialGraphService.unfollowUser({
+      currentUserId,
+      targetUserId: userId
+    });
+    await refreshSocialGraph(currentUserId, profile);
+  }
+
+  async function getFriendProfile(userId: string) {
+    if (!currentUserId) {
+      return null;
+    }
+
+    return socialGraphService.getFriendProfile({
+      currentUserId,
+      targetUserId: userId
     });
   }
 
@@ -416,11 +583,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     isAuthenticated: Boolean(currentUserId),
     profile,
     friends,
+    followers,
+    pendingFollowRequests,
     teams,
     venues,
     games,
     attendanceLogs,
-    friendAttendanceLogs,
+    friendAttendanceLogs: [],
     stats,
     isHydrated,
     persistenceStatus,
@@ -435,6 +604,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     updateProfile,
     completeOnboarding,
     toggleFollowFriend,
+    searchProfiles,
+    requestFollow,
+    acceptFollowRequest,
+    rejectFollowRequest,
+    unfollowUser,
+    getFriendProfile,
     updateAttendanceLog,
     deleteAttendanceLog,
     retryHydration,

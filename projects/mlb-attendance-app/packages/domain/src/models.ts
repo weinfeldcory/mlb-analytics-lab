@@ -3,17 +3,40 @@ export type SportCode = "MLB";
 export interface UserProfile {
   id: string;
   displayName: string;
+  username?: string;
   favoriteTeamId?: string;
   followingIds?: string[];
+  avatarUrl?: string;
+  profileVisibility?: ProfileVisibility;
   hasCompletedOnboarding?: boolean;
 }
 
+export type ProfileVisibility = "public" | "followers_only" | "private";
+export type FollowStatus = "pending" | "accepted" | "rejected" | "blocked";
+
 export interface FriendProfile {
   id: string;
+  username?: string;
   displayName: string;
   favoriteTeamId?: string;
+  avatarUrl?: string;
+  profileVisibility?: ProfileVisibility;
+  sharedGamesLogged?: number | null;
+  sharedStadiumsVisited?: number | null;
+  relationshipStatus?: FollowStatus | "not_following";
   bio?: string;
   homeCity?: string;
+}
+
+export interface FollowRequest {
+  id: string;
+  followerId: string;
+  followingId: string;
+  status: FollowStatus;
+  createdAt: string;
+  updatedAt: string;
+  direction: "incoming" | "outgoing";
+  profile: FriendProfile;
 }
 
 export interface Team {

@@ -121,18 +121,6 @@ function getStreakBonus(bestWeeks: number) {
   return 0;
 }
 
-function getTopFriendStat(friendStats: ReturnType<typeof calculatePersonalStats>) {
-  if (friendStats.playerBattingSummaries[0]?.homeRunsSeen) {
-    return `${friendStats.playerBattingSummaries[0].playerName} ${friendStats.playerBattingSummaries[0].homeRunsSeen} HR seen`;
-  }
-
-  if (friendStats.playerPitchingSummaries[0]?.strikeoutsSeen) {
-    return `${friendStats.playerPitchingSummaries[0].pitcherName} ${friendStats.playerPitchingSummaries[0].strikeoutsSeen} K seen`;
-  }
-
-  return `${friendStats.totalHitsSeen} hits seen`;
-}
-
 function getNextAction(params: {
   hasLogs: boolean;
   favoriteTeamId?: string;
@@ -193,6 +181,36 @@ function getPersistenceSummary(status: "idle" | "loading" | "saving" | "saved" |
     default:
       return "Your local ledger is ready for the next update.";
   }
+}
+
+function getTopInsights(stats: ReturnType<typeof calculatePersonalStats>, favoriteTeamName?: string) {
+  return [
+    {
+      label: "Current pace",
+      value: `${stats.totalGamesAttended} games and ${stats.uniqueStadiumsVisited} stadiums`,
+      detail: favoriteTeamName
+        ? `${favoriteTeamName} shows up in ${stats.favoriteTeamSplit?.gamesAttended ?? 0} of them.`
+        : "Set a favorite team to unlock cleaner record splits."
+    },
+    {
+      label: "Best hitter seen",
+      value: stats.playerBattingSummaries[0]
+        ? `${stats.playerBattingSummaries[0].playerName}`
+        : "Still building",
+      detail: stats.playerBattingSummaries[0]
+        ? `${stats.playerBattingSummaries[0].homeRunsSeen} HR seen • ${stats.playerBattingSummaries[0].hitsSeen} hits`
+        : "Player insights turn on as your logged games deepen."
+    },
+    {
+      label: "Pitching trail",
+      value: stats.playerPitchingSummaries[0]
+        ? `${stats.playerPitchingSummaries[0].pitcherName}`
+        : "Still building",
+      detail: stats.playerPitchingSummaries[0]
+        ? `${stats.playerPitchingSummaries[0].strikeoutsSeen} K seen • ${stats.uniquePitchersSeen} unique pitchers`
+        : "Pitcher summaries appear as soon as box-score data is attached."
+    }
+  ];
 }
 
 function buildLevelProgress(params: {
@@ -321,8 +339,8 @@ export function HomeScreen() {
   const { width } = useWindowDimensions();
   const {
     attendanceLogs,
-    friendAttendanceLogs,
     friends,
+    pendingFollowRequests,
     games,
     teams,
     venues,
@@ -332,7 +350,7 @@ export function HomeScreen() {
     persistenceError,
     isHydrated,
     retryHydration,
-    toggleFollowFriend
+    unfollowUser
   } = useAppData();
   const isWide = width >= 1080;
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
@@ -393,37 +411,13 @@ export function HomeScreen() {
     setTeamSortDirection(nextKey === "teamName" ? "asc" : "desc");
   }
 
-  const followedFriends = useMemo(() => {
-    const following = new Set(profile.followingIds ?? []);
-    return friends
-      .filter((friend) => following.has(friend.id))
-      .map((friend) => {
-        const logs = friendAttendanceLogs.filter((log) => log.userId === friend.id);
-        const latestFriendLog = [...logs].sort((left, right) => right.attendedOn.localeCompare(left.attendedOn))[0];
-        const latestFriendGame = latestFriendLog ? gamesById.get(latestFriendLog.gameId) : undefined;
-        const favoriteTeam = teams.find((team) => team.id === friend.favoriteTeamId);
-        const friendStats = calculatePersonalStats({
-          user: {
-            id: friend.id,
-            displayName: friend.displayName,
-            favoriteTeamId: friend.favoriteTeamId
-          },
-          attendanceLogs: logs,
-          games,
-          teams,
-          venues
-        });
-
-        return { friend, latestFriendLog, latestFriendGame, favoriteTeam, friendStats };
-      });
-  }, [friendAttendanceLogs, friends, games, gamesById, profile.followingIds, teams, venues]);
-
-  const suggestedFriends = friends.filter((friend) => !(profile.followingIds ?? []).includes(friend.id)).slice(0, 2);
+  const followingPreview = friends.slice(0, 3);
+  const topInsights = useMemo(() => getTopInsights(stats, favoriteTeam?.name), [favoriteTeam?.name, stats]);
 
   return (
     <Screen
       title="Ballpark Ledger"
-      subtitle="A compact view of your real attendance history, the next useful action, and the friend or player detail worth checking."
+      subtitle="Your baseball record at a glance: where the ledger stands, what to do next, and the best story hiding in your saved games."
     >
       <View style={styles.ledgerHero}>
         {isHydrated ? (
@@ -435,7 +429,7 @@ export function HomeScreen() {
                 <Text style={styles.heroBody}>
                   {hasLogs
                     ? `${stats.totalGamesAttended} games logged, ${stats.uniqueStadiumsVisited} stadiums visited, and ${stats.witnessedHomeRuns} home runs seen in person.`
-                    : "Log your first attended game to turn this into a durable baseball record with stats, progress, and memory detail."}
+                    : "Pick the first game you’ve attended, save it once, and this page turns into your personal MLB attendance ledger."}
                 </Text>
                 <View style={styles.heroActionRow}>
                   {nextAction.route ? (
@@ -448,6 +442,11 @@ export function HomeScreen() {
                     <Text style={styles.heroActionText}>{nextAction.summary}</Text>
                   </View>
                 </View>
+                {!hasLogs ? (
+                  <Text style={styles.heroSupportText}>
+                    Start with just one game. Seat details can be quick now, and memory notes can always wait until later.
+                  </Text>
+                ) : null}
               </View>
 
               <View style={styles.heroRail}>
@@ -460,11 +459,13 @@ export function HomeScreen() {
                       : "Set this in Profile for cleaner splits."}
                   </Text>
                 </View>
-                <View style={styles.heroStatusBlock}>
-                  <Text style={styles.heroStatusLabel}>Storage</Text>
-                  <Text style={styles.heroStatusValue}>{persistenceStatus}</Text>
-                  <Text style={styles.heroStatusMeta}>{getPersistenceSummary(persistenceStatus)}</Text>
-                </View>
+                {persistenceStatus === "error" ? (
+                  <View style={styles.heroStatusBlock}>
+                    <Text style={styles.heroStatusLabel}>Sync Needs Attention</Text>
+                    <Text style={styles.heroStatusValue}>Check storage</Text>
+                    <Text style={styles.heroStatusMeta}>{getPersistenceSummary(persistenceStatus)}</Text>
+                  </View>
+                ) : null}
               </View>
             </View>
 
@@ -480,12 +481,12 @@ export function HomeScreen() {
                 </Text>
               </View>
               <View style={styles.heroMetricCard}>
-                <Text style={styles.heroMetricLabel}>Hits Seen</Text>
-                <Text style={styles.heroMetricValue}>{stats.totalHitsSeen}</Text>
+                <Text style={styles.heroMetricLabel}>Stadiums</Text>
+                <Text style={styles.heroMetricValue}>{stats.uniqueStadiumsVisited}</Text>
               </View>
               <View style={styles.heroMetricCard}>
-                <Text style={styles.heroMetricLabel}>Pitchers Seen</Text>
-                <Text style={styles.heroMetricValue}>{stats.uniquePitchersSeen}</Text>
+                <Text style={styles.heroMetricLabel}>Home Runs Seen</Text>
+                <Text style={styles.heroMetricValue}>{stats.witnessedHomeRuns}</Text>
               </View>
             </View>
 
@@ -576,6 +577,27 @@ export function HomeScreen() {
 
       <View style={[styles.grid, isWide ? styles.gridWide : null]}>
         <View style={styles.mainColumn}>
+          <SectionCard title="Top Baseball Truths">
+            {hasLogs ? (
+              <View style={styles.summaryCardGrid}>
+                {topInsights.map((insight) => (
+                  <View key={insight.label} style={styles.summaryCard}>
+                    <Text style={styles.summaryCardLabel}>{insight.label}</Text>
+                    <Text style={styles.summaryCardValue}>{insight.value}</Text>
+                    <Text style={styles.summaryCardMeta}>{insight.detail}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <PlaceholderPanel
+                title="Your first game starts the story"
+                body="Once one attended game is in the ledger, this section turns into the fastest read on your baseball record."
+                actionLabel="Log First Game"
+                onAction={() => router.push("/(tabs)/log-game")}
+              />
+            )}
+          </SectionCard>
+
           <SectionCard title="Latest Game">
             {latestGame && latestGameLabel ? (
               <View style={styles.compactStack}>
@@ -592,12 +614,15 @@ export function HomeScreen() {
                     : "No player summary available yet."}
                 </Text>
                 {latestLog.memorableMoment ? <Text style={styles.noteText}>{latestLog.memorableMoment}</Text> : null}
+                <View style={styles.inlineActions}>
+                  <PrimaryButton label="Open Game Page" onPress={() => router.push((`/logged-game/${latestLog.id}`) as never)} />
+                </View>
               </View>
             ) : (
               <PlaceholderPanel
-                title="No saved games yet"
-                body="Your latest attended game will show up here after the first successful save, along with the scoreline, quick box-score context, and your memory note."
-                actionLabel="Log First Game"
+                title="Your first game belongs here"
+                body="Search for the matchup you attended, save the seat section, and this spot becomes the latest chapter in your ledger."
+                actionLabel="Pick First Game"
                 onAction={() => router.push("/(tabs)/log-game")}
               />
             )}
@@ -623,8 +648,8 @@ export function HomeScreen() {
             ) : (
               <PlaceholderPanel
                 title="Start the ledger"
-                body="Search for the matchup you attended, save the seat details, and the home screen will start tracking milestones and derived stats from that first log onward."
-                actionLabel="Open Log Game"
+                body="One saved game is enough to unlock milestones, record tracking, and your first personal baseball stats."
+                actionLabel="Log First Game"
                 onAction={() => router.push("/(tabs)/log-game")}
               />
             )}
@@ -654,7 +679,7 @@ export function HomeScreen() {
                     })}
                   </View>
                 ))}
-                <Text style={styles.secondaryText}>Heat map of exact first-pitch times by day of week, shown in Eastern Time.</Text>
+                <Text style={styles.secondaryText}>Heat map of your typical game windows by day of week, shown in Eastern Time.</Text>
               </View>
             ) : (
               <PlaceholderPanel
@@ -709,47 +734,51 @@ export function HomeScreen() {
           </SectionCard>
 
           <SectionCard title="Friends">
-            {followedFriends.length ? (
-              followedFriends.slice(0, 3).map(({ friend, latestFriendLog, latestFriendGame, favoriteTeam, friendStats }) => (
+            {followingPreview.length ? (
+              followingPreview.map((friend) => {
+                const favoriteFollowedTeam = teams.find((team) => team.id === friend.favoriteTeamId);
+
+                return (
                 <View key={friend.id} style={styles.friendRow}>
-                  <View style={styles.friendCopy}>
+                  <Pressable style={styles.friendCopy} onPress={() => router.push((`/friends/${friend.id}`) as never)}>
                     <Text style={styles.friendName}>{friend.displayName}</Text>
                     <Text style={styles.secondaryText}>
-                      {friendStats.totalGamesAttended} games • {favoriteTeam?.name ?? "No favorite team"}
+                      {friend.username ? `@${friend.username}` : "App fan"} • {favoriteFollowedTeam?.name ?? "No favorite team"}
                     </Text>
                     <Text style={styles.secondaryText}>
-                      Favorite-team record: {friendStats.favoriteTeamSplit
-                        ? `${friendStats.favoriteTeamSplit.wins}-${friendStats.favoriteTeamSplit.losses}`
-                        : `${friendStats.wins}-${friendStats.losses}`}
+                      Shared ledger: {friend.sharedGamesLogged ?? 0} games • {friend.sharedStadiumsVisited ?? 0} stadiums
                     </Text>
-                    <Text style={styles.secondaryText}>Top stat: {getTopFriendStat(friendStats)}</Text>
-                    {latestFriendLog && latestFriendGame ? (
-                      <Text style={styles.secondaryText}>
-                        Last game: {latestFriendLog.attendedOn} • {formatGameLabel(latestFriendGame, teamsById, venuesById).title}
-                      </Text>
-                    ) : null}
+                    <Text style={styles.secondaryText}>
+                      View their shared baseball resume without exposing seats, companions, or private notes.
+                    </Text>
+                  </Pressable>
+                  <View style={styles.inlineActions}>
+                    <PrimaryButton label="View" onPress={() => router.push((`/friends/${friend.id}`) as never)} />
+                    <PrimaryButton label="Unfollow" onPress={() => void unfollowUser(friend.id)} />
                   </View>
-                  <PrimaryButton label="Unfollow" onPress={() => toggleFollowFriend(friend.id)} />
                 </View>
-              ))
+              );
+              })
             ) : (
-              <Text style={styles.secondaryText}>Follow friends to keep this panel useful.</Text>
+              <Text style={styles.secondaryText}>No accepted follows yet. Use Profile to find people and manage requests.</Text>
             )}
           </SectionCard>
 
-          <SectionCard title="Suggested">
-            {suggestedFriends.length ? (
-              suggestedFriends.map((friend) => (
-                <View key={friend.id} style={styles.friendRow}>
+          <SectionCard title="Requests">
+            {pendingFollowRequests.length ? (
+              pendingFollowRequests.map((request) => (
+                <View key={request.id} style={styles.friendRow}>
                   <View style={styles.friendCopy}>
-                    <Text style={styles.friendName}>{friend.displayName}</Text>
-                    <Text style={styles.secondaryText}>{friend.bio}</Text>
+                    <Text style={styles.friendName}>{request.profile.displayName}</Text>
+                    <Text style={styles.secondaryText}>
+                      {request.direction === "incoming" ? "Wants to follow you" : "You already requested this follow"}
+                    </Text>
                   </View>
-                  <PrimaryButton label="Follow" onPress={() => toggleFollowFriend(friend.id)} />
+                  <PrimaryButton label="Profile" onPress={() => router.push((`/friends/${request.profile.id}`) as never)} />
                 </View>
               ))
             ) : (
-              <Text style={styles.secondaryText}>You’re already following everyone in the current seed set.</Text>
+              <Text style={styles.secondaryText}>No follow requests are waiting. Search for people from Profile to start building your network.</Text>
             )}
           </SectionCard>
         </View>
@@ -849,6 +878,11 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: colors.slate050
   },
+  heroSupportText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.slate100
+  },
   heroStatusBlock: {
     minWidth: 140,
     padding: spacing.md,
@@ -943,6 +977,35 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm
+  },
+  summaryCardGrid: {
+    gap: spacing.sm
+  },
+  summaryCard: {
+    gap: spacing.xs,
+    padding: spacing.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    backgroundColor: colors.slate050
+  },
+  summaryCardLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: colors.slate500,
+    fontWeight: "700"
+  },
+  summaryCardValue: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "800",
+    color: colors.navy
+  },
+  summaryCardMeta: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.slate700
   },
   metricChip: {
     fontSize: 12,

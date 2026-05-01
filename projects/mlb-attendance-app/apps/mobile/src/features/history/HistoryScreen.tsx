@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useRouter } from "expo-router";
+import type { Href } from "expo-router";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Screen } from "../../components/common/Screen";
 import { DropdownField, type DropdownOption } from "../../components/common/DropdownField";
@@ -7,72 +9,12 @@ import { PrimaryButton } from "../../components/common/PrimaryButton";
 import { SectionCard } from "../../components/common/SectionCard";
 import { useAppData } from "../../providers/AppDataProvider";
 import { colors, spacing } from "../../styles/tokens";
-import { formatBaseballInnings, formatGameLabel } from "../../lib/formatters";
-import type { AttendanceLog, BatterAppearance, Game, PitcherAppearance } from "@mlb-attendance/domain";
-
-function createDraft(log: AttendanceLog) {
-  return {
-    section: log.seat.section,
-    row: log.seat.row ?? "",
-    seatNumber: log.seat.seatNumber ?? "",
-    memorableMoment: log.memorableMoment ?? "",
-    companion: log.companion ?? "",
-    giveaway: log.giveaway ?? "",
-    weather: log.weather ?? ""
-  };
-}
-
-function getStartingPitcher(game: Game, teamId: string) {
-  const pitchers = game.pitchersUsed?.filter((pitcher) => pitcher.teamId === teamId) ?? [];
-  return pitchers.find((pitcher) => pitcher.role === "starter") ?? [...pitchers].sort((left, right) => (right.inningsPitched ?? 0) - (left.inningsPitched ?? 0))[0];
-}
-
-function getTopHitters(game: Game, teamId: string) {
-  const hitters = game.battersUsed?.filter((batter) => batter.teamId === teamId) ?? [];
-  return [...hitters]
-    .sort((left, right) => {
-      if (right.homeRuns !== left.homeRuns) {
-        return right.homeRuns - left.homeRuns;
-      }
-      if (right.hits !== left.hits) {
-        return right.hits - left.hits;
-      }
-      if (right.rbis !== left.rbis) {
-        return right.rbis - left.rbis;
-      }
-      if (right.walks !== left.walks) {
-        return right.walks - left.walks;
-      }
-      return right.atBats - left.atBats;
-    })
-    .slice(0, 2);
-}
-
-function formatPitcherLine(pitcher: PitcherAppearance | undefined) {
-  if (!pitcher) {
-    return "No starting pitcher data";
-  }
-
-  return `${formatBaseballInnings(pitcher.inningsPitched)} IP • ${pitcher.strikeouts ?? 0} K • ${pitcher.hitsAllowed ?? 0} H • ${pitcher.runsAllowed ?? 0} R`;
-}
-
-function formatHitterLine(hitter: BatterAppearance) {
-  const extras = [];
-  if (hitter.homeRuns) {
-    extras.push(`${hitter.homeRuns} HR`);
-  }
-  if (hitter.rbis) {
-    extras.push(`${hitter.rbis} RBI`);
-  }
-  if (hitter.walks) {
-    extras.push(`${hitter.walks} BB`);
-  }
-
-  const statTail = extras.length ? ` • ${extras.join(" • ")}` : "";
-  return `${hitter.hits}-${hitter.atBats}${statTail}`;
-}
+import { formatGameLabel } from "../../lib/formatters";
+import type { AttendanceLog } from "@mlb-attendance/domain";
+import { createDraft, formatHitterLine, formatPitcherLine, getStartingPitcher, getTopHitters } from "./gameDetailHelpers";
 
 export function HistoryScreen() {
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const { attendanceLogs, games, teams, venues, profile, updateAttendanceLog, deleteAttendanceLog } = useAppData();
   const isWide = width >= 1024;
@@ -82,8 +24,12 @@ export function HistoryScreen() {
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [pendingDeleteLogId, setPendingDeleteLogId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
-  const [sortKey, setSortKey] = useState<"newest" | "oldest" | "venue" | "matchup">("newest");
-  const [viewKey, setViewKey] = useState<"all" | "favorite-team" | "latest-season">("all");
+  const [sortKey, setSortKey] = useState<"newest" | "oldest" | "venue" | "matchup" | "highest-scoring" | "most-hits">("newest");
+  const [viewKey, setViewKey] = useState<"all" | "favorite-team" | "latest-season" | "with-memories" | "missing-seat">("all");
+  const [seasonFilter, setSeasonFilter] = useState("all");
+  const [venueFilter, setVenueFilter] = useState("all");
+  const [outcomeFilter, setOutcomeFilter] = useState<"all" | "wins" | "losses">("all");
+  const [groupKey, setGroupKey] = useState<"none" | "year" | "venue" | "team">("none");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [draft, setDraft] = useState(createDraft(attendanceLogs[0] ?? {
     id: "",
@@ -101,12 +47,40 @@ export function HistoryScreen() {
     { label: "Newest first", value: "newest" },
     { label: "Oldest first", value: "oldest" },
     { label: "Venue", value: "venue" },
-    { label: "Matchup", value: "matchup" }
+    { label: "Matchup", value: "matchup" },
+    { label: "Highest scoring", value: "highest-scoring" },
+    { label: "Most hits", value: "most-hits" }
   ];
   const viewOptions: Array<DropdownOption<typeof viewKey>> = [
     { label: "All games", value: "all" },
     { label: "Favorite team games", value: "favorite-team" },
-    { label: latestSeason ? `${latestSeason} only` : "Latest season", value: "latest-season" }
+    { label: latestSeason ? `${latestSeason} only` : "Latest season", value: "latest-season" },
+    { label: "With memories", value: "with-memories" },
+    { label: "Missing seat details", value: "missing-seat" }
+  ];
+  const seasonOptions: Array<DropdownOption<string>> = [
+    { label: "All seasons", value: "all" },
+    ...[...new Set(attendanceLogs.map((log) => log.attendedOn.slice(0, 4)))].sort((left, right) => right.localeCompare(left)).map((year) => ({
+      label: year,
+      value: year
+    }))
+  ];
+  const venueOptions: Array<DropdownOption<string>> = [
+    { label: "All venues", value: "all" },
+    ...[...new Set(attendanceLogs.map((log) => venuesById.get(log.venueId)?.name).filter(Boolean) as string[])]
+      .sort((left, right) => left.localeCompare(right))
+      .map((venue) => ({ label: venue, value: venue }))
+  ];
+  const outcomeOptions: Array<DropdownOption<typeof outcomeFilter>> = [
+    { label: "All results", value: "all" },
+    { label: "Wins only", value: "wins" },
+    { label: "Losses only", value: "losses" }
+  ];
+  const groupOptions: Array<DropdownOption<typeof groupKey>> = [
+    { label: "No grouping", value: "none" },
+    { label: "Group by year", value: "year" },
+    { label: "Group by venue", value: "venue" },
+    { label: "Group by team", value: "team" }
   ];
 
   const filteredLogs = useMemo(() => {
@@ -125,6 +99,32 @@ export function HistoryScreen() {
       }
 
       if (viewKey === "latest-season" && latestSeason && !log.attendedOn.startsWith(latestSeason)) {
+        return false;
+      }
+
+      if (viewKey === "with-memories" && !log.memorableMoment?.trim()) {
+        return false;
+      }
+
+      if (viewKey === "missing-seat" && log.seat.section.trim() && log.seat.row?.trim() && log.seat.seatNumber?.trim()) {
+        return false;
+      }
+
+      if (seasonFilter !== "all" && !log.attendedOn.startsWith(seasonFilter)) {
+        return false;
+      }
+
+      const venueName = venuesById.get(log.venueId)?.name ?? "";
+      if (venueFilter !== "all" && venueName !== venueFilter) {
+        return false;
+      }
+
+      const hasWin = log.witnessedEvents.some((event) => event.type === "team_win");
+      const hasLoss = log.witnessedEvents.some((event) => event.type === "team_loss");
+      if (outcomeFilter === "wins" && !hasWin) {
+        return false;
+      }
+      if (outcomeFilter === "losses" && !hasLoss) {
         return false;
       }
 
@@ -177,11 +177,55 @@ export function HistoryScreen() {
         return venueCompare || right.attendedOn.localeCompare(left.attendedOn);
       }
 
+      if (sortKey === "highest-scoring") {
+        const scoringGap = (rightGame.homeScore + rightGame.awayScore) - (leftGame.homeScore + leftGame.awayScore);
+        return scoringGap || right.attendedOn.localeCompare(left.attendedOn);
+      }
+
+      if (sortKey === "most-hits") {
+        const hitGap = (rightGame.homeHits + rightGame.awayHits) - (leftGame.homeHits + leftGame.awayHits);
+        return hitGap || right.attendedOn.localeCompare(left.attendedOn);
+      }
+
       const leftLabel = `${teamsById.get(leftGame.awayTeamId)?.abbreviation ?? ""} at ${teamsById.get(leftGame.homeTeamId)?.abbreviation ?? ""}`;
       const rightLabel = `${teamsById.get(rightGame.awayTeamId)?.abbreviation ?? ""} at ${teamsById.get(rightGame.homeTeamId)?.abbreviation ?? ""}`;
       return leftLabel.localeCompare(rightLabel) || right.attendedOn.localeCompare(left.attendedOn);
     });
-  }, [attendanceLogs, filter, gamesById, latestSeason, profile.favoriteTeamId, sortKey, teamsById, venuesById, viewKey]);
+  }, [attendanceLogs, filter, gamesById, latestSeason, outcomeFilter, profile.favoriteTeamId, seasonFilter, sortKey, teamsById, venueFilter, venuesById, viewKey]);
+
+  const groupedLogs = useMemo(() => {
+    if (groupKey === "none") {
+      return [{ label: "All saved games", logs: filteredLogs }];
+    }
+
+    const groups = new Map<string, AttendanceLog[]>();
+    filteredLogs.forEach((log) => {
+      const game = gamesById.get(log.gameId);
+      if (!game) {
+        return;
+      }
+
+      let label = log.attendedOn.slice(0, 4);
+      if (groupKey === "venue") {
+        label = venuesById.get(log.venueId)?.name ?? "Unknown venue";
+      } else if (groupKey === "team") {
+        const team = profile.favoriteTeamId
+          ? game.homeTeamId === profile.favoriteTeamId
+            ? teamsById.get(game.awayTeamId)
+            : game.awayTeamId === profile.favoriteTeamId
+              ? teamsById.get(game.homeTeamId)
+              : teamsById.get(game.homeTeamId)
+          : teamsById.get(game.homeTeamId);
+        label = team ? `${team.city} ${team.name}` : "Unknown team";
+      }
+
+      const existing = groups.get(label) ?? [];
+      existing.push(log);
+      groups.set(label, existing);
+    });
+
+    return [...groups.entries()].map(([label, logs]) => ({ label, logs }));
+  }, [filteredLogs, gamesById, groupKey, profile.favoriteTeamId, teamsById, venuesById]);
 
   function beginEditing(log: AttendanceLog) {
     setEditingLogId(log.id);
@@ -279,6 +323,50 @@ export function HistoryScreen() {
               isOpen={openDropdown === "view"}
               onToggle={() => setOpenDropdown((current) => current === "view" ? null : "view")}
             />
+            <DropdownField
+              label="Season"
+              options={seasonOptions}
+              value={seasonFilter}
+              onChange={(value) => {
+                setSeasonFilter(value);
+                setOpenDropdown(null);
+              }}
+              isOpen={openDropdown === "season"}
+              onToggle={() => setOpenDropdown((current) => current === "season" ? null : "season")}
+            />
+            <DropdownField
+              label="Venue"
+              options={venueOptions}
+              value={venueFilter}
+              onChange={(value) => {
+                setVenueFilter(value);
+                setOpenDropdown(null);
+              }}
+              isOpen={openDropdown === "venue"}
+              onToggle={() => setOpenDropdown((current) => current === "venue" ? null : "venue")}
+            />
+            <DropdownField
+              label="Result"
+              options={outcomeOptions}
+              value={outcomeFilter}
+              onChange={(value) => {
+                setOutcomeFilter(value);
+                setOpenDropdown(null);
+              }}
+              isOpen={openDropdown === "result"}
+              onToggle={() => setOpenDropdown((current) => current === "result" ? null : "result")}
+            />
+            <DropdownField
+              label="Group"
+              options={groupOptions}
+              value={groupKey}
+              onChange={(value) => {
+                setGroupKey(value);
+                setOpenDropdown(null);
+              }}
+              isOpen={openDropdown === "group"}
+              onToggle={() => setOpenDropdown((current) => current === "group" ? null : "group")}
+            />
           </View>
         </SectionCard>
 
@@ -302,7 +390,10 @@ export function HistoryScreen() {
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {filteredLogs.length ? (
-        filteredLogs.map((log) => {
+        groupedLogs.map((group) => (
+          <View key={group.label} style={styles.groupStack}>
+            {groupKey !== "none" ? <Text style={styles.groupLabel}>{group.label}</Text> : null}
+            {group.logs.map((log) => {
           const game = gamesById.get(log.gameId);
           if (!game) {
             return null;
@@ -473,6 +564,9 @@ export function HistoryScreen() {
                     ))}
                   </View>
                   <View style={styles.actionRow}>
+                    <Pressable onPress={() => router.push(`/logged-game/${log.id}` as Href)}>
+                      <Text style={styles.linkText}>Open Game Page</Text>
+                    </Pressable>
                     <Pressable onPress={() => beginEditing(log)}>
                       <Text style={styles.linkText}>Edit</Text>
                     </Pressable>
@@ -498,10 +592,12 @@ export function HistoryScreen() {
               )}
             </SectionCard>
           );
-        })
+        })}
+          </View>
+        ))
       ) : (
         <SectionCard title="No Matches">
-          <Text style={styles.helperText}>No saved games matched that filter. Try a team name, venue, or a broader date fragment.</Text>
+          <Text style={styles.helperText}>No saved games matched that setup. Try a broader search, clear a filter, or switch the group view.</Text>
         </SectionCard>
       )}
     </Screen>
@@ -720,5 +816,13 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     color: colors.red
+  },
+  groupStack: {
+    gap: spacing.md
+  },
+  groupLabel: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.slate900
   }
 });

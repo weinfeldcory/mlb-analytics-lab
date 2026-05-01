@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "expo-router";
+import type { Href } from "expo-router";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Screen } from "../../components/common/Screen";
 import { LabeledInput } from "../../components/common/LabeledInput";
@@ -9,6 +10,7 @@ import { useAppData } from "../../providers/AppDataProvider";
 import { colors, spacing } from "../../styles/tokens";
 import { formatGameLabel } from "../../lib/formatters";
 import type { Game } from "@mlb-attendance/domain";
+import { MEMORY_CHIPS, applyMemoryChip } from "../history/gameDetailHelpers";
 
 type StatusTone = "idle" | "info" | "success" | "error";
 
@@ -213,6 +215,7 @@ export function LogGameScreen() {
       setCompanion("");
       setGiveaway("");
       setWeather("");
+      router.push((`/log-recap?logId=${encodeURIComponent(savedLog.id)}`) as Href);
     } catch (error) {
       setConfirmation(null);
       const message = error instanceof Error ? error.message : "We could not save that game.";
@@ -400,24 +403,39 @@ export function LogGameScreen() {
 
         <View style={styles.formColumn}>
           <SectionCard title="4. Add the Memory Now Or Later">
+            <Text style={styles.helperText}>
+              These prompts are optional. A quick line now makes the game feel personal later, but you can skip every one.
+            </Text>
             <LabeledInput
-              label="Memorable moment"
+              label="What do you remember most?"
               value={memorableMoment}
               onChangeText={setMemorableMoment}
-              placeholder="Judge hit one into the second deck."
+              placeholder="Big play, rivalry feel, birthday trip, or whatever still sticks."
               multiline
               numberOfLines={4}
             />
+            <Text style={styles.helperText}>Quick memory sparks</Text>
+            <View style={styles.quickFindRow}>
+              {MEMORY_CHIPS.map((chip) => (
+                <Pressable
+                  key={chip}
+                  onPress={() => setMemorableMoment((current) => applyMemoryChip(current, chip))}
+                  style={styles.quickFindChip}
+                >
+                  <Text style={styles.quickFindChipText}>{chip}</Text>
+                </Pressable>
+              ))}
+            </View>
             <LabeledInput
-              label="Who you went with"
+              label="Who did you go with?"
               value={companion}
               onChangeText={setCompanion}
-              placeholder="Dad, Sam, coworkers..."
+              placeholder="Friend, family, date, coworkers..."
             />
             <View style={[styles.formGrid, styles.formGridWide]}>
               <View style={styles.formColumn}>
                 <LabeledInput
-                  label="Giveaway"
+                  label="Giveaway or souvenir"
                   value={giveaway}
                   onChangeText={setGiveaway}
                   placeholder="Bobblehead, jersey, cap..."
@@ -428,10 +446,23 @@ export function LogGameScreen() {
                   label="Weather"
                   value={weather}
                   onChangeText={setWeather}
-                  placeholder="72F and clear"
+                  placeholder="Warm, cold, rain delay..."
                 />
               </View>
             </View>
+            <Text style={styles.helperText}>
+              Other good memory angles: where you sat, whether it was part of a trip, and if a big play changed the night.
+            </Text>
+            <Pressable
+              onPress={() => {
+                setMemorableMoment("");
+                setCompanion("");
+                setGiveaway("");
+                setWeather("");
+              }}
+            >
+              <Text style={styles.skipText}>Skip for now</Text>
+            </Pressable>
           </SectionCard>
         </View>
       </View>
@@ -514,6 +545,11 @@ const styles = StyleSheet.create({
   quickFindChipText: {
     fontSize: 13,
     fontWeight: "700",
+    color: colors.navy
+  },
+  skipText: {
+    fontSize: 14,
+    fontWeight: "600",
     color: colors.navy
   },
   helperText: {

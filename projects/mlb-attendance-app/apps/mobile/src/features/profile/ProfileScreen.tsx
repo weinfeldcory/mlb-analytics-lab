@@ -24,9 +24,15 @@ export function ProfileScreen() {
     profile,
     teams,
     friends,
+    followers,
+    pendingFollowRequests,
     signOut,
     updateProfile,
-    toggleFollowFriend,
+    searchProfiles,
+    requestFollow,
+    acceptFollowRequest,
+    rejectFollowRequest,
+    unfollowUser,
     persistenceStatus,
     persistenceError,
     lastHydratedAt,
@@ -44,6 +50,9 @@ export function ProfileScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [importExportText, setImportExportText] = useState("");
+  const [peopleQuery, setPeopleQuery] = useState("");
+  const [peopleResults, setPeopleResults] = useState<typeof friends>([]);
+  const [isSearchingPeople, setIsSearchingPeople] = useState(false);
 
   useEffect(() => {
     setDisplayName(profile.displayName);
@@ -81,6 +90,21 @@ export function ProfileScreen() {
     setImportExportText("");
     setErrorMessage(null);
     setMessage("Reset the local record back to the seeded demo state.");
+  }
+
+  async function handleSearchPeople() {
+    setIsSearchingPeople(true);
+    try {
+      const results = await searchProfiles(peopleQuery);
+      setPeopleResults(results);
+      setErrorMessage(null);
+      setMessage(results.length ? "Found matching fan profiles." : "No fan profiles matched that search yet.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Could not search profiles right now.");
+      setMessage(null);
+    } finally {
+      setIsSearchingPeople(false);
+    }
   }
 
   return (
@@ -132,26 +156,105 @@ export function ProfileScreen() {
             </View>
           </SectionCard>
 
-          <SectionCard title="Friends You Can Follow">
+          <SectionCard title="People">
             <View style={styles.friendList}>
-              {friends.map((friend) => {
-                const isFollowing = (profile.followingIds ?? []).includes(friend.id);
+              {isHosted && pendingFollowRequests.length ? (
+                <>
+                  <Text style={styles.sectionLabel}>Pending requests</Text>
+                  {pendingFollowRequests
+                    .filter((request) => request.direction === "incoming")
+                    .map((request) => (
+                      <View key={request.id} style={styles.friendRow}>
+                        <View style={styles.friendCopy}>
+                          <Text style={styles.friendName}>{request.profile.displayName}</Text>
+                          <Text style={styles.friendMeta}>
+                            {request.profile.username ? `@${request.profile.username}` : "App user"} wants to follow you.
+                          </Text>
+                        </View>
+                        <View style={styles.inlineButtonRow}>
+                          <PrimaryButton label="Accept" onPress={() => void acceptFollowRequest(request.id)} />
+                          <Pressable onPress={() => void rejectFollowRequest(request.id)}>
+                            <Text style={styles.linkText}>Reject</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    ))}
+                </>
+              ) : null}
+
+              <Text style={styles.sectionLabel}>Following</Text>
+              {friends.length ? friends.map((friend) => {
+                const favoriteTeam = teams.find((team) => team.id === friend.favoriteTeamId);
 
                 return (
                   <View key={friend.id} style={styles.friendRow}>
-                    <View style={styles.friendCopy}>
+                    <Pressable style={styles.friendCopy} onPress={() => router.push((`/friends/${friend.id}`) as Href)}>
                       <Text style={styles.friendName}>{friend.displayName}</Text>
                       <Text style={styles.friendMeta}>
-                        {friend.homeCity ?? "MLB fan"} • {friend.bio}
+                        {friend.username ? `@${friend.username}` : "App user"}
+                        {favoriteTeam ? ` • ${favoriteTeam.abbreviation}` : ""}
                       </Text>
+                      <Text style={styles.friendMeta}>
+                        {friend.sharedGamesLogged ?? 0} games shared • {friend.sharedStadiumsVisited ?? 0} stadiums
+                      </Text>
+                    </Pressable>
+                    <View style={styles.inlineButtonRow}>
+                      <PrimaryButton label="View" onPress={() => router.push((`/friends/${friend.id}`) as Href)} />
+                      <Pressable onPress={() => void unfollowUser(friend.id)}>
+                        <Text style={styles.linkText}>Unfollow</Text>
+                      </Pressable>
                     </View>
-                    <PrimaryButton
-                      label={isFollowing ? "Following" : "Follow"}
-                      onPress={() => toggleFollowFriend(friend.id)}
-                    />
                   </View>
                 );
-              })}
+              }) : <Text style={styles.helperText}>No accepted follows yet. Search for a fan below to start building your circle.</Text>}
+
+              {followers.length ? (
+                <>
+                  <Text style={styles.sectionLabel}>Followers</Text>
+                  {followers.map((friend) => (
+                    <Pressable key={friend.id} style={styles.friendRow} onPress={() => router.push((`/friends/${friend.id}`) as Href)}>
+                      <View style={styles.friendCopy}>
+                        <Text style={styles.friendName}>{friend.displayName}</Text>
+                        <Text style={styles.friendMeta}>{friend.username ? `@${friend.username}` : "App user"}</Text>
+                      </View>
+                      <Text style={styles.linkText}>View</Text>
+                    </Pressable>
+                  ))}
+                </>
+              ) : null}
+
+              <Text style={styles.sectionLabel}>Find people</Text>
+              <LabeledInput
+                label="Search by username or display name"
+                value={peopleQuery}
+                onChangeText={setPeopleQuery}
+                placeholder={isHosted ? "cory, ava, queensfan..." : "Search local demo fans"}
+              />
+              <PrimaryButton label={isSearchingPeople ? "Searching..." : "Search Profiles"} onPress={handleSearchPeople} />
+              {peopleResults.length ? peopleResults.map((friend) => {
+                const favoriteTeam = teams.find((team) => team.id === friend.favoriteTeamId);
+                const isAccepted = friend.relationshipStatus === "accepted";
+                const isPending = friend.relationshipStatus === "pending";
+
+                return (
+                  <View key={friend.id} style={styles.friendRow}>
+                    <Pressable style={styles.friendCopy} onPress={() => router.push((`/friends/${friend.id}`) as Href)}>
+                      <Text style={styles.friendName}>{friend.displayName}</Text>
+                      <Text style={styles.friendMeta}>
+                        {friend.username ? `@${friend.username}` : "App user"}
+                        {favoriteTeam ? ` • ${favoriteTeam.abbreviation}` : ""}
+                      </Text>
+                    </Pressable>
+                    {isAccepted ? (
+                      <PrimaryButton label="Following" onPress={() => router.push((`/friends/${friend.id}`) as Href)} />
+                    ) : isPending ? (
+                      <Text style={styles.helperText}>Requested</Text>
+                    ) : (
+                      <PrimaryButton label="Follow" onPress={() => void requestFollow(friend.id)} />
+                    )}
+                  </View>
+                );
+              }) : null}
             </View>
           </SectionCard>
         </View>
@@ -307,6 +410,13 @@ const styles = StyleSheet.create({
   friendList: {
     gap: spacing.md
   },
+  sectionLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: colors.slate500,
+    fontWeight: "700"
+  },
   friendRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -321,6 +431,10 @@ const styles = StyleSheet.create({
   friendCopy: {
     flex: 1,
     gap: spacing.xs
+  },
+  inlineButtonRow: {
+    alignItems: "flex-end",
+    gap: spacing.sm
   },
   friendName: {
     fontSize: 15,

@@ -31,10 +31,15 @@ type AttendanceLogRow = {
 type ProfileRow = {
   id: string;
   email: string;
+  username: string | null;
   display_name: string;
   favorite_team_id: string | null;
+  avatar_url: string | null;
+  profile_visibility: "public" | "followers_only" | "private";
   following_ids: string[] | null;
   has_completed_onboarding: boolean;
+  shared_games_logged?: number | null;
+  shared_stadiums_visited?: number | null;
 };
 
 type AttendanceLogUpsertRow = Omit<AttendanceLogRow, "id">;
@@ -65,11 +70,25 @@ function requireSupabaseClient() {
 function mapProfileRowToProfile(row: ProfileRow): UserProfile {
   return {
     id: row.id,
+    username: row.username ?? undefined,
     displayName: row.display_name,
     favoriteTeamId: row.favorite_team_id ?? undefined,
+    avatarUrl: row.avatar_url ?? undefined,
+    profileVisibility: row.profile_visibility,
     followingIds: row.following_ids ?? [],
     hasCompletedOnboarding: row.has_completed_onboarding
   };
+}
+
+function buildDefaultUsername(email: string, userId: string) {
+  const base = email
+    .split("@")[0]
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return `${base || "fan"}-${userId.replace(/-/g, "").slice(0, 6)}`;
 }
 
 function mapAttendanceRowToLog(row: AttendanceLogRow): AttendanceLog {
@@ -137,7 +156,7 @@ async function ensureHostedProfile(userId: string, email: string, fallbackDispla
   const client = requireSupabaseClient();
   const { data: existingProfile, error: fetchError } = await client
     .from("profiles")
-    .select("id, email, display_name, favorite_team_id, following_ids, has_completed_onboarding")
+    .select("id, email, username, display_name, favorite_team_id, avatar_url, profile_visibility, following_ids, has_completed_onboarding, shared_games_logged, shared_stadiums_visited")
     .eq("id", userId)
     .maybeSingle<ProfileRow>();
 
@@ -152,16 +171,21 @@ async function ensureHostedProfile(userId: string, email: string, fallbackDispla
   const seedProfile = {
     id: userId,
     email,
+    username: buildDefaultUsername(email, userId),
     display_name: fallbackDisplayName?.trim() || email.split("@")[0] || "Fan",
     favorite_team_id: null,
+    avatar_url: null,
+    profile_visibility: "followers_only" as const,
     following_ids: [],
-    has_completed_onboarding: false
+    has_completed_onboarding: false,
+    shared_games_logged: 0,
+    shared_stadiums_visited: 0
   };
 
   const { data: insertedProfile, error: insertError } = await client
     .from("profiles")
     .upsert(seedProfile)
-    .select("id, email, display_name, favorite_team_id, following_ids, has_completed_onboarding")
+    .select("id, email, username, display_name, favorite_team_id, avatar_url, profile_visibility, following_ids, has_completed_onboarding, shared_games_logged, shared_stadiums_visited")
     .single<ProfileRow>();
 
   if (insertError) {
@@ -223,10 +247,15 @@ async function syncHostedState(params: PersistCurrentUserParams) {
   const { error: profileError } = await client.from("profiles").upsert({
     id: session.user.id,
     email,
+    username: params.profile.username?.trim().toLowerCase() || buildDefaultUsername(email, session.user.id),
     display_name: params.profile.displayName.trim(),
     favorite_team_id: params.profile.favoriteTeamId ?? null,
+    avatar_url: params.profile.avatarUrl?.trim() || null,
+    profile_visibility: params.profile.profileVisibility ?? "followers_only",
     following_ids: params.profile.followingIds ?? [],
-    has_completed_onboarding: params.profile.hasCompletedOnboarding ?? false
+    has_completed_onboarding: params.profile.hasCompletedOnboarding ?? false,
+    shared_games_logged: params.attendanceLogs.length,
+    shared_stadiums_visited: new Set(params.attendanceLogs.map((log) => log.venueId)).size
   });
 
   if (profileError) {

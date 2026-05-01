@@ -11,6 +11,9 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="auth" />
           <Stack.Screen name="onboarding" />
+          <Stack.Screen name="log-recap" />
+          <Stack.Screen name="logged-game/[logId]" />
+          <Stack.Screen name="friends/[userId]" />
           <Stack.Screen name="debug" />
           <Stack.Screen name="legal" />
           <Stack.Screen name="(tabs)" />
