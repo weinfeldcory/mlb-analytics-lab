@@ -5,12 +5,15 @@ import type {
   PersonalStats,
   PlayerBattingSummary,
   PlayerPitchingSummary,
+  PitchingGamePerformance,
   PitcherSeenSummary,
   Team,
   TeamSeenSummary,
   UserProfile,
   Venue
 } from "../models";
+
+type PitcherFromGame = NonNullable<Game["pitchersUsed"]>[number];
 
 function didTeamWin(game: Game, teamId: string) {
   if (game.homeTeamId === teamId) {
@@ -38,6 +41,26 @@ function toEra(runsAllowed: number, inningsPitched: number) {
   }
 
   return (runsAllowed * 9) / inningsPitched;
+}
+
+function calculatePitcherGameScore(game: Game, pitcher: PitcherFromGame) {
+  if (pitcher.role !== "starter") {
+    return undefined;
+  }
+
+  const outsRecorded = Math.round((pitcher.inningsPitched ?? 0) * 3);
+  const strikeouts = pitcher.strikeouts ?? 0;
+  const walksAllowed = pitcher.walksAllowed ?? 0;
+  const hitsAllowed = pitcher.hitsAllowed ?? 0;
+  const runsAllowed = pitcher.runsAllowed ?? 0;
+  const homeRunsAllowed = pitcher.homeRunsAllowed ?? 0;
+
+  if (!outsRecorded && !strikeouts && !walksAllowed && !hitsAllowed && !runsAllowed && !homeRunsAllowed) {
+    return undefined;
+  }
+
+  const score = 40 + 2 * outsRecorded + strikeouts - 2 * walksAllowed - 2 * hitsAllowed - 3 * runsAllowed - 6 * homeRunsAllowed;
+  return score;
 }
 
 function createFavoriteTeamSplit(
@@ -125,6 +148,7 @@ export function calculatePersonalStats(params: {
     game.pitchersUsed?.forEach((pitcher) => {
       const existing = map.get(pitcher.pitcherName);
       const teamName = teamsById.get(pitcher.teamId)?.name ?? pitcher.teamId;
+      const gameScore = pitcher.gameScore ?? calculatePitcherGameScore(game, pitcher);
 
       if (existing) {
         existing.appearances += 1;
@@ -133,6 +157,10 @@ export function calculatePersonalStats(params: {
         existing.hitsAllowedSeen += pitcher.hitsAllowed ?? 0;
         existing.runsAllowedSeen += pitcher.runsAllowed ?? 0;
         existing.eraSeen = toEra(existing.runsAllowedSeen, existing.inningsSeen);
+        existing.bestGameScoreSeen =
+          gameScore === undefined
+            ? existing.bestGameScoreSeen
+            : Math.max(existing.bestGameScoreSeen ?? Number.NEGATIVE_INFINITY, gameScore);
         if (!existing.teams.includes(teamName)) {
           existing.teams.push(teamName);
         }
@@ -151,11 +179,41 @@ export function calculatePersonalStats(params: {
         inningsSeen: pitcher.inningsPitched ?? 0,
         hitsAllowedSeen: pitcher.hitsAllowed ?? 0,
         runsAllowedSeen: pitcher.runsAllowed ?? 0,
-        eraSeen: toEra(pitcher.runsAllowed ?? 0, pitcher.inningsPitched ?? 0)
+        eraSeen: toEra(pitcher.runsAllowed ?? 0, pitcher.inningsPitched ?? 0),
+        bestGameScoreSeen: gameScore
       });
     });
     return map;
   }, new Map());
+
+  const topPitchingGamePerformances = attendedGames.reduce<PitchingGamePerformance[]>((performances, game) => {
+    game.pitchersUsed?.forEach((pitcher) => {
+      const gameScore = pitcher.gameScore ?? calculatePitcherGameScore(game, pitcher);
+      if (gameScore === undefined) {
+        return;
+      }
+
+      const teamName = teamsById.get(pitcher.teamId)?.name ?? pitcher.teamId;
+      const opponentTeamId = game.homeTeamId === pitcher.teamId ? game.awayTeamId : game.homeTeamId;
+      const opponentTeamName = teamsById.get(opponentTeamId)?.name ?? opponentTeamId;
+
+      performances.push({
+        gameId: game.id,
+        pitcherName: pitcher.pitcherName,
+        teamId: pitcher.teamId,
+        teamName,
+        opponentTeamId,
+        opponentTeamName,
+        startDate: game.startDate,
+        gameScore,
+        inningsPitched: pitcher.inningsPitched,
+        strikeouts: pitcher.strikeouts,
+        runsAllowed: pitcher.runsAllowed
+      });
+    });
+
+    return performances;
+  }, []);
 
   const playerBattingMap = attendedGames.reduce<Map<string, PlayerBattingSummary>>((map, game) => {
     game.battersUsed?.forEach((batter) => {
@@ -268,7 +326,21 @@ export function calculatePersonalStats(params: {
     playerBattingSummaries: [...playerBattingMap.values()]
       .sort((left, right) => right.homeRunsSeen - left.homeRunsSeen || right.hitsSeen - left.hitsSeen || left.playerName.localeCompare(right.playerName)),
     playerPitchingSummaries: [...playerPitchingMap.values()]
-      .sort((left, right) => right.strikeoutsSeen - left.strikeoutsSeen || right.appearances - left.appearances || left.pitcherName.localeCompare(right.pitcherName)),
+      .sort(
+        (left, right) =>
+          (right.bestGameScoreSeen ?? Number.NEGATIVE_INFINITY) - (left.bestGameScoreSeen ?? Number.NEGATIVE_INFINITY) ||
+          right.strikeoutsSeen - left.strikeoutsSeen ||
+          right.appearances - left.appearances ||
+          left.pitcherName.localeCompare(right.pitcherName)
+      ),
+    topPitchingGamePerformances: topPitchingGamePerformances
+      .sort(
+        (left, right) =>
+          right.gameScore - left.gameScore ||
+          (right.strikeouts ?? 0) - (left.strikeouts ?? 0) ||
+          left.pitcherName.localeCompare(right.pitcherName)
+      )
+      .slice(0, 5),
     teamSeenSummaries: [...teamSeenMap.values()]
       .sort((left, right) => right.gamesSeen - left.gamesSeen || left.teamName.localeCompare(right.teamName)),
     recentMoments: [...attendanceLogs]

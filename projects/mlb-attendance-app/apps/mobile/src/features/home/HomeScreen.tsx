@@ -1,13 +1,19 @@
-import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useMemo } from "react";
+import { ScrollView, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { calculatePersonalStats } from "@mlb-attendance/domain";
+import { EmptyState } from "../../components/common/EmptyState";
+import { HeroCard } from "../../components/common/HeroCard";
+import { InsightCard } from "../../components/common/InsightCard";
+import { MetricCard } from "../../components/common/MetricCard";
 import { Screen } from "../../components/common/Screen";
 import { PlaceholderPanel } from "../../components/common/PlaceholderPanel";
 import { PrimaryButton } from "../../components/common/PrimaryButton";
 import { SectionCard } from "../../components/common/SectionCard";
+import { StatusPill } from "../../components/common/StatusPill";
 import { useAppData } from "../../providers/AppDataProvider";
-import { colors, spacing } from "../../styles/tokens";
+import { useResponsiveLayout } from "../../styles/responsive";
+import { colors, radii, shadows, spacing } from "../../styles/tokens";
 import { formatGameLabel } from "../../lib/formatters";
 
 const SCORE_RULES = {
@@ -157,30 +163,6 @@ function getNextAction(params: {
     route: "/(tabs)/log-game",
     summary: "The fastest way to deepen the ledger now is to add another attended game."
   };
-}
-
-function getSortIndicator(active: boolean, direction: "asc" | "desc") {
-  if (!active) {
-    return "";
-  }
-
-  return direction === "asc" ? " ↑" : " ↓";
-}
-
-function getPersistenceSummary(status: "idle" | "loading" | "saving" | "saved" | "error") {
-  switch (status) {
-    case "loading":
-      return "Loading your saved local record.";
-    case "saving":
-      return "Saving your latest ledger changes now.";
-    case "saved":
-      return "Your latest ledger changes are stored locally.";
-    case "error":
-      return "Storage needs attention before this record feels safe.";
-    case "idle":
-    default:
-      return "Your local ledger is ready for the next update.";
-  }
 }
 
 function getTopInsights(stats: ReturnType<typeof calculatePersonalStats>, favoriteTeamName?: string) {
@@ -334,9 +316,25 @@ function getPatternColor(count: number, maxCount: number) {
   return colors.slate200;
 }
 
+function buildGameNotes(game: { walkOff?: boolean; innings?: number; featuredPlayerHomeRun?: string | null }) {
+  const notes = [];
+
+  if (game.walkOff) {
+    notes.push("Walk-off");
+  }
+  if (game.innings && game.innings > 9) {
+    notes.push(`${game.innings} innings`);
+  }
+  if (game.featuredPlayerHomeRun) {
+    notes.push(`${game.featuredPlayerHomeRun} HR`);
+  }
+
+  return notes;
+}
+
 export function HomeScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const responsive = useResponsiveLayout();
   const {
     attendanceLogs,
     friends,
@@ -352,7 +350,8 @@ export function HomeScreen() {
     retryHydration,
     unfollowUser
   } = useAppData();
-  const isWide = width >= 1080;
+  const isWide = responsive.isWideDesktop;
+  const shouldStackHeroRail = responsive.isNarrow;
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const venuesById = useMemo(() => new Map(venues.map((venue) => [venue.id, venue])), [venues]);
   const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
@@ -367,8 +366,6 @@ export function HomeScreen() {
     favoriteTeamId: profile.favoriteTeamId,
     persistenceStatus
   });
-  const [teamSortKey, setTeamSortKey] = useState<"teamName" | "gamesSeen" | "winsSeen" | "lossesSeen" | "hitsSeen" | "runsSeen">("gamesSeen");
-  const [teamSortDirection, setTeamSortDirection] = useState<"asc" | "desc">("desc");
   const attendedGames = useMemo(
     () => attendanceLogs.map((log) => gamesById.get(log.gameId)).filter((game): game is NonNullable<typeof game> => Boolean(game)),
     [attendanceLogs, gamesById]
@@ -385,279 +382,185 @@ export function HomeScreen() {
   const attendancePattern = useMemo(() => buildAttendancePattern(attendedGames), [attendedGames]);
   const maxPatternCount = Math.max(0, ...attendancePattern.flatMap((bucket) => bucket.counts));
   const hasTimedGames = attendedGames.some((game) => Boolean(game.startDateTime));
-  const sortedTeamSummaries = useMemo(() => {
-    const directionFactor = teamSortDirection === "asc" ? 1 : -1;
-    return [...stats.teamSeenSummaries].sort((left, right) => {
-      if (teamSortKey === "teamName") {
-        return left.teamName.localeCompare(right.teamName) * directionFactor;
-      }
-
-      const primary = (left[teamSortKey] - right[teamSortKey]) * directionFactor;
-      if (primary !== 0) {
-        return primary;
-      }
-
-      return left.teamName.localeCompare(right.teamName);
-    });
-  }, [stats.teamSeenSummaries, teamSortDirection, teamSortKey]);
-
-  function toggleTeamSort(nextKey: typeof teamSortKey) {
-    if (teamSortKey === nextKey) {
-      setTeamSortDirection((current) => current === "desc" ? "asc" : "desc");
-      return;
-    }
-
-    setTeamSortKey(nextKey);
-    setTeamSortDirection(nextKey === "teamName" ? "asc" : "desc");
-  }
-
+  const topTeams = useMemo(
+    () => [...stats.teamSeenSummaries].sort((left, right) => right.gamesSeen - left.gamesSeen).slice(0, 6),
+    [stats.teamSeenSummaries]
+  );
   const followingPreview = friends.slice(0, 3);
   const topInsights = useMemo(() => getTopInsights(stats, favoriteTeam?.name), [favoriteTeam?.name, stats]);
+  const favoriteRecord = stats.favoriteTeamSplit
+    ? `${stats.favoriteTeamSplit.wins}-${stats.favoriteTeamSplit.losses}`
+    : `${stats.wins}-${stats.losses}`;
+  const heroStatusLabel =
+    persistenceStatus === "error"
+      ? "Sync needs attention"
+      : persistenceStatus === "saving"
+        ? "Saving changes"
+        : persistenceStatus === "saved"
+          ? "Ledger saved"
+          : "Ready for the next game";
+  const heroStatusTone =
+    persistenceStatus === "error"
+      ? "danger"
+      : persistenceStatus === "saving"
+        ? "warning"
+        : "success";
 
   return (
-    <Screen
-      title="Ballpark Ledger"
-      subtitle="Your baseball record at a glance: where the ledger stands, what to do next, and the best story hiding in your saved games."
-    >
-      <View style={styles.ledgerHero}>
+    <Screen title="Home" subtitle="Your MLB ledger, latest memories, and the next best move.">
+      <HeroCard>
         {isHydrated ? (
           <View style={styles.heroStack}>
-            <View style={[styles.heroRow, isWide ? styles.heroRowWide : null]}>
+            <View style={[styles.heroTopRow, !shouldStackHeroRail ? styles.heroTopRowWide : null]}>
               <View style={styles.heroLead}>
-                <Text style={styles.heroEyebrow}>{profile.displayName}</Text>
-                <Text style={styles.heroTitle}>{hasLogs ? levelProgress.currentLevel.title : "Start Your Ledger"}</Text>
+                <StatusPill label="Your MLB Ledger" tone="dark" />
+                <Text style={styles.heroName}>{profile.displayName}</Text>
+                <Text style={[styles.heroTitle, responsive.isCompact ? styles.heroTitleCompact : null]}>
+                  {hasLogs ? levelProgress.currentLevel.title : "Build your fan record"}
+                </Text>
                 <Text style={styles.heroBody}>
                   {hasLogs
-                    ? `${stats.totalGamesAttended} games logged, ${stats.uniqueStadiumsVisited} stadiums visited, and ${stats.witnessedHomeRuns} home runs seen in person.`
-                    : "Pick the first game you’ve attended, save it once, and this page turns into your personal MLB attendance ledger."}
+                    ? `${stats.totalGamesAttended} games, ${stats.uniqueStadiumsVisited} stadiums, and ${stats.witnessedHomeRuns} home runs seen in person.`
+                    : "Start with one attended game and this turns into your personal baseball command center."}
                 </Text>
-                <View style={styles.heroActionRow}>
+                <View style={styles.heroActions}>
                   {nextAction.route ? (
-                    <PrimaryButton label={nextAction.label} onPress={() => router.push(nextAction.route as never)} />
+                    <PrimaryButton label="Log a Game" onPress={() => router.push("/(tabs)/log-game")} />
                   ) : (
-                    <PrimaryButton label={nextAction.label} onPress={retryHydration} />
+                    <PrimaryButton label="Retry Storage" onPress={retryHydration} />
                   )}
-                  <View style={styles.heroActionCopy}>
-                    <Text style={styles.heroActionLabel}>Next Best Action</Text>
-                    <Text style={styles.heroActionText}>{nextAction.summary}</Text>
-                  </View>
+                  <PrimaryButton label="View History" variant="secondary" onPress={() => router.push("/(tabs)/history")} />
                 </View>
-                {!hasLogs ? (
-                  <Text style={styles.heroSupportText}>
-                    Start with just one game. Seat details can be quick now, and memory notes can always wait until later.
-                  </Text>
-                ) : null}
               </View>
 
               <View style={styles.heroRail}>
-                <View style={styles.heroStatusBlock}>
-                  <Text style={styles.heroStatusLabel}>Favorite Team</Text>
-                  <Text style={styles.heroStatusValue}>{favoriteTeam?.name ?? "Not set yet"}</Text>
-                  <Text style={styles.heroStatusMeta}>
-                    {favoriteTeam
-                      ? `${stats.favoriteTeamSplit?.wins ?? stats.wins}-${stats.favoriteTeamSplit?.losses ?? stats.losses} in-person record`
-                      : "Set this in Profile for cleaner splits."}
+                <View style={styles.heroRailCard}>
+                  <Text style={styles.heroRailLabel}>Current level</Text>
+                  <Text style={styles.heroRailValue}>{hasLogs ? `${levelProgress.points} pts` : "0 pts"}</Text>
+                  <Text style={styles.heroRailMeta}>
+                    {levelProgress.nextLevel
+                      ? `${levelProgress.nextLevel.points - levelProgress.points} to ${levelProgress.nextLevel.title}`
+                      : "Top level reached"}
                   </Text>
-                </View>
-                {persistenceStatus === "error" ? (
-                  <View style={styles.heroStatusBlock}>
-                    <Text style={styles.heroStatusLabel}>Sync Needs Attention</Text>
-                    <Text style={styles.heroStatusValue}>Check storage</Text>
-                    <Text style={styles.heroStatusMeta}>{getPersistenceSummary(persistenceStatus)}</Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-
-            <View style={styles.heroMetrics}>
-              <View style={styles.heroMetricCard}>
-                <Text style={styles.heroMetricLabel}>Games</Text>
-                <Text style={styles.heroMetricValue}>{stats.totalGamesAttended}</Text>
-              </View>
-              <View style={styles.heroMetricCard}>
-                <Text style={styles.heroMetricLabel}>{favoriteTeam?.name ?? "Favorite Team"} Record</Text>
-                <Text style={styles.heroMetricValue}>
-                  {stats.favoriteTeamSplit?.wins ?? stats.wins}-{stats.favoriteTeamSplit?.losses ?? stats.losses}
-                </Text>
-              </View>
-              <View style={styles.heroMetricCard}>
-                <Text style={styles.heroMetricLabel}>Stadiums</Text>
-                <Text style={styles.heroMetricValue}>{stats.uniqueStadiumsVisited}</Text>
-              </View>
-              <View style={styles.heroMetricCard}>
-                <Text style={styles.heroMetricLabel}>Home Runs Seen</Text>
-                <Text style={styles.heroMetricValue}>{stats.witnessedHomeRuns}</Text>
-              </View>
-            </View>
-
-            {hasLogs ? (
-              <View style={[styles.heroLowerGrid, isWide ? styles.heroLowerGridWide : null]}>
-                <View style={styles.heroSubPanel}>
-                  <Text style={styles.heroSubLabel}>Level Progress</Text>
-                  <Text style={styles.heroSubTitle}>{levelProgress.points} total points</Text>
                   <View style={styles.progressTrack}>
                     <View style={[styles.progressFill, { width: `${levelProgress.progress * 100}%` }]} />
                   </View>
-                  <Text style={styles.heroSubText}>
-                    {levelProgress.nextLevel
-                      ? `${levelProgress.nextLevel.points - levelProgress.points} more points until ${levelProgress.nextLevel.title}.`
-                      : "Top level reached. Keep padding the ledger."}
-                  </Text>
-                  <Text style={styles.heroSubText}>
-                    Best streak: {levelProgress.streaks.bestWeeks} weeks
-                    {levelProgress.pointBreakdown.streakBonus
-                      ? ` • ${levelProgress.pointBreakdown.streakBonus} bonus points`
-                      : " • no streak bonus yet"}
-                  </Text>
-                  <View style={styles.levelBreakdown}>
-                    <View style={styles.levelPill}>
-                      <Text style={styles.levelPillLabel}>Games</Text>
-                      <Text style={styles.levelPillValue}>{levelProgress.counts.games}</Text>
-                    </View>
-                    <View style={styles.levelPill}>
-                      <Text style={styles.levelPillLabel}>Stadiums</Text>
-                      <Text style={styles.levelPillValue}>{levelProgress.counts.stadiums}</Text>
-                    </View>
-                    <View style={styles.levelPill}>
-                      <Text style={styles.levelPillLabel}>HR Seen</Text>
-                      <Text style={styles.levelPillValue}>{levelProgress.counts.homeRuns}</Text>
-                    </View>
-                    <View style={styles.levelPill}>
-                      <Text style={styles.levelPillLabel}>Walk-Offs</Text>
-                      <Text style={styles.levelPillValue}>{levelProgress.counts.walkOffs}</Text>
-                    </View>
-                    <View style={styles.levelPill}>
-                      <Text style={styles.levelPillLabel}>Extra Inn.</Text>
-                      <Text style={styles.levelPillValue}>{levelProgress.counts.extraInnings}</Text>
-                    </View>
-                    <View style={styles.levelPill}>
-                      <Text style={styles.levelPillLabel}>Unique Teams</Text>
-                      <Text style={styles.levelPillValue}>{levelProgress.counts.uniqueTeams}</Text>
-                    </View>
-                    <View style={styles.levelPill}>
-                      <Text style={styles.levelPillLabel}>Best Streak</Text>
-                      <Text style={styles.levelPillValue}>{levelProgress.counts.bestStreakWeeks}</Text>
-                    </View>
-                  </View>
                 </View>
-
-                <View style={styles.heroSubPanel}>
-                  <Text style={styles.heroSubLabel}>Ledger Health</Text>
-                  <Text style={styles.heroSubTitle}>
-                    {nextMilestone
-                      ? `${nextMilestone.remaining} more ${nextMilestone.remaining === 1 ? "game" : "games"} until ${nextMilestone.target}.`
-                      : "Current milestone ladder cleared."}
-                  </Text>
-                  <Text style={styles.heroSubText}>
-                    {stats.uniqueStadiumsVisited} stadiums visited and {stats.uniqueSectionsSatIn} seating sections tracked.
-                  </Text>
-                  <Text style={styles.heroSubText}>
-                    Score: {SCORE_RULES.game}/game, {SCORE_RULES.stadium}/stadium, {SCORE_RULES.uniqueTeam}/team, {SCORE_RULES.homeRun}/HR, {SCORE_RULES.extraInnings}/extra-inning game, {SCORE_RULES.walkOff}/walk-off.
-                  </Text>
-                  <Text style={styles.heroSubText}>
-                    {favoriteTeam
-                      ? `${favoriteTeam.name} appears in ${stats.favoriteTeamSplit?.gamesAttended ?? 0} games in your ledger.`
-                      : "Set a favorite team in Profile to unlock cleaner team-specific comparisons."}
-                  </Text>
-                  <View style={styles.inlineActions}>
-                    <PrimaryButton label="Stats" onPress={() => router.push("/(tabs)/stats")} />
-                    <PrimaryButton label="History" onPress={() => router.push("/(tabs)/history")} />
-                    <PrimaryButton label="Profile" onPress={() => router.push("/(tabs)/profile")} />
-                  </View>
+                <View style={styles.heroRailCard}>
+                  <Text style={styles.heroRailLabel}>Next best action</Text>
+                  <Text style={styles.heroRailBody}>{nextAction.summary}</Text>
+                  <StatusPill label={heroStatusLabel} tone={heroStatusTone} />
                 </View>
               </View>
-            ) : null}
+            </View>
 
-            {persistenceError ? <Text style={styles.errorText}>{persistenceError}</Text> : null}
+            <View style={[styles.metricGrid, responsive.isCompact ? styles.metricGridCompact : null]}>
+              <MetricCard label="Games" value={String(stats.totalGamesAttended)} inverse />
+              <MetricCard
+                label={favoriteTeam?.name ? `${favoriteTeam.abbreviation} Record` : "Record"}
+                value={favoriteRecord}
+                meta={favoriteTeam ? "Favorite-team split" : "All logged games"}
+                inverse
+              />
+              <MetricCard label="Stadiums" value={String(stats.uniqueStadiumsVisited)} inverse />
+            </View>
+
+            {persistenceError ? <Text style={styles.heroError}>{persistenceError}</Text> : null}
           </View>
         ) : (
-          <Text style={styles.primaryText}>Loading your local record...</Text>
+          <Text style={styles.heroLoading}>Loading your ledger...</Text>
         )}
-      </View>
+      </HeroCard>
+
+      {!hasLogs ? (
+        <EmptyState
+          eyebrow="First game"
+          title="Log your first MLB game"
+          body="The first save unlocks your home dashboard, personal stats, and the game-by-game memory trail that makes the product feel like your own baseball ledger."
+          action={<PrimaryButton label="Log First Game" onPress={() => router.push("/(tabs)/log-game")} />}
+        />
+      ) : null}
 
       <View style={[styles.grid, isWide ? styles.gridWide : null]}>
         <View style={styles.mainColumn}>
-          <SectionCard title="Top Baseball Truths">
+          <SectionCard title="Top personal insights" subtitle="The fastest read on your baseball identity right now.">
             {hasLogs ? (
               <View style={styles.summaryCardGrid}>
                 {topInsights.map((insight) => (
-                  <View key={insight.label} style={styles.summaryCard}>
-                    <Text style={styles.summaryCardLabel}>{insight.label}</Text>
-                    <Text style={styles.summaryCardValue}>{insight.value}</Text>
-                    <Text style={styles.summaryCardMeta}>{insight.detail}</Text>
-                  </View>
+                  <InsightCard key={insight.label} eyebrow={insight.label} title={insight.value} body={insight.detail} />
                 ))}
               </View>
             ) : (
               <PlaceholderPanel
                 title="Your first game starts the story"
-                body="Once one attended game is in the ledger, this section turns into the fastest read on your baseball record."
+                body="Once one attended game is in the ledger, this section becomes the fastest read on your baseball record."
                 actionLabel="Log First Game"
                 onAction={() => router.push("/(tabs)/log-game")}
               />
             )}
           </SectionCard>
 
-          <SectionCard title="Latest Game">
+          <SectionCard title="Latest logged game" subtitle="Your newest memory and its box-score context.">
             {latestGame && latestGameLabel ? (
-              <View style={styles.compactStack}>
-                <Text style={styles.primaryText}>{latestGameLabel.title}</Text>
-                <Text style={styles.secondaryText}>{latestGameLabel.subtitle} • Final {latestGameLabel.score}</Text>
-                <View style={styles.inlineMetrics}>
-                  <Text style={styles.metricChip}>Hits {latestGame.homeHits + latestGame.awayHits}</Text>
-                  <Text style={styles.metricChip}>Pitchers {latestGame.pitchersUsed?.length ?? 0}</Text>
-                  <Text style={styles.metricChip}>Batters {latestGame.battersUsed?.length ?? 0}</Text>
+              <View style={styles.featuredGameCard}>
+                <View style={styles.featuredGameCopy}>
+                  <Text style={styles.primaryText}>{latestGameLabel.title}</Text>
+                  <Text style={styles.secondaryText}>{latestGameLabel.subtitle}</Text>
+                  <Text style={styles.scoreText}>Final {latestGameLabel.score}</Text>
                 </View>
+                <View style={styles.tagRow}>
+                  {buildGameNotes(latestGame).map((note) => (
+                    <StatusPill key={note} label={note} tone="info" />
+                  ))}
+                </View>
+                {latestLog.memorableMoment ? <Text style={styles.noteText}>{latestLog.memorableMoment}</Text> : null}
                 <Text style={styles.secondaryText}>
                   {stats.playerBattingSummaries[0]
-                    ? `Top hitter seen: ${stats.playerBattingSummaries[0].playerName} (${stats.playerBattingSummaries[0].homeRunsSeen} HR seen)`
-                    : "No player summary available yet."}
+                    ? `Top hitter seen so far: ${stats.playerBattingSummaries[0].playerName}.`
+                    : "Player summaries are still building as more games gain complete box-score coverage."}
                 </Text>
-                {latestLog.memorableMoment ? <Text style={styles.noteText}>{latestLog.memorableMoment}</Text> : null}
                 <View style={styles.inlineActions}>
                   <PrimaryButton label="Open Game Page" onPress={() => router.push((`/logged-game/${latestLog.id}`) as never)} />
+                  <PrimaryButton label="View Stats" variant="secondary" onPress={() => router.push("/(tabs)/stats")} />
                 </View>
               </View>
             ) : (
               <PlaceholderPanel
                 title="Your first game belongs here"
-                body="Search for the matchup you attended, save the seat section, and this spot becomes the latest chapter in your ledger."
+                body="Search for the matchup you attended, save it once, and this becomes the latest chapter in your baseball ledger."
                 actionLabel="Pick First Game"
                 onAction={() => router.push("/(tabs)/log-game")}
               />
             )}
           </SectionCard>
 
-          <SectionCard title="Momentum">
-            {hasLogs ? (
-              <View style={styles.compactStack}>
-                <Text style={styles.primaryText}>
-                  {nextMilestone
-                    ? `${nextMilestone.remaining} more ${nextMilestone.remaining === 1 ? "game" : "games"} until ${nextMilestone.target} logged.`
-                    : "You cleared every current milestone. Keep stacking games."}
-                </Text>
-                <Text style={styles.secondaryText}>
-                  {stats.uniqueStadiumsVisited} stadiums visited • {stats.uniqueSectionsSatIn} unique seating sections tracked
-                </Text>
-                <Text style={styles.secondaryText}>
-                  {favoriteTeam
-                    ? `${favoriteTeam.name} games in your ledger: ${stats.favoriteTeamSplit?.gamesAttended ?? 0}.`
-                    : "Set a favorite team in Profile to unlock cleaner team-specific splits."}
-                </Text>
-              </View>
-            ) : (
-              <PlaceholderPanel
-                title="Start the ledger"
-                body="One saved game is enough to unlock milestones, record tracking, and your first personal baseball stats."
-                actionLabel="Log First Game"
-                onAction={() => router.push("/(tabs)/log-game")}
+          <SectionCard title="Progress and milestones" subtitle="Where your ledger is headed next.">
+            <View style={styles.progressGrid}>
+              <InsightCard
+                eyebrow="Milestone"
+                title={
+                  nextMilestone
+                    ? `${nextMilestone.remaining} more ${nextMilestone.remaining === 1 ? "game" : "games"}`
+                    : "Milestone ladder cleared"
+                }
+                body={
+                  nextMilestone
+                    ? `You are closing in on ${nextMilestone.target} logged games.`
+                    : "Keep stacking games and stadiums while the next beta levels take shape."
+                }
               />
-            )}
+              <InsightCard
+                eyebrow="Level scoring"
+                title={`${levelProgress.counts.games} games • ${levelProgress.counts.stadiums} stadiums`}
+                body={`HR seen ${levelProgress.counts.homeRuns} • Walk-offs ${levelProgress.counts.walkOffs} • Extra innings ${levelProgress.counts.extraInnings} • Best streak ${levelProgress.counts.bestStreakWeeks} weeks`}
+              />
+            </View>
           </SectionCard>
 
-          <SectionCard title="When You Go">
+          <SectionCard title="When you go" subtitle="Your game-window heat map in Eastern Time.">
             {hasTimedGames ? (
-              <View style={styles.patternWrap}>
+              <ScrollView horizontal={responsive.isCompact} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.patternScrollContent}>
+                <View style={[styles.patternWrap, responsive.isCompact ? styles.patternWrapCompact : null]}>
                 <View style={styles.patternHeader}>
                   <Text style={[styles.patternHeaderText, styles.patternLabelCol]}>Time</Text>
                   {dayLabels.map((day) => (
@@ -679,106 +582,87 @@ export function HomeScreen() {
                     })}
                   </View>
                 ))}
-                <Text style={styles.secondaryText}>Heat map of your typical game windows by day of week, shown in Eastern Time.</Text>
-              </View>
+                </View>
+              </ScrollView>
             ) : (
               <PlaceholderPanel
                 title="No first-pitch pattern yet"
-                body="This graph turns on once the saved game data includes start times, so it can group your attendance by exact first-pitch times."
+                body="This view turns on as the logged-game set fills in start times."
               />
             )}
           </SectionCard>
         </View>
 
         <View style={styles.sideColumn}>
-          <SectionCard title="Teams Seen">
-            {stats.teamSeenSummaries.length ? (
-              <>
-                <View style={styles.teamHeader}>
-                  <Pressable onPress={() => toggleTeamSort("teamName")} style={[styles.teamHeaderPressable, styles.teamNameCol]}>
-                    <Text style={[styles.teamHeaderText, styles.teamNameCol]}>Team{getSortIndicator(teamSortKey === "teamName", teamSortDirection)}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => toggleTeamSort("gamesSeen")} style={styles.teamHeaderPressable}>
-                    <Text style={styles.teamHeaderText}>G{getSortIndicator(teamSortKey === "gamesSeen", teamSortDirection)}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => toggleTeamSort("winsSeen")} style={styles.teamHeaderPressable}>
-                    <Text style={styles.teamHeaderText}>W{getSortIndicator(teamSortKey === "winsSeen", teamSortDirection)}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => toggleTeamSort("lossesSeen")} style={styles.teamHeaderPressable}>
-                    <Text style={styles.teamHeaderText}>L{getSortIndicator(teamSortKey === "lossesSeen", teamSortDirection)}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => toggleTeamSort("hitsSeen")} style={styles.teamHeaderPressable}>
-                    <Text style={styles.teamHeaderText}>H{getSortIndicator(teamSortKey === "hitsSeen", teamSortDirection)}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => toggleTeamSort("runsSeen")} style={styles.teamHeaderPressable}>
-                    <Text style={styles.teamHeaderText}>R{getSortIndicator(teamSortKey === "runsSeen", teamSortDirection)}</Text>
-                  </Pressable>
-                </View>
-                {sortedTeamSummaries.map((team) => (
-                  <View key={team.teamId} style={styles.teamRow}>
-                    <Text style={[styles.friendName, styles.teamNameCol]}>{team.teamName}</Text>
-                    <Text style={styles.teamValue}>{team.gamesSeen}</Text>
-                    <Text style={styles.teamValue}>{team.winsSeen}</Text>
-                    <Text style={styles.teamValue}>{team.lossesSeen}</Text>
-                    <Text style={styles.teamValue}>{team.hitsSeen}</Text>
-                    <Text style={styles.teamValue}>{team.runsSeen}</Text>
+          <SectionCard title="Top teams seen" subtitle="The clubs most attached to your ledger.">
+            {topTeams.length ? (
+              <View style={styles.teamSummaryStack}>
+                {topTeams.map((team) => (
+                  <View key={team.teamId} style={[styles.teamSummaryCard, responsive.isCompact ? styles.teamSummaryCardCompact : null]}>
+                    <View style={[styles.teamSummaryHeader, responsive.isCompact ? styles.teamSummaryHeaderCompact : null]}>
+                      <Text style={styles.teamSummaryName}>{team.teamName}</Text>
+                      <StatusPill label={`${team.gamesSeen} games`} tone="default" />
+                    </View>
+                    <Text style={styles.teamSummaryMeta}>
+                      {team.winsSeen}-{team.lossesSeen} attended record • {team.runsSeen} runs seen • {team.hitsSeen} hits seen
+                    </Text>
                   </View>
                 ))}
-              </>
+                <PrimaryButton label="Open Full Stats" variant="secondary" onPress={() => router.push("/(tabs)/stats")} />
+              </View>
             ) : (
               <PlaceholderPanel
                 title="No team splits yet"
-                body="Once you log a game, this panel will track how often you’ve seen each club along with the in-person wins, losses, hits, and runs."
+                body="Once you log games, this becomes the visual club summary of your baseball trail."
               />
             )}
           </SectionCard>
 
-          <SectionCard title="Friends">
+          <SectionCard title="Following" subtitle="Secondary for now until the shared profile graph deepens.">
             {followingPreview.length ? (
-              followingPreview.map((friend) => {
-                const favoriteFollowedTeam = teams.find((team) => team.id === friend.favoriteTeamId);
+              <View style={styles.socialStack}>
+                {followingPreview.map((friend) => {
+                  const favoriteFollowedTeam = teams.find((team) => team.id === friend.favoriteTeamId);
 
-                return (
-                <View key={friend.id} style={styles.friendRow}>
-                  <Pressable style={styles.friendCopy} onPress={() => router.push((`/friends/${friend.id}`) as never)}>
-                    <Text style={styles.friendName}>{friend.displayName}</Text>
-                    <Text style={styles.secondaryText}>
-                      {friend.username ? `@${friend.username}` : "App fan"} • {favoriteFollowedTeam?.name ?? "No favorite team"}
-                    </Text>
-                    <Text style={styles.secondaryText}>
-                      Shared ledger: {friend.sharedGamesLogged ?? 0} games • {friend.sharedStadiumsVisited ?? 0} stadiums
-                    </Text>
-                    <Text style={styles.secondaryText}>
-                      View their shared baseball resume without exposing seats, companions, or private notes.
-                    </Text>
-                  </Pressable>
-                  <View style={styles.inlineActions}>
-                    <PrimaryButton label="View" onPress={() => router.push((`/friends/${friend.id}`) as never)} />
-                    <PrimaryButton label="Unfollow" onPress={() => void unfollowUser(friend.id)} />
-                  </View>
-                </View>
-              );
-              })
+                  return (
+                    <View key={friend.id} style={styles.friendRow}>
+                      <Pressable style={styles.friendCopy} onPress={() => router.push((`/friends/${friend.id}`) as never)}>
+                        <Text style={styles.friendName}>{friend.displayName}</Text>
+                        <Text style={styles.secondaryText}>
+                          {friend.username ? `@${friend.username}` : "App fan"} • {favoriteFollowedTeam?.name ?? "No favorite team"}
+                        </Text>
+                        <Text style={styles.secondaryText}>
+                          {friend.sharedGamesLogged ?? 0} games shared • {friend.sharedStadiumsVisited ?? 0} stadiums shared
+                        </Text>
+                      </Pressable>
+                      <View style={styles.inlineActions}>
+                        <PrimaryButton label="View" variant="secondary" onPress={() => router.push((`/friends/${friend.id}`) as never)} />
+                        <PrimaryButton label="Unfollow" variant="ghost" onPress={() => void unfollowUser(friend.id)} />
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
             ) : (
-              <Text style={styles.secondaryText}>No accepted follows yet. Use Profile to find people and manage requests.</Text>
+              <Text style={styles.secondaryText}>No accepted follows yet. Profile is the place to find people and manage requests.</Text>
             )}
           </SectionCard>
 
-          <SectionCard title="Requests">
+          <SectionCard title="Requests" subtitle="What is waiting for action right now.">
             {pendingFollowRequests.length ? (
               pendingFollowRequests.map((request) => (
                 <View key={request.id} style={styles.friendRow}>
                   <View style={styles.friendCopy}>
                     <Text style={styles.friendName}>{request.profile.displayName}</Text>
                     <Text style={styles.secondaryText}>
-                      {request.direction === "incoming" ? "Wants to follow you" : "You already requested this follow"}
+                      {request.direction === "incoming" ? "Wants to follow you" : "Request already sent"}
                     </Text>
                   </View>
-                  <PrimaryButton label="Profile" onPress={() => router.push((`/friends/${request.profile.id}`) as never)} />
+                  <PrimaryButton label="Profile" variant="secondary" onPress={() => router.push((`/friends/${request.profile.id}`) as never)} />
                 </View>
               ))
             ) : (
-              <Text style={styles.secondaryText}>No follow requests are waiting. Search for people from Profile to start building your network.</Text>
+              <Text style={styles.secondaryText}>No requests are waiting right now.</Text>
             )}
           </SectionCard>
         </View>
@@ -789,7 +673,7 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   grid: {
-    gap: spacing.md
+    gap: spacing.lg
   },
   gridWide: {
     flexDirection: "row",
@@ -797,339 +681,221 @@ const styles = StyleSheet.create({
   },
   mainColumn: {
     flex: 1.15,
-    gap: spacing.md
+    gap: spacing.lg
   },
   sideColumn: {
     flex: 0.85,
-    gap: spacing.md
-  },
-  compactStack: {
-    gap: spacing.xs
-  },
-  ledgerHero: {
-    gap: spacing.md,
-    padding: spacing.xl,
-    borderRadius: 28,
-    backgroundColor: colors.navy,
-    borderWidth: 1,
-    borderColor: "rgba(255,253,248,0.12)",
-    shadowColor: colors.navy,
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 5
-  },
-  heroStack: {
-    gap: spacing.md
-  },
-  heroRow: {
     gap: spacing.lg
   },
-  heroRowWide: {
+  heroStack: {
+    gap: spacing.lg
+  },
+  heroTopRow: {
+    gap: spacing.lg
+  },
+  heroTopRowWide: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "stretch"
   },
   heroLead: {
-    flex: 1.3,
+    flex: 1.25,
+    gap: spacing.sm
+  },
+  heroName: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: colors.warning
+  },
+  heroTitle: {
+    fontSize: 36,
+    lineHeight: 40,
+    fontWeight: "900",
+    color: colors.textInverse
+  },
+  heroTitleCompact: {
+    fontSize: 28,
+    lineHeight: 32
+  },
+  heroBody: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: "rgba(255,253,248,0.82)",
+    maxWidth: 680
+  },
+  heroActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.md
   },
   heroRail: {
     flex: 0.8,
     gap: spacing.md
   },
-  heroActionRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: spacing.md
-  },
-  heroActionCopy: {
-    flex: 1,
-    gap: spacing.xs
-  },
-  heroActionLabel: {
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: colors.amber,
-    fontWeight: "700"
-  },
-  heroActionText: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.slate050
-  },
-  heroEyebrow: {
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: colors.amber,
-    fontWeight: "700"
-  },
-  heroTitle: {
-    fontSize: 28,
-    lineHeight: 32,
-    fontWeight: "800",
-    color: colors.white
-  },
-  heroBody: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.slate050
-  },
-  heroSupportText: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: colors.slate100
-  },
-  heroStatusBlock: {
-    minWidth: 140,
-    padding: spacing.md,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,253,248,0.12)",
-    gap: 4
-  },
-  heroStatusLabel: {
-    fontSize: 10,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: colors.slate100,
-    fontWeight: "700"
-  },
-  heroStatusValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.white
-  },
-  heroStatusMeta: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.slate100
-  },
-  heroMetrics: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
-  },
-  heroMetricCard: {
-    flexGrow: 1,
-    minWidth: 150,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,253,248,0.12)",
+  heroRailCard: {
     backgroundColor: "rgba(255,253,248,0.08)",
-    gap: 2
+    borderWidth: 1,
+    borderColor: "rgba(255,253,248,0.1)",
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    gap: spacing.sm
   },
-  heroMetricLabel: {
+  heroRailLabel: {
     fontSize: 11,
     textTransform: "uppercase",
-    letterSpacing: 1,
-    color: colors.slate100,
-    fontWeight: "700"
-  },
-  heroMetricValue: {
-    fontSize: 24,
-    color: colors.white,
+    letterSpacing: 1.2,
+    color: "rgba(255,253,248,0.62)",
     fontWeight: "800"
   },
-  heroLowerGrid: {
+  heroRailValue: {
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: "900",
+    color: colors.textInverse
+  },
+  heroRailMeta: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "rgba(255,253,248,0.7)"
+  },
+  heroRailBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "rgba(255,253,248,0.7)"
+  },
+  metricGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.md
   },
-  heroLowerGridWide: {
-    flexDirection: "row"
+  metricGridCompact: {
+    gap: spacing.sm
   },
-  heroSubPanel: {
-    flex: 1,
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,253,248,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255,253,248,0.12)"
+  progressTrack: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,253,248,0.16)",
+    overflow: "hidden"
   },
-  heroSubLabel: {
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: colors.amber,
-    fontWeight: "700"
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: colors.warning
   },
-  heroSubTitle: {
+  heroLoading: {
     fontSize: 18,
-    lineHeight: 24,
     fontWeight: "800",
-    color: colors.white
+    color: colors.textInverse
   },
-  heroSubText: {
+  heroError: {
     fontSize: 13,
     lineHeight: 19,
-    color: colors.slate100
+    color: colors.warning
+  },
+  summaryCardGrid: {
+    gap: spacing.md
+  },
+  featuredGameCard: {
+    gap: spacing.md
+  },
+  featuredGameCopy: {
+    gap: spacing.xs
+  },
+  primaryText: {
+    fontSize: 20,
+    lineHeight: 25,
+    color: colors.text,
+    fontWeight: "900"
+  },
+  secondaryText: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.textMuted
+  },
+  scoreText: {
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "800",
+    color: colors.primary
+  },
+  noteText: {
+    fontSize: 15,
+    lineHeight: 23,
+    color: colors.text,
+    fontStyle: "italic"
+  },
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs
   },
   inlineActions: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm
   },
-  inlineMetrics: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
+  progressGrid: {
+    gap: spacing.md
   },
-  summaryCardGrid: {
-    gap: spacing.sm
+  teamSummaryStack: {
+    gap: spacing.md
   },
-  summaryCard: {
-    gap: spacing.xs,
-    padding: spacing.md,
-    borderRadius: 16,
+  teamSummaryCard: {
+    backgroundColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderColor: colors.slate200,
-    backgroundColor: colors.slate050
-  },
-  summaryCardLabel: {
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: colors.slate500,
-    fontWeight: "700"
-  },
-  summaryCardValue: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "800",
-    color: colors.navy
-  },
-  summaryCardMeta: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: colors.slate700
-  },
-  metricChip: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.navy,
-    backgroundColor: colors.slate050,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: 999,
-    overflow: "hidden"
-  },
-  teamHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    borderColor: colors.lineSoft,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
     gap: spacing.xs,
-    paddingBottom: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.slate200
+    ...shadows.subtle
   },
-  teamHeaderText: {
-    width: 32,
-    textAlign: "right",
-    fontSize: 10,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: colors.slate500,
-    fontWeight: "700"
+  teamSummaryCardCompact: {
+    padding: spacing.md
   },
-  teamHeaderPressable: {
-    width: 32
-  },
-  teamRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.slate100
-  },
-  teamNameCol: {
-    flex: 1,
-    width: "auto",
-    textAlign: "left"
-  },
-  teamValue: {
-    width: 32,
-    textAlign: "right",
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.navy
-  },
-  friendRow: {
+  teamSummaryHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  teamSummaryHeaderCompact: {
+    alignItems: "flex-start"
+  },
+  teamSummaryName: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: "900",
+    color: colors.text
+  },
+  teamSummaryMeta: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.textMuted
+  },
+  socialStack: {
+    gap: spacing.md
+  },
+  friendRow: {
     gap: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.slate100,
-    paddingTop: spacing.sm
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineSoft
   },
   friendCopy: {
-    flex: 1,
-    gap: 2
+    gap: spacing.xs
   },
   friendName: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.slate900
-  },
-  primaryText: {
     fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "700",
-    color: colors.slate900
-  },
-  noteText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.slate700
-  },
-  levelStack: {
-    gap: spacing.sm
-  },
-  progressTrack: {
-    width: "100%",
-    height: 12,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,253,248,0.12)",
-    overflow: "hidden"
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 999,
-    backgroundColor: colors.amber
-  },
-  levelBreakdown: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  levelPill: {
-    minWidth: 110,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,253,248,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255,253,248,0.12)",
-    gap: 2
-  },
-  levelPillLabel: {
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: colors.slate100,
-    fontWeight: "700"
-  },
-  levelPillValue: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: colors.white
+    fontWeight: "900",
+    color: colors.text
   },
   patternWrap: {
     gap: spacing.sm
+  },
+  patternWrapCompact: {
+    minWidth: 440
+  },
+  patternScrollContent: {
+    flexGrow: 1
   },
   patternHeader: {
     flexDirection: "row",
@@ -1137,17 +903,16 @@ const styles = StyleSheet.create({
     gap: spacing.xs
   },
   patternHeaderText: {
-    width: 36,
+    flex: 1,
     textAlign: "center",
-    fontSize: 10,
+    fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 1,
-    color: colors.slate500,
-    fontWeight: "700"
+    color: colors.textSoft,
+    fontWeight: "800"
   },
   patternLabelCol: {
-    flex: 1,
-    width: "auto",
+    flex: 1.4,
     textAlign: "left"
   },
   patternRow: {
@@ -1156,34 +921,24 @@ const styles = StyleSheet.create({
     gap: spacing.xs
   },
   patternRowLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.slate700
+    flex: 1,
+    fontSize: 13,
+    color: colors.textMuted,
+    fontWeight: "800"
   },
   patternCell: {
-    width: 36,
-    minHeight: 36,
-    borderRadius: 10,
+    flex: 1,
+    minHeight: 34,
+    borderRadius: 12,
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.slate200
+    justifyContent: "center"
   },
   patternCellText: {
     fontSize: 12,
-    fontWeight: "700",
-    color: colors.slate700
+    color: colors.textMuted,
+    fontWeight: "800"
   },
   patternCellTextInverse: {
-    color: colors.white
-  },
-  secondaryText: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.slate500
-  },
-  errorText: {
-    fontSize: 13,
-    color: colors.red
+    color: colors.textInverse
   }
 });

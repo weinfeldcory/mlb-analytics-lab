@@ -1,18 +1,22 @@
 import { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { colors, radii, spacing } from "../../styles/tokens";
+import { colors, radii, shadows, spacing } from "../../styles/tokens";
 
 interface SectionCardProps {
   title: string;
+  subtitle?: string;
   children: ReactNode;
 }
 
-export function SectionCard({ title, children }: SectionCardProps) {
+export function SectionCard({ title, subtitle, children }: SectionCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.eyebrowBar} />
-        <Text style={styles.title}>{title}</Text>
+        <View style={styles.headerCopy}>
+          <Text style={styles.title}>{title}</Text>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        </View>
       </View>
       <View style={styles.body}>{children}</View>
     </View>
@@ -21,34 +25,40 @@ export function SectionCard({ title, children }: SectionCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surfaceRaised,
     borderRadius: radii.lg,
     padding: spacing.lg,
-    gap: spacing.sm,
+    gap: spacing.md,
     borderWidth: 1,
-    borderColor: colors.slate200,
-    shadowColor: colors.slate700,
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 2
+    borderColor: colors.lineSoft,
+    ...shadows.card
   },
   header: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: spacing.sm
   },
+  headerCopy: {
+    flex: 1,
+    gap: 2
+  },
   eyebrowBar: {
-    width: 12,
-    height: 12,
-    borderRadius: 999,
+    width: 10,
+    height: 10,
+    marginTop: 6,
+    borderRadius: radii.pill,
     backgroundColor: colors.clay
   },
   title: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.slate900,
-    letterSpacing: 0.2
+    fontSize: 18,
+    fontWeight: "900",
+    color: colors.text,
+    letterSpacing: 0.1
+  },
+  subtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSoft
   },
   body: {
     gap: spacing.sm

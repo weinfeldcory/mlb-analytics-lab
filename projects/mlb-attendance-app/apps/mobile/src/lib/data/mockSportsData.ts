@@ -31,14 +31,23 @@ interface RawGameLog {
   };
   pitchers: Array<{
     teamId: string;
+    playerId?: number;
     pitcherName: string;
     inningsPitched: string;
     hitsAllowed: number;
     runsAllowed: number;
+    earnedRunsAllowed?: number;
     strikeouts: number;
+    walksAllowed?: number;
+    homeRunsAllowed?: number;
+    pitchesThrown?: number;
+    strikes?: number;
+    decision?: "win" | "loss" | "save" | "hold";
+    gameScore?: number;
   }>;
   batters: Array<{
     teamId: string;
+    playerId?: number;
     playerName: string;
     position?: string;
     atBats: number;
@@ -122,6 +131,21 @@ function inningsToNumber(value: string) {
   return base + Number(remainder) / 3;
 }
 
+function calculatePitcherGameScore(pitcher: RawGameLog["pitchers"][number], role: PitcherAppearance["role"]) {
+  if (role !== "starter") {
+    return undefined;
+  }
+
+  const outsRecorded = Math.round(inningsToNumber(pitcher.inningsPitched) * 3);
+  const strikeouts = pitcher.strikeouts ?? 0;
+  const walksAllowed = pitcher.walksAllowed ?? 0;
+  const hitsAllowed = pitcher.hitsAllowed ?? 0;
+  const runsAllowed = pitcher.runsAllowed ?? 0;
+  const homeRunsAllowed = pitcher.homeRunsAllowed ?? 0;
+
+  return 40 + 2 * outsRecorded + strikeouts - 2 * walksAllowed - 2 * hitsAllowed - 3 * runsAllowed - 6 * homeRunsAllowed;
+}
+
 function getPitcherRole(pitcher: RawGameLog["pitchers"][number], pitchersOnTeam: RawGameLog["pitchers"]) {
   const sortedByWorkload = [...pitchersOnTeam].sort(
     (left, right) => inningsToNumber(right.inningsPitched) - inningsToNumber(left.inningsPitched)
@@ -141,15 +165,24 @@ function getPitcherRole(pitcher: RawGameLog["pitchers"][number], pitchersOnTeam:
 function buildPitchers(game: RawGameLog): PitcherAppearance[] {
   return game.pitchers.map((pitcher) => {
     const pitchersOnTeam = game.pitchers.filter((candidate) => candidate.teamId === pitcher.teamId);
+    const role = getPitcherRole(pitcher, pitchersOnTeam);
 
     return {
       teamId: toTeamId(Number(pitcher.teamId)),
+      playerId: pitcher.playerId,
       pitcherName: pitcher.pitcherName,
-      role: getPitcherRole(pitcher, pitchersOnTeam),
+      role,
       inningsPitched: inningsToNumber(pitcher.inningsPitched),
       hitsAllowed: pitcher.hitsAllowed,
       runsAllowed: pitcher.runsAllowed,
-      strikeouts: pitcher.strikeouts
+      earnedRunsAllowed: pitcher.earnedRunsAllowed,
+      strikeouts: pitcher.strikeouts,
+      walksAllowed: pitcher.walksAllowed,
+      homeRunsAllowed: pitcher.homeRunsAllowed,
+      pitchesThrown: pitcher.pitchesThrown,
+      strikes: pitcher.strikes,
+      decision: pitcher.decision,
+      gameScore: pitcher.gameScore ?? calculatePitcherGameScore(pitcher, role)
     };
   });
 }
@@ -157,6 +190,7 @@ function buildPitchers(game: RawGameLog): PitcherAppearance[] {
 function buildBatters(game: RawGameLog): BatterAppearance[] {
   return game.batters.map((batter) => ({
     teamId: toTeamId(Number(batter.teamId)),
+    playerId: batter.playerId,
     playerName: batter.playerName,
     position: batter.position,
     atBats: batter.atBats,

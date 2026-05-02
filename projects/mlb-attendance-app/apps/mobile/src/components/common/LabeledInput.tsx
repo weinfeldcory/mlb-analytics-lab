@@ -1,5 +1,5 @@
 import { StyleSheet, Text, TextInput, TextInputSubmitEditingEventData, NativeSyntheticEvent, View } from "react-native";
-import { colors, radii, spacing } from "../../styles/tokens";
+import { colors, radii, shadows, spacing } from "../../styles/tokens";
 
 interface LabeledInputProps {
   label: string;
@@ -61,29 +61,30 @@ const styles = StyleSheet.create({
     gap: spacing.xs
   },
   label: {
-    fontSize: 14,
-    color: colors.slate700,
-    fontWeight: "600"
+    fontSize: 13,
+    color: colors.textMuted,
+    fontWeight: "800"
   },
   input: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
-    borderColor: colors.slate200,
+    borderColor: colors.line,
     borderRadius: radii.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: 15,
-    color: colors.slate900,
-    minHeight: 50
+    color: colors.text,
+    minHeight: 52,
+    ...shadows.subtle
   },
   inputMultiline: {
-    minHeight: 160
+    minHeight: 164
   },
   inputError: {
-    borderColor: colors.red
+    borderColor: colors.danger
   },
   error: {
     fontSize: 13,
-    color: colors.red
+    color: colors.danger
   }
 });

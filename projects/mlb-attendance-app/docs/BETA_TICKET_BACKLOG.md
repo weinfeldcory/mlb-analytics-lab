@@ -18,19 +18,30 @@ For execution, prefer shipping one complete slice at a time:
 4. hosted identity and social basics
 5. data quality and player completeness
 
+## Standing Next 3
+
+1. `P0` Premium product pass across shell, Home, Log Game, recap, and logged-game detail
+2. `P0` Stats summary modules and first split views
+3. `P0` History browse/filter ergonomics plus safer edit-state signaling
+
+These three tickets should always stay implementation-ready. If one ships, replace it immediately with the next highest-leverage item rather than letting the queue go stale.
+
 ## 1. Capture And Save Loop
 
 ### `P0`
 
 - Finish the post-log flow.
+  Status: `Foundation Shipped`
   - Scope: save -> recap -> game detail -> back to dashboard/history.
   - Acceptance: a successful save always lands in a satisfying next step.
 
 - Add guided memory prompts during logging and later editing.
+  Status: `Shipped`
   - Scope: optional prompts, quick memory chips, skip-for-now path.
   - Acceptance: richer journals without making logging slower.
 
 - Add manual trust states for all log outcomes.
+  Status: `Foundation Shipped`
   - Scope: saving, saved, duplicate, failure, player-data pending.
   - Acceptance: users never wonder whether a game actually saved.
 
@@ -46,10 +57,12 @@ For execution, prefer shipping one complete slice at a time:
 ### `P0`
 
 - Finish the new onboarding flow and first-run empty states.
+  Status: `Foundation Shipped`
   - Scope: concise onboarding, favorite team save, first-game prompt.
   - Acceptance: a new user knows what to do in under 60 seconds.
 
 - Simplify account surfaces around value and next action.
+  Status: `Foundation Shipped`
   - Scope: login, account creation, profile identity section.
 
 ### `P1`
@@ -66,11 +79,14 @@ For execution, prefer shipping one complete slice at a time:
   - next best action
   - latest game
   - top personal insights
+  Status: `Active`
 
 - Tighten level progress readability.
+  Status: `Foundation Shipped`
   - Scope: raw counts first, point logic secondary, simpler copy.
 
 - Make zero-log states feel intentional.
+  Status: `Foundation Shipped`
 
 ### `P1`
 
@@ -84,12 +100,15 @@ For execution, prefer shipping one complete slice at a time:
 ### `P0`
 
 - Ship logged-game detail pages as personal memory artifacts.
+  Status: `Foundation Shipped`
   - Scope: score, line score, seat, memory fields, player status, safe edit/delete.
 
 - Improve history browse ergonomics.
+  Status: `Next`
   - Scope: search, filters, grouped views, faster revisit path to detail page.
 
 - Make editing state safer.
+  Status: `Next`
   - Scope: clearer save/cancel state and better density in cards.
 
 ### `P1`
@@ -103,9 +122,11 @@ For execution, prefer shipping one complete slice at a time:
 ### `P0`
 
 - Add summary modules above tables.
+  Status: `Next`
   - Scope: top hitters seen, most-seen starters, favorite-team angle, season lens.
 
 - Add player-data completeness caveats.
+  Status: `Next`
   - Acceptance: no player insight is shown as fully complete if source data is partial.
 
 ### `P1`
@@ -120,9 +141,11 @@ For execution, prefer shipping one complete slice at a time:
 ### `P0`
 
 - Keep hosted identity stable and obvious.
+  Status: `Foundation Shipped`
   - Scope: sync status, debug page, recovery docs, no user-specific runtime branches.
 
 - Finish isolation QA.
+  Status: `Next`
   - Scope: sign-out clears in-memory state, hosted data rehydrates correctly, local fallback stays isolated.
 
 ### `P1`
@@ -136,12 +159,15 @@ For execution, prefer shipping one complete slice at a time:
 ### `P0`
 
 - Replace mocked friends with real hosted user profiles.
+  Status: `Foundation Shipped`
   - Scope: searchable profiles, one profile per auth user, safe public fields only.
 
 - Add follow-request relationships.
+  Status: `Foundation Shipped`
   - Scope: request, accept, reject, unfollow, pending requests.
 
 - Add a privacy-safe friend profile page.
+  Status: `Foundation Shipped`
   - Scope: display name, favorite team, shared games count, shared stadium count.
   - Do not show: seat, companions, memory notes, exact private history.
 
@@ -156,9 +182,11 @@ For execution, prefer shipping one complete slice at a time:
 ### `P0`
 
 - Keep the full MLB catalog usable for backfill.
+  Status: `Foundation Shipped`
   - Scope: search quality, canonical identity, data quality metadata.
 
 - Document and repair incomplete player-data batches.
+  Status: `Next`
 
 ### `P1`
 
@@ -171,9 +199,11 @@ For execution, prefer shipping one complete slice at a time:
 ### `P0`
 
 - Maintain security and exposure hygiene.
+  Status: `Foundation Shipped`
   - Scope: no secrets in repo, legal placeholders linked, debug info sanitized.
 
 - Keep docs current for:
+  Status: `Active`
   - security audit
   - account isolation QA
   - social graph MVP
@@ -184,25 +214,59 @@ For execution, prefer shipping one complete slice at a time:
 - Add basic beta event tracking later.
   - Candidates: sign up, first log, second log, follow request, onboarding complete.
 
+## 10. Responsive Web And Mobile Browser Fit
+
+### `P0`
+
+- Add a responsive shell audit and breakpoint system pass.
+  Status: `Next`
+  - Scope: define core width bands, spacing shifts, typography scaling, and when nav/layout collapses.
+  - Acceptance: the app has predictable responsive rules instead of per-screen improvisation.
+
+- Fix small-window overflow and compression issues in the authenticated shell.
+  Status: `Next`
+  - Scope: top nav, action rows, card grids, hero sections, sticky controls.
+  - Acceptance: shrinking the browser window does not create clipped, overlapping, or unreadably dense UI.
+
+- Make mobile browser rendering first-class for the core loop.
+  Status: `Next`
+  - Scope: auth, onboarding, Home, Log Game, recap, logged-game detail, History, Profile.
+  - Acceptance: core product surfaces remain readable, tappable, and visually proportional on phone-sized web screens.
+
+### `P1`
+
+- Add responsive table/card strategy for dense data surfaces.
+  - Scope: Stats and History should swap from wide-table assumptions to stacked summary cards, horizontal scrollers, or segmented views where needed.
+  - Acceptance: dense baseball data stays understandable on narrow screens without shrinking to illegibility.
+
+- Add safe-area and mobile browser chrome handling.
+  - Scope: bottom nav, sticky save bars, notch spacing, mobile Safari/Chrome viewport quirks.
+  - Acceptance: important actions are never hidden behind browser UI or unsafe edges.
+
+### `P2`
+
+- Add screenshot/device QA baselines for major breakpoints.
+  - Scope: a repeatable set of viewport checks for future releases.
+  - Acceptance: regressions are easier to catch before beta testers do.
+
 ## Recommended Build Order From Here
 
-1. Finish the log -> recap -> detail -> history loop.
-2. Finish first-run polish and zero-log Home states.
-3. Replace mocked social data with hosted profile discovery and follow requests.
-4. Add privacy-safe friend profile pages.
-5. Add stats summary modules and player-data completeness warnings.
+1. Complete the premium product pass across shell, Home, Log Game, recap, and logged-game detail.
+2. Run the responsive shell and mobile-browser fit pass across the core loop.
+3. Add stats summary modules and player-data completeness warnings.
+4. Add first split views in Stats.
+5. Improve History browse/filter ergonomics and safer edit-state feedback.
+6. Finish isolation QA and migration-adjacent tests.
 
 ## Active Build Queue
 
-### In progress
+### Active
 
-- Post-log recap and logged-game detail flow
-- Guided memory prompts
-- History browse improvements
-- Hosted social graph foundation
+- Premium product pass across shell, Home, Log Game, recap, and logged-game detail
 
 ### Next
 
-- Profile-based friend search and pending request UI
-- Friend profile page
-- Home social section cleanup against real hosted data
+- Responsive shell and mobile-browser fit pass
+- Stats summary modules and player-data completeness warnings
+- Stats split views
+- History browse/filter improvements

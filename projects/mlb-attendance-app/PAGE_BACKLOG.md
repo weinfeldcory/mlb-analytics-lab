@@ -2,6 +2,13 @@
 
 Last updated: 2026-05-01
 
+## Status Tags
+
+- `Shipped`
+- `Foundation Shipped`
+- `Next`
+- `Later`
+
 This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term execution. It assumes the current product priority is a quality pass on the local ledger before major catalog expansion.
 
 ## Priority Bands
@@ -12,12 +19,11 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 
 ## Current Recommended Build Order
 
-1. Stats: add first split views and narrative summary modules
-2. History: finish unsaved-change signaling and better bulk-review ergonomics
-3. Profile: finish hosted social MVP and clarify local vs hosted ownership
-4. Log Game: add season/opponent narrowing and repeat-entry helpers
-5. Home: make real friend context comparative instead of descriptive
-6. Cross-page: expand repository and migration test coverage
+1. Home / Shell / Log Game / Recap / Logged-game detail: cohesive premium product pass
+2. Stats: add first split views and narrative summary modules
+3. History: finish browse, filter, and larger-backfill ergonomics
+4. Profile: finish hosted social MVP and clarify local vs hosted ownership
+5. Cross-page: expand repository and migration test coverage
 
 ## Backlog By Page
 
@@ -26,6 +32,7 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 ### `P0`
 
 - Keep refining the dominant hero module so the latest game, next-best action, and top truths remain easy to scan.
+  Status: `Foundation Shipped`
   - Acceptance: the top third still feels like one product story, not separate cards.
 
 ### `P1`
@@ -47,10 +54,12 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 ### `P0`
 
 - Add first split views beyond aggregate player totals.
+  Status: `Next`
   - Suggested first set: season, opponent, stadium, weekday, home vs away.
   - Acceptance: users can answer at least one meaningful question not possible today.
 
 - Add narrative summary modules above the hitter and pitcher tables.
+  Status: `Next`
   - Examples: season leaders, favorite-team split, most-seen starters, most-seen opponents.
   - Acceptance: the page has a story before the dense tables begin.
 
@@ -72,9 +81,11 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 ### `P0`
 
 - Add season and opponent filters.
+  Status: `Later`
   - Acceptance: larger result sets can be narrowed without leaning on raw text search alone.
 
 - Add repeat-entry helpers for seats, companions, and note fragments.
+  Status: `Later`
   - Acceptance: backfilling several games in one sitting gets faster over time.
 
 ### `P1`
@@ -91,9 +102,11 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 ### `P0`
 
 - Add unsaved-change signaling while editing.
+  Status: `Next`
   - Acceptance: users can tell when they have modified a record before saving or canceling.
 
 - Improve card hierarchy and density across History and logged-game detail artifacts.
+  Status: `Foundation Shipped`
   - Acceptance: score, line score, performers, notes, and actions feel balanced rather than stacked.
 
 ### `P1`
@@ -114,9 +127,11 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 ### `P0`
 
 - Clarify local-vs-hosted ownership, export coverage, and reset consequences.
+  Status: `Foundation Shipped`
   - Acceptance: users understand exactly what is local, hosted, portable, and destructible.
 
 - Finish hosted social MVP.
+  Status: `Active`
   - Scope: searchable people, pending requests, accepted follows, privacy-safe friend profile pages.
   - Acceptance: real users can find and follow each other without exposing private log details.
 
@@ -138,9 +153,11 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 ### `P0`
 
 - Add tests around repository migrations, hydration failure recovery, and local-state integrity.
+  Status: `Next`
   - Acceptance: local trust is backed by more than domain-only tests.
 
 - Standardize saving, error, and empty-state language across pages.
+  Status: `Active`
   - Acceptance: the app communicates trust and failure states consistently.
 
 ### `P1`
@@ -157,8 +174,8 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 
 If work is batched into one focused sprint, the best bundle now is:
 
-1. Stats split views plus top-of-page summary modules
-2. History edit-state and backfill ergonomics
-3. Profile hosted social MVP polish and privacy controls
+1. Home / shell / log flow premium product pass
+2. Stats split views plus top-of-page summary modules
+3. History edit-state and backfill ergonomics
 
 That bundle improves the most important remaining beta gaps without taking on a full canonical-backend rebuild.

@@ -2,6 +2,14 @@
 
 Last updated: 2026-05-01
 
+## Status Legend
+
+- `Shipped`: live in the app now
+- `Foundation Shipped`: the underlying system exists, but polish or expansion is still needed
+- `Active`: current primary development arc
+- `Next`: should follow the active arc if the product stays on plan
+- `Later`: important, but not yet the best use of current effort
+
 ## Product Thesis
 
 This product should become the easiest way for a baseball fan to build and keep a durable personal record of every MLB game they attended.
@@ -83,7 +91,7 @@ Near-term product health should be measured with simple signals:
 
 ## Release 0.1: Local Ledger MVP
 
-Status: delivered
+Status: `Shipped`
 
 This release established the core single-user attendance loop:
 
@@ -94,7 +102,7 @@ This release established the core single-user attendance loop:
 
 ## Release 0.2: Durable Local Record
 
-Status: delivered
+Status: `Shipped`
 
 This release moved the product from demo-only toward a usable local journal:
 
@@ -106,7 +114,7 @@ This release moved the product from demo-only toward a usable local journal:
 
 ## Release 0.3: Product Quality Pass
 
-Status: active
+Status: `Active`
 
 Target window: April 29, 2026 to June 15, 2026
 
@@ -117,11 +125,17 @@ Goal:
 Must-have outcomes:
 
 - Home has one dominant hero and one obvious next action
+  Status: `Foundation Shipped`
 - onboarding and first-run experience feel intentional
+  Status: `Foundation Shipped`
 - Log Game communicates save state clearly and rewards a successful save
+  Status: `Foundation Shipped`
 - History feels safe and revisitable through real game detail pages
+  Status: `Foundation Shipped`
 - Profile clearly separates identity, follows, sync trust, and data controls
+  Status: `Active`
 - hosted/local mode is legible enough for beta debugging
+  Status: `Shipped`
 
 Core workstreams:
 
@@ -131,15 +145,13 @@ Core workstreams:
 - larger-history usability
 - repository and UI confidence
 
-Ticket candidates:
+Current highest-leverage tickets:
 
-- Finish the `Home` hierarchy so progress, latest record, next-best action, and early friend context read clearly.
+- Redesign the global shell, Home, Log Game, recap, and logged-game detail surfaces into a cohesive premium product pass.
 - Add split views to `Stats` for season, stadium, opponent, weekday, and home-vs-away questions.
 - Add narrative summary modules above the Stats tables so the page is not just two grids.
-- Keep tightening search matching and save-state feedback in `Log Game`.
-- Finish the recap -> detail -> history review loop and add stronger unsaved-change affordances in `History`.
-- Clarify reset, import, export, storage, and social copy in `Profile`.
-- Finish the hosted social MVP with request management and privacy-safe shared stats.
+- Strengthen History browse ergonomics for larger backfill sessions.
+- Finish the hosted social MVP with request management, shared profile reliability, and cleaner privacy-safe comparison surfaces.
 - Add tests around repository migrations, persistence failure handling, and UI-adjacent domain assumptions.
 
 Exit criteria:
@@ -150,6 +162,7 @@ Exit criteria:
 
 ## Release 0.4: Catalog Quality And Backfill
 
+Status: `Next`
 Target window: June 16, 2026 to August 31, 2026
 
 Goal:
@@ -186,6 +199,7 @@ Exit criteria:
 
 ## Release 0.5: Personal Stats, Collections, And Memories
 
+Status: `Next`
 Target window: September 1, 2026 to November 30, 2026
 
 Goal:
@@ -220,6 +234,7 @@ Exit criteria:
 
 ## Release 1.0: Account, Sync, And Backup
 
+Status: `Later`
 Target window: after strong local usage signals
 
 Goal:
@@ -254,6 +269,8 @@ Exit criteria:
 - sync semantics are understandable, not magical
 
 ## Release 1.1+: Optional Social And Live Context
+
+Status: `Later`
 
 Only start this work after Release 1.0 is stable.
 

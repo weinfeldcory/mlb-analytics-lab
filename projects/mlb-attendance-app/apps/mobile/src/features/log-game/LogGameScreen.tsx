@@ -1,13 +1,17 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import type { Href } from "expo-router";
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { EmptyState } from "../../components/common/EmptyState";
+import { FilterChip } from "../../components/common/FilterChip";
 import { Screen } from "../../components/common/Screen";
 import { LabeledInput } from "../../components/common/LabeledInput";
 import { PrimaryButton } from "../../components/common/PrimaryButton";
 import { SectionCard } from "../../components/common/SectionCard";
+import { StatusPill } from "../../components/common/StatusPill";
 import { useAppData } from "../../providers/AppDataProvider";
-import { colors, spacing } from "../../styles/tokens";
+import { useResponsiveLayout } from "../../styles/responsive";
+import { colors, radii, shadows, spacing } from "../../styles/tokens";
 import { formatGameLabel } from "../../lib/formatters";
 import type { Game } from "@mlb-attendance/domain";
 import { MEMORY_CHIPS, applyMemoryChip } from "../history/gameDetailHelpers";
@@ -32,9 +36,10 @@ function buildGameNotes(game: Game) {
 
 export function LogGameScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const responsive = useResponsiveLayout();
   const { profile, teams, venues, games, searchGames, addAttendanceLog } = useAppData();
-  const isWide = width >= 1024;
+  const isWide = responsive.isWideDesktop;
+  const isCompact = responsive.isCompact;
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const venuesById = useMemo(() => new Map(venues.map((venue) => [venue.id, venue])), [venues]);
   const favoriteTeam = teams.find((team) => team.id === profile.favoriteTeamId);
@@ -232,17 +237,22 @@ export function LogGameScreen() {
   return (
     <Screen
       title="Log a Game"
-      subtitle="Find the game fast, save it with just a seat section, and add the extra memory detail only if it helps."
+      subtitle="Find the matchup fast, confirm the exact game, and save the memory without fighting a form."
     >
+      <View style={styles.stepRow}>
+        <StatusPill label="1 Find" tone="info" />
+        <StatusPill label="2 Confirm" tone={selectedGame ? "success" : "default"} />
+        <StatusPill label="3 Save" tone={section.trim() ? "success" : "default"} />
+        <StatusPill label="4 Details" tone="default" />
+      </View>
+
       <View style={[styles.topGrid, isWide ? styles.topGridWide : null]}>
-        <SectionCard title="1. Find the Game Fast">
+        <SectionCard title="1. Find the game" subtitle="Start broad, then narrow only if you need to.">
           <View style={styles.quickFindHeader}>
-            <Text style={styles.helperText}>Start from a quick lane, then narrow only if you need to.</Text>
+            <Text style={styles.helperText}>Large search first, then quick filters for team, season, or recent games.</Text>
             <View style={styles.quickFindRow}>
               {quickFinds.map((quickFind) => (
-                <Pressable key={quickFind.label} onPress={quickFind.action} style={styles.quickFindChip}>
-                  <Text style={styles.quickFindChipText}>{quickFind.label}</Text>
-                </Pressable>
+                <FilterChip key={quickFind.label} label={quickFind.label} onPress={quickFind.action} />
               ))}
             </View>
           </View>
@@ -262,7 +272,7 @@ export function LogGameScreen() {
                 label="Date"
                 value={date}
                 onChangeText={setDate}
-                placeholder="2025-07-20 or 2025"
+                placeholder="07/20/2025, 07-20-2025, July 20, 2025, or 2025"
                 autoCapitalize="none"
                 returnKeyType="search"
                 onSubmitEditing={() => {
@@ -299,35 +309,37 @@ export function LogGameScreen() {
           {searchError ? <Text style={styles.errorText}>{searchError}</Text> : null}
         </SectionCard>
 
-        <SectionCard title="Selected Game">
+        <SectionCard title="2. Confirm the game" subtitle="Make sure the exact matchup, date, and result look right.">
           {selectedGame && selectedGameLabel ? (
-            <>
+            <View style={styles.selectedGameCard}>
               <Text style={styles.gameTitle}>{selectedGameLabel.title}</Text>
               <Text style={styles.gameSubtitle}>{selectedGameLabel.subtitle}</Text>
-              <Text style={styles.gameSubtitle}>Final: {selectedGameLabel.score}</Text>
+              <Text style={styles.gameScore}>Final: {selectedGameLabel.score}</Text>
               <View style={styles.noteRow}>
                 {buildGameNotes(selectedGame).map((note) => (
-                  <View key={note} style={styles.notePill}>
-                    <Text style={styles.notePillText}>{note}</Text>
-                  </View>
+                  <StatusPill key={note} label={note} tone="info" />
                 ))}
               </View>
               <Text style={styles.helperText}>
                 Save with just the seat section now. You can add or edit the memory details later in History.
               </Text>
-            </>
+            </View>
           ) : (
-            <Text style={styles.helperText}>Use quick find or search, then choose one game and save it with only a seat section if you want speed.</Text>
+            <EmptyState
+              eyebrow="Select a matchup"
+              title="No game selected yet"
+              body="Use quick find or search, then choose the exact attended game before you save."
+            />
           )}
         </SectionCard>
       </View>
 
       {results.length ? (
-        <SectionCard title={`2. Select a Game (${results.length})`}>
+        <SectionCard title={`Select a result (${results.length})`} subtitle="Most recent matching games appear first.">
           <Text style={styles.helperText}>
             Pick the exact game you attended. Most recent matching games show first.
           </Text>
-          <View style={styles.resultsGrid}>
+          <View style={[styles.resultsGrid, !isCompact ? styles.resultsGridWide : null]}>
             {results.map((game) => {
               const label = formatGameLabel(game, teamsById, venuesById);
               const isSelected = selectedGame?.id === game.id;
@@ -340,11 +352,16 @@ export function LogGameScreen() {
                     setSearchError("");
                     setConfirmation(null);
                   }}
-                  style={[styles.gameOption, isSelected ? styles.gameOptionSelected : null]}
+                  style={[styles.gameOption, !isCompact ? styles.gameOptionWide : null, isSelected ? styles.gameOptionSelected : null]}
                 >
                   <Text style={styles.gameTitle}>{label.title}</Text>
                   <Text style={styles.gameSubtitle}>{label.subtitle}</Text>
-                  <Text style={styles.gameSubtitle}>Final: {label.score}</Text>
+                  <Text style={styles.gameScore}>Final: {label.score}</Text>
+                  <View style={styles.noteRow}>
+                    {buildGameNotes(game).slice(0, 3).map((note) => (
+                      <StatusPill key={`${game.id}_${note}`} label={note} tone="default" />
+                    ))}
+                  </View>
                 </Pressable>
               );
             })}
@@ -354,10 +371,16 @@ export function LogGameScreen() {
 
       <View style={[styles.bottomGrid, isWide ? styles.bottomGridWide : null]}>
         <View style={styles.formColumn}>
-          <SectionCard title="3. Save It Fast">
+          <SectionCard title="3. Save it fast" subtitle="Seat section helps memory later, but row and seat can stay blank.">
             <Text style={styles.helperText}>
-              Section is the only required field. Everything else is optional and can wait.
+              If you do not remember the section, save it as unknown and clean it up later.
             </Text>
+            <View style={styles.quickFindRow}>
+              <FilterChip label="I don't remember" selected={section.trim().toLowerCase() === "unknown"} onPress={() => {
+                setSection("Unknown");
+                setSeatError("");
+              }} />
+            </View>
             <LabeledInput
               label="Section"
               value={section}
@@ -402,7 +425,7 @@ export function LogGameScreen() {
         </View>
 
         <View style={styles.formColumn}>
-          <SectionCard title="4. Add the Memory Now Or Later">
+          <SectionCard title="4. Add memory details" subtitle="Optional now. Useful later.">
             <Text style={styles.helperText}>
               These prompts are optional. A quick line now makes the game feel personal later, but you can skip every one.
             </Text>
@@ -417,13 +440,11 @@ export function LogGameScreen() {
             <Text style={styles.helperText}>Quick memory sparks</Text>
             <View style={styles.quickFindRow}>
               {MEMORY_CHIPS.map((chip) => (
-                <Pressable
+                <FilterChip
                   key={chip}
+                  label={chip}
                   onPress={() => setMemorableMoment((current) => applyMemoryChip(current, chip))}
-                  style={styles.quickFindChip}
-                >
-                  <Text style={styles.quickFindChipText}>{chip}</Text>
-                </Pressable>
+                />
               ))}
             </View>
             <LabeledInput
@@ -468,7 +489,7 @@ export function LogGameScreen() {
       </View>
 
       {confirmation ? (
-        <SectionCard title="Saved">
+        <SectionCard title="Saved" subtitle="Your log is in the ledger and ready for review.">
           <Text style={styles.successText}>{confirmation}</Text>
           <PrimaryButton label="View History" onPress={() => router.push("/(tabs)/history")} />
         </SectionCard>
@@ -534,18 +555,10 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.sm
   },
-  quickFindChip: {
-    borderWidth: 1,
-    borderColor: colors.slate200,
-    backgroundColor: colors.white,
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
-  quickFindChipText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.navy
+  stepRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs
   },
   skipText: {
     fontSize: 14,
@@ -560,77 +573,82 @@ const styles = StyleSheet.create({
   resultsGrid: {
     gap: spacing.md
   },
+  resultsGridWide: {
+    flexDirection: "row",
+    flexWrap: "wrap"
+  },
   gameOption: {
     borderWidth: 1,
-    borderColor: colors.slate200,
-    borderRadius: 14,
-    padding: spacing.md,
+    borderColor: colors.line,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
     gap: spacing.xs,
-    backgroundColor: colors.white
+    backgroundColor: colors.surfaceRaised,
+    ...shadows.card
+  },
+  gameOptionWide: {
+    width: "48%"
   },
   gameOptionSelected: {
-    borderColor: colors.navy,
-    backgroundColor: colors.slate100
+    borderColor: colors.primary,
+    backgroundColor: colors.surfaceAccent
   },
   gameTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.slate900
+    fontSize: 16,
+    fontWeight: "900",
+    color: colors.text
   },
   gameSubtitle: {
     fontSize: 14,
-    color: colors.slate500
+    color: colors.textMuted
+  },
+  gameScore: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: colors.primary
   },
   noteRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm
   },
-  notePill: {
-    backgroundColor: colors.slate100,
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
-  notePillText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.navy
+  selectedGameCard: {
+    gap: spacing.sm
   },
   errorText: {
     fontSize: 13,
-    color: colors.red
+    color: colors.danger
   },
   statusCard: {
     borderWidth: 1,
-    borderColor: colors.slate200,
-    backgroundColor: colors.slate050,
-    borderRadius: 12,
+    borderColor: colors.line,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
   statusCardSuccess: {
-    borderColor: colors.sky,
-    backgroundColor: colors.slate100
+    borderColor: colors.info,
+    backgroundColor: colors.surfaceAccent
   },
   statusCardError: {
-    borderColor: colors.red,
-    backgroundColor: colors.slate050
+    borderColor: colors.danger,
+    backgroundColor: colors.surfaceDanger
   },
   statusText: {
     fontSize: 13,
     lineHeight: 20,
-    color: colors.slate700
+    color: colors.textMuted
   },
   statusTextSuccess: {
-    color: colors.navy
+    color: colors.primary
   },
   statusTextError: {
-    color: colors.red
+    color: colors.danger
   },
   successText: {
     fontSize: 15,
     lineHeight: 22,
-    color: colors.slate700
+    color: colors.textMuted
   }
 });

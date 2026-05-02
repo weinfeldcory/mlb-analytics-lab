@@ -1,0 +1,107 @@
+name: Nightly MLB Catalog Refresh
+
+on:
+  schedule:
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "mlb-catalog-refresh"
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changes.outputs.changed }}
+    defaults:
+      run:
+        working-directory: projects/mlb-attendance-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Refresh recent MLB games and player data
+        run: python3 scripts/fetch_full_mlb_catalog.py --recent-days 10
+
+      - name: Detect catalog changes
+        id: changes
+        run: |
+          if git diff --quiet -- apps/mobile/src/lib/data/mlbGameCatalog.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit refreshed catalog
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/mobile/src/lib/data/mlbGameCatalog.json
+          git commit -m "Refresh MLB catalog and player data"
+          git push
+
+  build:
+    runs-on: ubuntu-latest
+    needs: refresh
+    if: needs.refresh.outputs.changed == 'true'
+    defaults:
+      run:
+        working-directory: projects/mlb-attendance-app
+    env:
+      EXPO_PUBLIC_APP_DATA_BACKEND: hosted
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_BASE_URL: /sports-games-and-mlb-analytics-lab
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Build web export
+        run: corepack pnpm run build:web
+
+      - name: Add SPA fallback
+        run: cp apps/mobile/dist/index.html apps/mobile/dist/404.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: projects/mlb-attendance-app/apps/mobile/dist
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [refresh, build]
+    if: needs.refresh.outputs.changed == 'true'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

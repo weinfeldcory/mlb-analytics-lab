@@ -6,6 +6,7 @@ import ssl
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from mlb_boxscore_utils import build_batters, build_line_score, build_pitchers, fetch_boxscore, fetch_linescore
 
 SSL_CONTEXT = ssl.create_default_context()
 SSL_CONTEXT.check_hostname = False
@@ -131,58 +132,6 @@ def names_for_game(game: dict) -> tuple[str, str]:
     return teams["away"]["team"]["name"], teams["home"]["team"]["name"]
 
 
-def fetch_boxscore(game_pk: int) -> dict:
-    return get_json(f"https://statsapi.mlb.com/api/v1/game/{game_pk}/boxscore")
-
-def fetch_linescore(game_pk: int) -> dict:
-    return get_json(f"https://statsapi.mlb.com/api/v1/game/{game_pk}/linescore")
-
-
-def build_line_score(linescore: dict) -> list[dict]:
-    innings = []
-
-    for inning in linescore.get("innings", []):
-        innings.append(
-            {
-                "inning": inning.get("num"),
-                "homeRuns": inning.get("home", {}).get("runs", 0),
-                "awayRuns": inning.get("away", {}).get("runs", 0),
-            }
-        )
-
-    return innings
-
-
-def build_batters(match: dict, boxscore: dict) -> list[dict]:
-    batters = []
-
-    for side in ("home", "away"):
-        team_id = str(match["teams"][side]["team"]["id"])
-        players = boxscore["teams"][side]["players"]
-        for player in players.values():
-            position = player.get("position", {}).get("abbreviation")
-            if position == "P":
-                continue
-            batting = player.get("stats", {}).get("batting") or {}
-            if not batting.get("atBats") and not batting.get("plateAppearances"):
-                continue
-            batters.append(
-                {
-                    "teamId": team_id,
-                    "playerName": player["person"]["fullName"],
-                    "position": position,
-                    "atBats": batting.get("atBats", 0),
-                    "hits": batting.get("hits", 0),
-                    "homeRuns": batting.get("homeRuns", 0),
-                    "rbis": batting.get("rbi", 0),
-                    "strikeouts": batting.get("strikeOuts", 0),
-                    "walks": batting.get("baseOnBalls", 0),
-                }
-            )
-
-    return batters
-
-
 def build_output() -> list[dict]:
     results: list[dict] = []
 
@@ -210,28 +159,6 @@ def build_output() -> list[dict]:
       home_fielding = boxscore["teams"]["home"]["teamStats"].get("fielding", {})
       away_fielding = boxscore["teams"]["away"]["teamStats"].get("fielding", {})
 
-      pitchers = []
-      for side in ("home", "away"):
-        team_id = str(match["teams"][side]["team"]["id"])
-        players = boxscore["teams"][side]["players"]
-        for player in players.values():
-          position = player.get("position", {}).get("abbreviation")
-          if position != "P":
-            continue
-          pitching = player.get("stats", {}).get("pitching") or {}
-          if not pitching.get("inningsPitched"):
-            continue
-          pitchers.append(
-            {
-              "teamId": team_id,
-              "pitcherName": player["person"]["fullName"],
-              "inningsPitched": pitching.get("inningsPitched"),
-              "hitsAllowed": pitching.get("hits"),
-              "runsAllowed": pitching.get("runs"),
-              "strikeouts": pitching.get("strikeOuts"),
-            }
-          )
-
       results.append(
         {
           "date": seen.date,
@@ -247,7 +174,7 @@ def build_output() -> list[dict]:
           "awayErrors": away_fielding.get("errors", 0),
           "lineScore": build_line_score(linescore),
           "venue": match["venue"],
-          "pitchers": pitchers,
+          "pitchers": build_pitchers(match, boxscore),
           "batters": build_batters(match, boxscore),
         }
       )

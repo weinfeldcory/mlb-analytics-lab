@@ -85,17 +85,25 @@ export interface InningLineScore {
 
 export interface PitcherAppearance {
   teamId: string;
+  playerId?: string | number;
   pitcherName: string;
   role: "starter" | "reliever" | "closer";
   inningsPitched?: number;
   hitsAllowed?: number;
   runsAllowed?: number;
+  earnedRunsAllowed?: number;
   strikeouts?: number;
+  walksAllowed?: number;
+  homeRunsAllowed?: number;
+  pitchesThrown?: number;
+  strikes?: number;
   decision?: "win" | "loss" | "save" | "hold";
+  gameScore?: number;
 }
 
 export interface BatterAppearance {
   teamId: string;
+  playerId?: string | number;
   playerName: string;
   position?: string;
   atBats: number;
@@ -185,6 +193,21 @@ export interface PlayerPitchingSummary {
   hitsAllowedSeen: number;
   runsAllowedSeen: number;
   eraSeen: number;
+  bestGameScoreSeen?: number;
+}
+
+export interface PitchingGamePerformance {
+  gameId: string;
+  pitcherName: string;
+  teamId: string;
+  teamName: string;
+  opponentTeamId: string;
+  opponentTeamName: string;
+  startDate: string;
+  gameScore: number;
+  inningsPitched?: number;
+  strikeouts?: number;
+  runsAllowed?: number;
 }
 
 export interface TeamSeenSummary {
@@ -212,6 +235,7 @@ export interface PersonalStats {
   topPitchersSeen: PitcherSeenSummary[];
   playerBattingSummaries: PlayerBattingSummary[];
   playerPitchingSummaries: PlayerPitchingSummary[];
+  topPitchingGamePerformances: PitchingGamePerformance[];
   teamSeenSummaries: TeamSeenSummary[];
   recentMoments: RecentMoment[];
 }

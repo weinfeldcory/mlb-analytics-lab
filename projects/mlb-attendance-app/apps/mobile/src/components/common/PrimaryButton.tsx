@@ -1,57 +1,66 @@
 import { Pressable, StyleSheet, Text } from "react-native";
-import { colors, radii, spacing } from "../../styles/tokens";
+import { colors, radii, shadows, spacing } from "../../styles/tokens";
 
 interface PrimaryButtonProps {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  variant?: "primary" | "secondary" | "ghost";
 }
 
-export function PrimaryButton({ label, onPress, disabled = false }: PrimaryButtonProps) {
+export function PrimaryButton({ label, onPress, disabled = false, variant = "primary" }: PrimaryButtonProps) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [
         styles.button,
+        variant === "secondary" ? styles.buttonSecondary : null,
+        variant === "ghost" ? styles.buttonGhost : null,
         disabled ? styles.disabled : null,
         pressed && !disabled ? styles.pressed : null
       ]}
     >
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, variant !== "primary" ? styles.labelAlt : null]}>{label}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: colors.navy,
-    borderRadius: 999,
+    backgroundColor: colors.primary,
+    borderRadius: radii.pill,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: colors.slate200,
-    minHeight: 48,
-    shadowColor: colors.navy,
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
-    cursor: "pointer"
+    borderColor: colors.primary,
+    minHeight: 50,
+    ...shadows.card
+  },
+  buttonSecondary: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.line
+  },
+  buttonGhost: {
+    backgroundColor: "transparent",
+    borderColor: colors.line
   },
   disabled: {
     opacity: 0.45
   },
   pressed: {
-    backgroundColor: colors.navySoft,
+    backgroundColor: colors.primarySoft,
     transform: [{ translateY: 1 }]
   },
   label: {
-    color: colors.white,
+    color: colors.textInverse,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "800",
     letterSpacing: 0.2
+  },
+  labelAlt: {
+    color: colors.primary
   }
 });

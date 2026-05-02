@@ -394,6 +394,7 @@ export function StatsScreen() {
     const topBatter = stats.playerBattingSummaries[0];
     const topPitcher = stats.playerPitchingSummaries[0];
     const topTeam = stats.teamSeenSummaries[0];
+    const topStart = stats.topPitchingGamePerformances[0];
 
     return [
       {
@@ -404,10 +405,10 @@ export function StatsScreen() {
           : "Save games with batter lines to unlock this."
       },
       {
-        label: "Most-Seen Pitcher",
-        value: topPitcher ? topPitcher.pitcherName : "No pitcher data",
-        detail: topPitcher
-          ? `${topPitcher.appearances} apps • ${topPitcher.strikeoutsSeen} K • ${formatBaseballInnings(topPitcher.inningsSeen)} IP`
+        label: "Best Start Seen",
+        value: topStart ? topStart.pitcherName : "No start data",
+        detail: topStart
+          ? `Game Score ${topStart.gameScore} • ${topStart.opponentTeamName} • ${topStart.startDate}`
           : "Save games with pitcher lines to unlock this."
       },
       {
@@ -416,9 +417,16 @@ export function StatsScreen() {
         detail: topTeam
           ? `${topTeam.gamesSeen} games • ${topTeam.winsSeen}-${topTeam.lossesSeen} seen • ${topTeam.runsSeen} runs`
           : "Log games to build team coverage."
+      },
+      {
+        label: "Most-Seen Pitcher",
+        value: topPitcher ? topPitcher.pitcherName : "No pitcher data",
+        detail: topPitcher
+          ? `${topPitcher.appearances} apps • best ${topPitcher.bestGameScoreSeen ?? "n/a"} GS • ${topPitcher.strikeoutsSeen} K`
+          : "Save games with pitcher lines to unlock this."
       }
     ];
-  }, [stats.playerBattingSummaries, stats.playerPitchingSummaries, stats.teamSeenSummaries]);
+  }, [stats.playerBattingSummaries, stats.playerPitchingSummaries, stats.teamSeenSummaries, stats.topPitchingGamePerformances]);
 
   const favoriteTeamLabel = stats.favoriteTeamSplit?.teamName ?? "Favorite Team";
   const hasAnyStats = stats.totalGamesAttended > 0;

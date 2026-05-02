@@ -35,8 +35,8 @@ const games: Game[] = [
     status: "final",
     featuredPlayerHomeRun: "Aaron Judge",
     pitchersUsed: [
-      { teamId: "team_nyy", pitcherName: "Luis Gil", role: "starter" },
-      { teamId: "team_bos", pitcherName: "Tanner Houck", role: "starter" }
+      { teamId: "team_nyy", pitcherName: "Luis Gil", role: "starter", inningsPitched: 9, hitsAllowed: 4, runsAllowed: 0, strikeouts: 8, walksAllowed: 1, homeRunsAllowed: 0 },
+      { teamId: "team_bos", pitcherName: "Tanner Houck", role: "starter", inningsPitched: 5, hitsAllowed: 7, runsAllowed: 5, strikeouts: 4, walksAllowed: 2, homeRunsAllowed: 1 }
     ],
     battersUsed: [
       { teamId: "team_nyy", playerName: "Juan Soto", position: "RF", atBats: 4, hits: 2, homeRuns: 1, rbis: 3, strikeouts: 1, walks: 1 },
@@ -56,8 +56,8 @@ const games: Game[] = [
     awayHits: 8,
     status: "final",
     pitchersUsed: [
-      { teamId: "team_nyy", pitcherName: "Gerrit Cole", role: "starter" },
-      { teamId: "team_bos", pitcherName: "Tanner Houck", role: "reliever" }
+      { teamId: "team_nyy", pitcherName: "Gerrit Cole", role: "starter", inningsPitched: 7, hitsAllowed: 6, runsAllowed: 2, strikeouts: 9, walksAllowed: 1, homeRunsAllowed: 1 },
+      { teamId: "team_bos", pitcherName: "Tanner Houck", role: "reliever", inningsPitched: 1, hitsAllowed: 0, runsAllowed: 0, strikeouts: 1, walksAllowed: 0, homeRunsAllowed: 0 }
     ],
     battersUsed: [
       { teamId: "team_nyy", playerName: "Juan Soto", position: "RF", atBats: 5, hits: 3, homeRuns: 0, rbis: 2, strikeouts: 0, walks: 0 },
@@ -138,15 +138,41 @@ test("calculatePersonalStats derives totals, favorite team split, and recent mom
     walksSeen: 1
   });
   assert.deepEqual(stats.playerPitchingSummaries[0], {
+    pitcherName: "Luis Gil",
+    teams: ["Yankees"],
+    roles: ["starter"],
+    appearances: 1,
+    strikeoutsSeen: 8,
+    inningsSeen: 9,
+    hitsAllowedSeen: 4,
+    runsAllowedSeen: 0,
+    eraSeen: 0,
+    bestGameScoreSeen: 82
+  });
+  assert.deepEqual(stats.playerPitchingSummaries[1], {
     pitcherName: "Tanner Houck",
     teams: ["Red Sox"],
     roles: ["starter", "reliever"],
     appearances: 2,
-    strikeoutsSeen: 0,
-    inningsSeen: 0,
-    hitsAllowedSeen: 0,
-    runsAllowedSeen: 0,
-    eraSeen: 0
+    strikeoutsSeen: 5,
+    inningsSeen: 6,
+    hitsAllowedSeen: 7,
+    runsAllowedSeen: 5,
+    eraSeen: 7.5,
+    bestGameScoreSeen: 45
+  });
+  assert.deepEqual(stats.topPitchingGamePerformances[0], {
+    gameId: "game_1",
+    pitcherName: "Luis Gil",
+    teamId: "team_nyy",
+    teamName: "Yankees",
+    opponentTeamId: "team_bos",
+    opponentTeamName: "Red Sox",
+    startDate: "2025-07-20",
+    gameScore: 82,
+    inningsPitched: 9,
+    strikeouts: 8,
+    runsAllowed: 0
   });
   assert.deepEqual(stats.teamSeenSummaries, [
     {
