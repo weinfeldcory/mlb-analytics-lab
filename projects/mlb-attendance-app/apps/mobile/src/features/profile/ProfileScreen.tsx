@@ -17,6 +17,7 @@ export function ProfileScreen() {
   const termsRoute = "/legal/terms" as Href;
   const privacyRoute = "/legal/privacy" as Href;
   const betaDisclaimerRoute = "/legal/beta-disclaimer" as Href;
+  const followingRoute = "/following" as Href;
   const { width } = useWindowDimensions();
   const {
     storageMode,
@@ -26,13 +27,8 @@ export function ProfileScreen() {
     teams,
     friends,
     followers,
-    pendingFollowRequests,
     signOut,
     updateProfile,
-    searchProfiles,
-    requestFollow,
-    acceptFollowRequest,
-    rejectFollowRequest,
     unfollowUser,
     persistenceStatus,
     persistenceError,
@@ -51,60 +47,12 @@ export function ProfileScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [importExportText, setImportExportText] = useState("");
-  const [peopleQuery, setPeopleQuery] = useState("");
-  const [peopleResults, setPeopleResults] = useState<typeof friends>([]);
-  const [isSearchingPeople, setIsSearchingPeople] = useState(false);
-  const [hasSearchedPeople, setHasSearchedPeople] = useState(false);
-  const [peopleErrorMessage, setPeopleErrorMessage] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
     setDisplayName(profile.displayName);
     setFavoriteTeamId(profile.favoriteTeamId ?? "");
   }, [profile.displayName, profile.favoriteTeamId]);
-
-  useEffect(() => {
-    const trimmedQuery = peopleQuery.trim();
-    if (!trimmedQuery) {
-      setPeopleResults([]);
-      setHasSearchedPeople(false);
-      setPeopleErrorMessage(null);
-      setIsSearchingPeople(false);
-      return;
-    }
-
-    let isCancelled = false;
-    const timeout = setTimeout(() => {
-      setIsSearchingPeople(true);
-      void searchProfiles(trimmedQuery)
-        .then((results) => {
-          if (isCancelled) {
-            return;
-          }
-          setPeopleResults(results);
-          setHasSearchedPeople(true);
-          setPeopleErrorMessage(null);
-        })
-        .catch((error) => {
-          if (isCancelled) {
-            return;
-          }
-          setPeopleResults([]);
-          setHasSearchedPeople(true);
-          setPeopleErrorMessage(error instanceof Error ? error.message : "Could not search profiles right now.");
-        })
-        .finally(() => {
-          if (!isCancelled) {
-            setIsSearchingPeople(false);
-          }
-        });
-    }, 400);
-
-    return () => {
-      isCancelled = true;
-      clearTimeout(timeout);
-    };
-  }, [peopleQuery, currentUserId, storageMode]);
 
   async function handleSave() {
     setErrorMessage(null);
@@ -209,31 +157,21 @@ export function ProfileScreen() {
 
           <SectionCard title="People">
             <View style={styles.friendList}>
-              {isHosted && pendingFollowRequests.length ? (
-                <>
-                  <Text style={styles.sectionLabel}>Pending requests</Text>
-                  {pendingFollowRequests
-                    .filter((request) => request.direction === "incoming")
-                    .map((request) => (
-                      <View key={request.id} style={styles.friendRow}>
-                        <View style={styles.friendCopy}>
-                          <Text style={styles.friendName}>{request.profile.displayName}</Text>
-                          <Text style={styles.friendMeta}>
-                            {request.profile.username ? `@${request.profile.username}` : "App user"} wants to follow you.
-                          </Text>
-                        </View>
-                        <View style={styles.inlineButtonRow}>
-                          <PrimaryButton label="Accept" onPress={() => void acceptFollowRequest(request.id)} />
-                          <Pressable onPress={() => void rejectFollowRequest(request.id)}>
-                            <Text style={styles.linkText}>Reject</Text>
-                          </Pressable>
-                        </View>
-                      </View>
-                    ))}
-                </>
-              ) : null}
-
-              <Text style={styles.sectionLabel}>Following</Text>
+              <Text style={styles.helperText}>
+                Search for fans, open followed profiles, and manage your circle from one place.
+              </Text>
+              <View style={styles.networkSummaryRow}>
+                <View style={styles.networkSummaryCard}>
+                  <Text style={styles.networkSummaryValue}>{friends.length}</Text>
+                  <Text style={styles.networkSummaryLabel}>Following</Text>
+                </View>
+                <View style={styles.networkSummaryCard}>
+                  <Text style={styles.networkSummaryValue}>{followers.length}</Text>
+                  <Text style={styles.networkSummaryLabel}>Followers</Text>
+                </View>
+              </View>
+              <PrimaryButton label="Open Following Hub" onPress={() => router.push(followingRoute)} />
+              <Text style={styles.sectionLabel}>Following preview</Text>
               {friends.length ? friends.map((friend) => {
                 const favoriteTeam = teams.find((team) => team.id === friend.favoriteTeamId);
 
@@ -257,65 +195,7 @@ export function ProfileScreen() {
                     </View>
                   </View>
                 );
-              }) : <Text style={styles.helperText}>No accepted follows yet. Search for a fan below to start building your circle.</Text>}
-
-              {followers.length ? (
-                <>
-                  <Text style={styles.sectionLabel}>Followers</Text>
-                  {followers.map((friend) => (
-                    <Pressable key={friend.id} style={styles.friendRow} onPress={() => router.push((`/friends/${friend.id}`) as Href)}>
-                      <View style={styles.friendCopy}>
-                        <Text style={styles.friendName}>{friend.displayName}</Text>
-                        <Text style={styles.friendMeta}>{friend.username ? `@${friend.username}` : "App user"}</Text>
-                      </View>
-                      <Text style={styles.linkText}>View</Text>
-                    </Pressable>
-                  ))}
-                </>
-              ) : null}
-
-              <Text style={styles.sectionLabel}>Find people</Text>
-              <LabeledInput
-                label="Search for people to follow"
-                value={peopleQuery}
-                onChangeText={setPeopleQuery}
-                placeholder={isHosted ? "Search by name or email" : "Search by name or email"}
-              />
-              {isSearchingPeople ? <Text style={styles.helperText}>Searching…</Text> : null}
-              {!peopleQuery.trim() ? <Text style={styles.helperText}>Search for people to follow</Text> : null}
-              {peopleErrorMessage ? <Text style={styles.errorText}>{peopleErrorMessage}</Text> : null}
-              {!isSearchingPeople && hasSearchedPeople && !peopleErrorMessage && peopleResults.length === 0 ? (
-                <Text style={styles.helperText}>No users found</Text>
-              ) : null}
-              {peopleResults.length ? peopleResults.map((friend) => {
-                const favoriteTeam = teams.find((team) => team.id === friend.favoriteTeamId);
-                const isAccepted = friend.relationshipStatus === "accepted";
-                const isPending = friend.relationshipStatus === "pending";
-                const statLine = [
-                  friend.sharedGamesLogged !== null && friend.sharedGamesLogged !== undefined ? `${friend.sharedGamesLogged} games` : null,
-                  favoriteTeam?.name ?? null
-                ].filter(Boolean).join(" · ");
-
-                return (
-                  <View key={friend.id} style={styles.friendRow}>
-                    <Pressable style={styles.friendCopy} onPress={() => router.push((`/friends/${friend.id}`) as Href)}>
-                      <Text style={styles.friendName}>{friend.displayName}</Text>
-                      <Text style={styles.friendMeta}>{friend.username ? `@${friend.username}` : "@fan"}</Text>
-                      {statLine ? <Text style={styles.friendMeta}>{statLine}</Text> : null}
-                      <Text style={styles.friendMeta}>
-                        Tap to open profile
-                      </Text>
-                    </Pressable>
-                    {isAccepted ? (
-                      <PrimaryButton label="Following" onPress={() => router.push((`/friends/${friend.id}`) as Href)} />
-                    ) : isPending ? (
-                      <Text style={styles.helperText}>Requested</Text>
-                    ) : (
-                      <PrimaryButton label="Follow" onPress={() => void requestFollow(friend.id)} />
-                    )}
-                  </View>
-                );
-              }) : null}
+              }) : <Text style={styles.helperText}>You’re not following anyone yet. Open the Following Hub to search for people above.</Text>}
             </View>
           </SectionCard>
         </View>
@@ -470,6 +350,31 @@ const styles = StyleSheet.create({
   },
   friendList: {
     gap: spacing.md
+  },
+  networkSummaryRow: {
+    flexDirection: "row",
+    gap: spacing.md
+  },
+  networkSummaryCard: {
+    flex: 1,
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    borderRadius: 14,
+    padding: spacing.md,
+    backgroundColor: colors.slate050
+  },
+  networkSummaryValue: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: colors.navy
+  },
+  networkSummaryLabel: {
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    color: colors.slate500,
+    fontWeight: "700"
   },
   sectionLabel: {
     fontSize: 11,

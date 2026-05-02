@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { mockUser } from "../data/mockSportsData";
-import type { AttendanceLog, UserProfile, WitnessedEvent } from "@mlb-attendance/domain";
+import { games, mockUser, teams, venues } from "../data/mockSportsData";
+import { calculatePersonalStats, type AttendanceLog, type UserProfile, type WitnessedEvent } from "@mlb-attendance/domain";
 import type {
   AppDataStore,
   AppSessionAccount,
@@ -41,10 +41,12 @@ type ProfileRow = {
   has_completed_onboarding: boolean;
   shared_games_logged?: number | null;
   shared_stadiums_visited?: number | null;
+  shared_home_runs_witnessed?: number | null;
+  shared_level_title?: string | null;
 };
 
 const PROFILE_SELECT_BASE = "id, email, display_name, favorite_team_id, following_ids, has_completed_onboarding";
-const PROFILE_SELECT_EXTENDED = `${PROFILE_SELECT_BASE}, username, avatar_url, profile_visibility, shared_games_logged, shared_stadiums_visited`;
+const PROFILE_SELECT_EXTENDED = `${PROFILE_SELECT_BASE}, username, avatar_url, profile_visibility, shared_games_logged, shared_stadiums_visited, shared_home_runs_witnessed, shared_level_title`;
 
 function isMissingProfileSchemaError(message: string) {
   const normalized = message.toLowerCase();
@@ -54,11 +56,15 @@ function isMissingProfileSchemaError(message: string) {
     "profiles.profile_visibility",
     "shared_games_logged",
     "shared_stadiums_visited",
+    "shared_home_runs_witnessed",
+    "shared_level_title",
     "'username' column",
     "'avatar_url' column",
     "'profile_visibility' column",
     "'shared_games_logged' column",
     "'shared_stadiums_visited' column",
+    "'shared_home_runs_witnessed' column",
+    "'shared_level_title' column",
     "schema cache"
   ].some((pattern) => normalized.includes(pattern));
 }
@@ -226,6 +232,57 @@ function buildDefaultUsername(email: string, userId: string) {
   return `${base || "fan"}-${userId.replace(/-/g, "").slice(0, 6)}`;
 }
 
+const SOCIAL_LEVEL_RULES = {
+  game: 10,
+  stadium: 40,
+  homeRun: 3,
+  extraInnings: 15,
+  walkOff: 20,
+  uniqueTeam: 5
+} as const;
+
+const SOCIAL_LEVEL_THRESHOLDS = [
+  { title: "Rookie Scorer", points: 0 },
+  { title: "Bleacher Regular", points: 100 },
+  { title: "Series Tracker", points: 250 },
+  { title: "Road Tripper", points: 450 },
+  { title: "Stadium Hunter", points: 700 },
+  { title: "Homer Historian", points: 1000 },
+  { title: "Pennant Chaser", points: 1400 },
+  { title: "Ledger Legend", points: 1900 }
+];
+
+function getSharedProfileStats(profile: UserProfile, attendanceLogs: AttendanceLog[]) {
+  const stats = calculatePersonalStats({
+    user: profile,
+    attendanceLogs,
+    games,
+    teams,
+    venues
+  });
+  const attendedGames = attendanceLogs
+    .map((log) => games.find((game) => game.id === log.gameId))
+    .filter(Boolean);
+  const extraInningsGames = attendedGames.filter((game) => (game?.innings ?? 0) > 9).length;
+  const walkOffGames = attendedGames.filter((game) => Boolean(game?.walkOff)).length;
+  const uniqueTeamsSeen = stats.teamSeenSummaries.length;
+  const points =
+    stats.totalGamesAttended * SOCIAL_LEVEL_RULES.game +
+    stats.uniqueStadiumsVisited * SOCIAL_LEVEL_RULES.stadium +
+    stats.witnessedHomeRuns * SOCIAL_LEVEL_RULES.homeRun +
+    extraInningsGames * SOCIAL_LEVEL_RULES.extraInnings +
+    walkOffGames * SOCIAL_LEVEL_RULES.walkOff +
+    uniqueTeamsSeen * SOCIAL_LEVEL_RULES.uniqueTeam;
+  const currentLevel = [...SOCIAL_LEVEL_THRESHOLDS].reverse().find((level) => points >= level.points) ?? SOCIAL_LEVEL_THRESHOLDS[0];
+
+  return {
+    gamesLogged: stats.totalGamesAttended,
+    stadiumsVisited: stats.uniqueStadiumsVisited,
+    homeRunsWitnessed: stats.witnessedHomeRuns,
+    levelTitle: currentLevel.title
+  };
+}
+
 function mapAttendanceRowToLog(row: AttendanceLogRow): AttendanceLog {
   return {
     id: row.id,
@@ -320,10 +377,10 @@ async function upsertHostedProfile(params: {
   userId: string;
   email: string;
   profile: UserProfile;
-  attendanceLogsCount: number;
-  stadiumsVisitedCount: number;
+  attendanceLogs: AttendanceLog[];
 }) {
   const client = requireSupabaseClient();
+  const sharedStats = getSharedProfileStats(params.profile, params.attendanceLogs);
   const fullRow = {
     id: params.userId,
     email: params.email,
@@ -334,8 +391,10 @@ async function upsertHostedProfile(params: {
     profile_visibility: params.profile.profileVisibility ?? "followers_only",
     following_ids: params.profile.followingIds ?? [],
     has_completed_onboarding: params.profile.hasCompletedOnboarding ?? false,
-    shared_games_logged: params.attendanceLogsCount,
-    shared_stadiums_visited: params.stadiumsVisitedCount
+    shared_games_logged: sharedStats.gamesLogged,
+    shared_stadiums_visited: sharedStats.stadiumsVisited,
+    shared_home_runs_witnessed: sharedStats.homeRunsWitnessed,
+    shared_level_title: sharedStats.levelTitle
   };
 
   const { error: fullError } = await client.from("profiles").upsert(fullRow);
@@ -387,8 +446,7 @@ async function ensureHostedProfile(userId: string, email: string, fallbackDispla
     userId,
     email,
     profile: mapProfileRowToProfile(seedProfile),
-    attendanceLogsCount: 0,
-    stadiumsVisitedCount: 0
+    attendanceLogs: []
   });
 
   return (await fetchProfileRowForUser(userId)) ?? seedProfile;
@@ -487,8 +545,7 @@ async function syncHostedState(params: PersistCurrentUserParams) {
     userId: session.user.id,
     email,
     profile: params.profile,
-    attendanceLogsCount: params.attendanceLogs.length,
-    stadiumsVisitedCount: new Set(params.attendanceLogs.map((log) => log.venueId)).size
+    attendanceLogs: params.attendanceLogs
   });
 
   const nextRows = params.attendanceLogs.map((log) =>

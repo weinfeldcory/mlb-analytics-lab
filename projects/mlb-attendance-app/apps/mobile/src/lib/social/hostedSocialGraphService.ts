@@ -11,6 +11,8 @@ type PublicProfileRow = {
   profile_visibility: ProfileVisibility;
   shared_games_logged: number | null;
   shared_stadiums_visited: number | null;
+  shared_home_runs_witnessed: number | null;
+  shared_level_title: string | null;
   relationship_status: FollowStatus | null;
 };
 
@@ -29,6 +31,8 @@ type PendingFollowRow = {
   profile_visibility: ProfileVisibility;
   shared_games_logged: number | null;
   shared_stadiums_visited: number | null;
+  shared_home_runs_witnessed: number | null;
+  shared_level_title: string | null;
 };
 
 function requireSupabaseClient() {
@@ -48,11 +52,15 @@ function isHostedSocialUnavailable(message: string) {
     "profiles.profile_visibility",
     "shared_games_logged",
     "shared_stadiums_visited",
+    "shared_home_runs_witnessed",
+    "shared_level_title",
     "'username' column",
     "'avatar_url' column",
     "'profile_visibility' column",
     "'shared_games_logged' column",
     "'shared_stadiums_visited' column",
+    "'shared_home_runs_witnessed' column",
+    "'shared_level_title' column",
     "function public.search_profiles",
     "function public.get_following_profiles",
     "function public.get_follower_profiles",
@@ -91,6 +99,8 @@ function mapProfileRow(row: PublicProfileRow): FriendProfile {
     profileVisibility: row.profile_visibility,
     sharedGamesLogged: row.shared_games_logged ?? null,
     sharedStadiumsVisited: row.shared_stadiums_visited ?? null,
+    sharedHomeRunsWitnessed: row.shared_home_runs_witnessed ?? null,
+    sharedLevelTitle: row.shared_level_title ?? null,
     relationshipStatus: row.relationship_status ?? "not_following"
   };
 }
@@ -113,6 +123,8 @@ function mapPendingFollowRow(row: PendingFollowRow, currentUserId: string): Foll
       profileVisibility: row.profile_visibility,
       sharedGamesLogged: row.shared_games_logged ?? null,
       sharedStadiumsVisited: row.shared_stadiums_visited ?? null,
+      sharedHomeRunsWitnessed: row.shared_home_runs_witnessed ?? null,
+      sharedLevelTitle: row.shared_level_title ?? null,
       relationshipStatus: row.status
     }
   };
@@ -206,6 +218,14 @@ export const hostedSocialGraphService: SocialGraphService = {
     }
 
     if (existing?.status === "pending") {
+      const { error: updateError } = await client
+        .from("user_follows")
+        .update({ status: "accepted" })
+        .eq("id", existing.id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
       return;
     }
 
@@ -223,7 +243,7 @@ export const hostedSocialGraphService: SocialGraphService = {
     const { error } = await client.from("user_follows").insert({
       follower_id: params.currentUserId,
       following_id: params.targetUserId,
-      status: "pending"
+      status: "accepted"
     });
 
     if (error) {

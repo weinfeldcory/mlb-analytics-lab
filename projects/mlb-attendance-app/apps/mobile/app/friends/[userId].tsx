@@ -100,23 +100,35 @@ export default function FriendProfileScreen() {
         ) : null}
       </SectionCard>
 
-      <SectionCard title="Shared Baseball Resume">
+      <SectionCard title="Fast facts">
         {!friend ? <Text style={styles.helperText}>No shared stats available.</Text> : null}
         {friend && canViewSharedStats ? (
           <View style={styles.statGrid}>
             <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Games logged</Text>
+              <Text style={styles.statLabel}>Level</Text>
+              <Text style={styles.statValueSmall}>{friend.sharedLevelTitle ?? "Rookie Scorer"}</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Games</Text>
               <Text style={styles.statValue}>{friend.sharedGamesLogged ?? "—"}</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Stadiums visited</Text>
+              <Text style={styles.statLabel}>Favorite team</Text>
+              <Text style={styles.statValueSmall}>{favoriteTeamName ?? "Not shared"}</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Home runs</Text>
+              <Text style={styles.statValue}>{friend.sharedHomeRunsWitnessed ?? "—"}</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Stadiums</Text>
               <Text style={styles.statValue}>{friend.sharedStadiumsVisited ?? "—"}</Text>
             </View>
           </View>
         ) : null}
         {friend && !canViewSharedStats ? (
           <Text style={styles.helperText}>
-            This fan only shares résumé-level stats with accepted followers.
+            Follow this fan to unlock their shared ledger card.
           </Text>
         ) : null}
       </SectionCard>
@@ -127,20 +139,11 @@ export default function FriendProfileScreen() {
             {friend.relationshipStatus === "accepted" ? (
               <PrimaryButton label="Unfollow" onPress={() => void unfollowUser(friend.id).then(() => router.replace("/(tabs)/profile"))} />
             ) : null}
-            {friend.relationshipStatus === "pending" ? (
-              <Text style={styles.helperText}>Follow request pending.</Text>
-            ) : null}
             {friend.relationshipStatus === "not_following" ? (
-              <PrimaryButton label="Request Follow" onPress={() => void requestFollow(friend.id).then(() => router.replace("/(tabs)/profile"))} />
+              <PrimaryButton label="Follow" onPress={() => void requestFollow(friend.id).then(() => router.replace(`/friends/${friend.id}` as Href))} />
             ) : null}
-            {friend.relationshipStatus === "rejected" ? (
-              <Text style={styles.helperText}>This request was previously declined. You can try again later.</Text>
-            ) : null}
-            {friend.relationshipStatus === "blocked" ? (
-              <Text style={styles.helperText}>This profile is not available for new follow requests.</Text>
-            ) : null}
-            <Pressable onPress={() => router.push("/(tabs)/profile" as Href)}>
-              <Text style={styles.linkText}>Back to Profile</Text>
+            <Pressable onPress={() => router.push("/following" as Href)}>
+              <Text style={styles.linkText}>Back to Following Hub</Text>
             </Pressable>
           </View>
         </SectionCard>
@@ -173,10 +176,12 @@ const styles = StyleSheet.create({
   },
   statGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.md
   },
   statCard: {
-    flex: 1,
+    flexBasis: "48%",
+    flexGrow: 1,
     padding: spacing.md,
     borderRadius: 16,
     borderWidth: 1,
@@ -193,6 +198,11 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 24,
+    fontWeight: "800",
+    color: colors.navy
+  },
+  statValueSmall: {
+    fontSize: 17,
     fontWeight: "800",
     color: colors.navy
   },

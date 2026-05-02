@@ -23,6 +23,8 @@ export interface FriendProfile {
   profileVisibility?: ProfileVisibility;
   sharedGamesLogged?: number | null;
   sharedStadiumsVisited?: number | null;
+  sharedHomeRunsWitnessed?: number | null;
+  sharedLevelTitle?: string | null;
   relationshipStatus?: FollowStatus | "not_following";
   bio?: string;
   homeCity?: string;
