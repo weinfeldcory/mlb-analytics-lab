@@ -607,10 +607,12 @@ export function LogGameScreen() {
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1
+    flex: 1,
+    minHeight: 0
   },
   scrollArea: {
-    flex: 1
+    flex: 1,
+    minHeight: 0
   },
   scrollContent: {
     gap: spacing.lg,

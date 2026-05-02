@@ -228,7 +228,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl
   },
   staticBody: {
-    flex: 1
+    flex: 1,
+    minHeight: 0
   },
   topBar: {
     backgroundColor: "rgba(255,253,248,0.78)",
