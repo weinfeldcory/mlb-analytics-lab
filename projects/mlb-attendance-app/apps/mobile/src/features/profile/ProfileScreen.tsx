@@ -54,12 +54,57 @@ export function ProfileScreen() {
   const [peopleQuery, setPeopleQuery] = useState("");
   const [peopleResults, setPeopleResults] = useState<typeof friends>([]);
   const [isSearchingPeople, setIsSearchingPeople] = useState(false);
+  const [hasSearchedPeople, setHasSearchedPeople] = useState(false);
+  const [peopleErrorMessage, setPeopleErrorMessage] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
     setDisplayName(profile.displayName);
     setFavoriteTeamId(profile.favoriteTeamId ?? "");
   }, [profile.displayName, profile.favoriteTeamId]);
+
+  useEffect(() => {
+    const trimmedQuery = peopleQuery.trim();
+    if (!trimmedQuery) {
+      setPeopleResults([]);
+      setHasSearchedPeople(false);
+      setPeopleErrorMessage(null);
+      setIsSearchingPeople(false);
+      return;
+    }
+
+    let isCancelled = false;
+    const timeout = setTimeout(() => {
+      setIsSearchingPeople(true);
+      void searchProfiles(trimmedQuery)
+        .then((results) => {
+          if (isCancelled) {
+            return;
+          }
+          setPeopleResults(results);
+          setHasSearchedPeople(true);
+          setPeopleErrorMessage(null);
+        })
+        .catch((error) => {
+          if (isCancelled) {
+            return;
+          }
+          setPeopleResults([]);
+          setHasSearchedPeople(true);
+          setPeopleErrorMessage(error instanceof Error ? error.message : "Could not search profiles right now.");
+        })
+        .finally(() => {
+          if (!isCancelled) {
+            setIsSearchingPeople(false);
+          }
+        });
+    }, 400);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [peopleQuery, currentUserId, storageMode]);
 
   async function handleSave() {
     setErrorMessage(null);
@@ -92,21 +137,6 @@ export function ProfileScreen() {
     setImportExportText("");
     setErrorMessage(null);
     setMessage("Reset the local record back to the seeded demo state.");
-  }
-
-  async function handleSearchPeople() {
-    setIsSearchingPeople(true);
-    try {
-      const results = await searchProfiles(peopleQuery);
-      setPeopleResults(results);
-      setErrorMessage(null);
-      setMessage(results.length ? "Found matching fan profiles." : "No fan profiles matched that search yet.");
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not search profiles right now.");
-      setMessage(null);
-    } finally {
-      setIsSearchingPeople(false);
-    }
   }
 
   async function handleSignOut() {
@@ -246,24 +276,34 @@ export function ProfileScreen() {
 
               <Text style={styles.sectionLabel}>Find people</Text>
               <LabeledInput
-                label="Search by username or display name"
+                label="Search for people to follow"
                 value={peopleQuery}
                 onChangeText={setPeopleQuery}
-                placeholder={isHosted ? "cory, ava, queensfan..." : "Search local demo fans"}
+                placeholder={isHosted ? "Search by name or email" : "Search by name or email"}
               />
-              <PrimaryButton label={isSearchingPeople ? "Searching..." : "Search Profiles"} onPress={handleSearchPeople} />
+              {isSearchingPeople ? <Text style={styles.helperText}>Searching…</Text> : null}
+              {!peopleQuery.trim() ? <Text style={styles.helperText}>Search for people to follow</Text> : null}
+              {peopleErrorMessage ? <Text style={styles.errorText}>{peopleErrorMessage}</Text> : null}
+              {!isSearchingPeople && hasSearchedPeople && !peopleErrorMessage && peopleResults.length === 0 ? (
+                <Text style={styles.helperText}>No users found</Text>
+              ) : null}
               {peopleResults.length ? peopleResults.map((friend) => {
                 const favoriteTeam = teams.find((team) => team.id === friend.favoriteTeamId);
                 const isAccepted = friend.relationshipStatus === "accepted";
                 const isPending = friend.relationshipStatus === "pending";
+                const statLine = [
+                  friend.sharedGamesLogged !== null && friend.sharedGamesLogged !== undefined ? `${friend.sharedGamesLogged} games` : null,
+                  favoriteTeam?.name ?? null
+                ].filter(Boolean).join(" · ");
 
                 return (
                   <View key={friend.id} style={styles.friendRow}>
                     <Pressable style={styles.friendCopy} onPress={() => router.push((`/friends/${friend.id}`) as Href)}>
                       <Text style={styles.friendName}>{friend.displayName}</Text>
+                      <Text style={styles.friendMeta}>{friend.username ? `@${friend.username}` : "@fan"}</Text>
+                      {statLine ? <Text style={styles.friendMeta}>{statLine}</Text> : null}
                       <Text style={styles.friendMeta}>
-                        {friend.username ? `@${friend.username}` : "App user"}
-                        {favoriteTeam ? ` • ${favoriteTeam.abbreviation}` : ""}
+                        Tap to open profile
                       </Text>
                     </Pressable>
                     {isAccepted ? (
