@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ScrollView, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { calculatePersonalStats } from "@mlb-attendance/domain";
+import type { Href } from "expo-router";
+import { calculatePersonalStats, type Game } from "@mlb-attendance/domain";
 import { EmptyState } from "../../components/common/EmptyState";
 import { HeroCard } from "../../components/common/HeroCard";
 import { InsightCard } from "../../components/common/InsightCard";
@@ -15,6 +16,7 @@ import { useAppData } from "../../providers/AppDataProvider";
 import { useResponsiveLayout } from "../../styles/responsive";
 import { colors, radii, shadows, spacing } from "../../styles/tokens";
 import { formatGameLabel } from "../../lib/formatters";
+import { APP_NAME } from "../../config/brand";
 
 const SCORE_RULES = {
   game: 10,
@@ -332,9 +334,376 @@ function buildGameNotes(game: { walkOff?: boolean; innings?: number; featuredPla
   return notes;
 }
 
+interface LedgerPrompt {
+  key: string;
+  eyebrow: string;
+  title: string;
+  body: string;
+  actionLabel: string;
+  route: Href;
+}
+
+interface InsightCardItem {
+  key: string;
+  eyebrow: string;
+  title: string;
+  body: string;
+  actionLabel: string;
+  route: Href;
+}
+
+interface LedgerQualitySummary {
+  score: number;
+  memoryCoverage: number;
+  seatCoverage: number;
+  detailsCoverage: number;
+  missingMemoryCount: number;
+  missingSeatCount: number;
+  missingDetailsCount: number;
+}
+
+function isMemoryMissing(log: { memorableMoment?: string }) {
+  return !log.memorableMoment?.trim();
+}
+
+function isSeatDetailsMissing(log: { seat: { section: string; row?: string; seatNumber?: string } }) {
+  return (
+    !log.seat.section.trim()
+    || log.seat.section.trim().toLowerCase() === "unknown"
+    || !log.seat.row?.trim()
+    || !log.seat.seatNumber?.trim()
+  );
+}
+
+function hasExtraDetail(log: { companion?: string; giveaway?: string; weather?: string }) {
+  return Boolean(log.companion?.trim() || log.giveaway?.trim() || log.weather?.trim());
+}
+
+function toPercent(value: number) {
+  return Math.round(value * 100);
+}
+
+function buildLedgerQualitySummary(params: {
+  attendanceLogs: Array<{
+    memorableMoment?: string;
+    seat: { section: string; row?: string; seatNumber?: string };
+    companion?: string;
+    giveaway?: string;
+    weather?: string;
+  }>;
+  favoriteTeamId?: string;
+}) {
+  const totalLogs = params.attendanceLogs.length;
+  const missingMemoryCount = params.attendanceLogs.filter(isMemoryMissing).length;
+  const missingSeatCount = params.attendanceLogs.filter(isSeatDetailsMissing).length;
+  const missingDetailsCount = params.attendanceLogs.filter((log) => !hasExtraDetail(log)).length;
+  const memoryCoverage = totalLogs ? (totalLogs - missingMemoryCount) / totalLogs : 0;
+  const seatCoverage = totalLogs ? (totalLogs - missingSeatCount) / totalLogs : 0;
+  const detailsCoverage = totalLogs ? (totalLogs - missingDetailsCount) / totalLogs : 0;
+  const gamesPoints = Math.min(25, Math.round((Math.min(totalLogs, 10) / 10) * 25));
+  const memoryPoints = Math.round(memoryCoverage * 25);
+  const seatPoints = Math.round(seatCoverage * 20);
+  const detailsPoints = Math.round(detailsCoverage * 15);
+  const favoriteTeamPoints = params.favoriteTeamId ? 15 : 0;
+
+  return {
+    score: gamesPoints + memoryPoints + seatPoints + detailsPoints + favoriteTeamPoints,
+    memoryCoverage,
+    seatCoverage,
+    detailsCoverage,
+    missingMemoryCount,
+    missingSeatCount,
+    missingDetailsCount
+  } satisfies LedgerQualitySummary;
+}
+
+function buildLedgerPrompts(params: {
+  attendanceLogs: Array<{
+    id: string;
+    gameId: string;
+    memorableMoment?: string;
+    seat: { section: string; row?: string; seatNumber?: string };
+    companion?: string;
+    giveaway?: string;
+    weather?: string;
+  }>;
+  stats: ReturnType<typeof calculatePersonalStats>;
+  favoriteTeamName?: string;
+  latestLogId?: string;
+  latestGameTitle?: string;
+  hasFriends: boolean;
+  storageMode: "local" | "hosted";
+}) {
+  const {
+    attendanceLogs,
+    stats,
+    favoriteTeamName,
+    latestLogId,
+    latestGameTitle,
+    hasFriends,
+    storageMode
+  } = params;
+
+  if (!attendanceLogs.length) {
+    return [
+      {
+        key: "first-game",
+        eyebrow: "Start here",
+        title: favoriteTeamName ? `Log your first ${favoriteTeamName} game` : "Log your first MLB game",
+        body: favoriteTeamName
+          ? `Start the ledger with a ${favoriteTeamName} game and unlock your personal fan trail.`
+          : "Your first logged game unlocks progress, memories, and the rest of your baseball identity.",
+        actionLabel: "Log First Game",
+        route: "/(tabs)/log-game" as Href
+      }
+    ] satisfies LedgerPrompt[];
+  }
+
+  const prompts: Array<LedgerPrompt & { rank: number }> = [];
+  const missingMemoryLog = attendanceLogs.find(isMemoryMissing);
+  const missingSeatLog = attendanceLogs.find(isSeatDetailsMissing);
+
+  if (attendanceLogs.length <= 2) {
+    prompts.push({
+      key: "log-another",
+      eyebrow: "Keep momentum",
+      title: favoriteTeamName ? `Log another ${favoriteTeamName} game` : "Log another game",
+      body: "Two or three games is when the ledger starts feeling like your real baseball record instead of a first save.",
+      actionLabel: "Log Another Game",
+      route: "/(tabs)/log-game" as Href,
+      rank: 100
+    });
+  }
+
+  if (missingMemoryLog) {
+    prompts.push({
+      key: "add-memory",
+      eyebrow: "Complete a memory",
+      title: "Add a memory before it fades",
+      body: "One quick note turns a saved box score into a revisitable baseball story.",
+      actionLabel: "Add Memory",
+      route: (`/logged-game/${missingMemoryLog.id}`) as Href,
+      rank: attendanceLogs.length >= 3 ? 96 : 88
+    });
+  }
+
+  if (missingSeatLog) {
+    prompts.push({
+      key: "add-seat",
+      eyebrow: "Clean up details",
+      title: "Fill in seat details",
+      body: "Seat row and number make the memory page feel more complete later.",
+      actionLabel: "Add Seat Details",
+      route: (`/logged-game/${missingSeatLog.id}`) as Href,
+      rank: 84
+    });
+  }
+
+  if (favoriteTeamName) {
+    prompts.push({
+      key: "favorite-team",
+      eyebrow: "Favorite team",
+      title: `Keep building your ${favoriteTeamName} record`,
+      body: stats.favoriteTeamSplit
+        ? `You have ${stats.favoriteTeamSplit.gamesAttended} ${favoriteTeamName} games in the ledger so far.`
+        : `No ${favoriteTeamName} game is in the ledger yet.`,
+      actionLabel: "Log Favorite-Team Game",
+      route: "/(tabs)/log-game" as Href,
+      rank: 80
+    });
+  }
+
+  if (attendanceLogs.length >= 3) {
+    prompts.push({
+      key: "fan-resume",
+      eyebrow: "Identity page",
+      title: "Open your Fan Résumé",
+      body: "Your stats page is strongest once a few games, teams, and stadiums are already in the ledger.",
+      actionLabel: "View Fan Résumé",
+      route: "/(tabs)/stats" as Href,
+      rank: 92
+    });
+  }
+
+  if (latestLogId) {
+    prompts.push({
+      key: "latest-game",
+      eyebrow: "Revisit",
+      title: latestGameTitle ? `Revisit ${latestGameTitle}` : "Revisit your latest logged game",
+      body: "Open the saved game page to add details, relive the box score, or clean up the memory layer.",
+      actionLabel: "Open Latest Game",
+      route: (`/logged-game/${latestLogId}`) as Href,
+      rank: 76
+    });
+  }
+
+  if (storageMode === "hosted" && !hasFriends) {
+    prompts.push({
+      key: "find-friend",
+      eyebrow: "Social",
+      title: "Find another fan",
+      body: "Shared profiles are secondary today, but following one friend gives the app another reason to revisit.",
+      actionLabel: "Find Friends",
+      route: "/(tabs)/profile" as Href,
+      rank: 60
+    });
+  }
+
+  return prompts
+    .sort((left, right) => right.rank - left.rank)
+    .slice(0, 5)
+    .map(({ rank: _rank, ...prompt }) => prompt);
+}
+
+function buildInsightCards(params: {
+  attendanceLogs: Array<{
+    id: string;
+    gameId: string;
+    memorableMoment?: string;
+    seat: { section: string; row?: string; seatNumber?: string };
+    companion?: string;
+    giveaway?: string;
+    weather?: string;
+  }>;
+  attendedGames: Game[];
+  stats: ReturnType<typeof calculatePersonalStats>;
+  favoriteTeamName?: string;
+  latestLogId?: string;
+  latestGameTitle?: string;
+  nextMilestone: ReturnType<typeof getNextMilestone>;
+  levelProgress: ReturnType<typeof buildLevelProgress>;
+  ledgerQuality: LedgerQualitySummary;
+}) {
+  const {
+    attendanceLogs,
+    attendedGames,
+    stats,
+    favoriteTeamName,
+    latestLogId,
+    latestGameTitle,
+    nextMilestone,
+    levelProgress,
+    ledgerQuality
+  } = params;
+
+  if (!attendanceLogs.length) {
+    return [] as InsightCardItem[];
+  }
+
+  const cards: Array<InsightCardItem & { rank: number }> = [];
+  const highestScoringGame = [...attendedGames].sort(
+    (left, right) => (right.homeScore + right.awayScore) - (left.homeScore + left.awayScore)
+  )[0];
+  const missingMemoryLog = attendanceLogs.find(isMemoryMissing);
+
+  cards.push({
+    key: "stadiums",
+    eyebrow: "Milestone",
+    title: `You have logged ${stats.uniqueStadiumsVisited} stadium${stats.uniqueStadiumsVisited === 1 ? "" : "s"}`,
+    body: stats.uniqueStadiumsVisited >= 5
+      ? "Your ledger is becoming a real stadium passport."
+      : "Each new park makes the ledger feel more personal and collectible.",
+    actionLabel: "View Fan Résumé",
+    route: "/(tabs)/stats" as Href,
+    rank: 84
+  });
+
+  if (favoriteTeamName && stats.favoriteTeamSplit) {
+    cards.push({
+      key: "favorite-record",
+      eyebrow: "Favorite team",
+      title: `${favoriteTeamName} are ${stats.favoriteTeamSplit.wins}-${stats.favoriteTeamSplit.losses} when you attend`,
+      body: `${stats.favoriteTeamSplit.gamesAttended} saved game${stats.favoriteTeamSplit.gamesAttended === 1 ? "" : "s"} are shaping your in-person team record.`,
+      actionLabel: "Log Another",
+      route: "/(tabs)/log-game" as Href,
+      rank: 95
+    });
+  }
+
+  if (stats.uniquePitchersSeen > 0) {
+    cards.push({
+      key: "pitchers",
+      eyebrow: "Players witnessed",
+      title: `You have seen ${stats.uniquePitchersSeen} unique pitcher${stats.uniquePitchersSeen === 1 ? "" : "s"}`,
+      body: stats.playerPitchingSummaries[0]
+        ? `${stats.playerPitchingSummaries[0].pitcherName} leads your current pitcher trail.`
+        : "Pitcher insights deepen as more games gain complete player data.",
+      actionLabel: "View Fan Résumé",
+      route: "/(tabs)/stats" as Href,
+      rank: 80
+    });
+  }
+
+  if (highestScoringGame) {
+    cards.push({
+      key: "highest-scoring",
+      eyebrow: "Best games",
+      title: `Your highest-scoring game had ${highestScoringGame.homeScore + highestScoringGame.awayScore} total runs`,
+      body: "Big-score nights are usually worth revisiting when you want the loudest memory in the ledger.",
+      actionLabel: "View Fan Résumé",
+      route: "/(tabs)/stats" as Href,
+      rank: 72
+    });
+  }
+
+  if (missingMemoryLog) {
+    cards.push({
+      key: "missing-memories",
+      eyebrow: "Make it richer",
+      title: `${ledgerQuality.missingMemoryCount} game${ledgerQuality.missingMemoryCount === 1 ? "" : "s"} still need a memory`,
+      body: "Preserve the story behind the stats while the details are still easy to remember.",
+      actionLabel: "Add Memory",
+      route: (`/logged-game/${missingMemoryLog.id}`) as Href,
+      rank: 98
+    });
+  }
+
+  if (nextMilestone) {
+    cards.push({
+      key: "milestone",
+      eyebrow: "Progress",
+      title: `${nextMilestone.remaining} more ${nextMilestone.remaining === 1 ? "game" : "games"} until ${nextMilestone.target}`,
+      body: `${levelProgress.currentLevel.title} turns into a deeper ledger once you keep stacking attended games.`,
+      actionLabel: "Log Another",
+      route: "/(tabs)/log-game" as Href,
+      rank: 90
+    });
+  }
+
+  if (latestLogId && latestGameTitle) {
+    cards.push({
+      key: "latest-game",
+      eyebrow: "Recent save",
+      title: `Revisit ${latestGameTitle}`,
+      body: "Open the saved game page to finish details, relive the box score, or add the story while it is still fresh.",
+      actionLabel: "Open Game",
+      route: (`/logged-game/${latestLogId}`) as Href,
+      rank: 78
+    });
+  }
+
+  if (ledgerQuality.score < 80) {
+    cards.push({
+      key: "ledger-quality",
+      eyebrow: "Archive completeness",
+      title: `Your ledger quality is ${ledgerQuality.score}/100`,
+      body: "A few more memories, seat details, and profile choices will make the archive feel much richer.",
+      actionLabel: "Improve Ledger",
+      route: "/(tabs)/profile" as Href,
+      rank: 86
+    });
+  }
+
+  return cards
+    .sort((left, right) => right.rank - left.rank)
+    .slice(0, 5)
+    .map(({ rank: _rank, ...card }) => card);
+}
+
 export function HomeScreen() {
   const router = useRouter();
   const responsive = useResponsiveLayout();
+  const [dismissedInsightKeys, setDismissedInsightKeys] = useState<string[]>([]);
   const {
     attendanceLogs,
     friends,
@@ -348,7 +717,8 @@ export function HomeScreen() {
     persistenceError,
     isHydrated,
     retryHydration,
-    unfollowUser
+    unfollowUser,
+    storageMode
   } = useAppData();
   const isWide = responsive.isWideDesktop;
   const shouldStackHeroRail = responsive.isNarrow;
@@ -388,6 +758,53 @@ export function HomeScreen() {
   );
   const followingPreview = friends.slice(0, 3);
   const topInsights = useMemo(() => getTopInsights(stats, favoriteTeam?.name), [favoriteTeam?.name, stats]);
+  const ledgerPrompts = useMemo(
+    () =>
+      buildLedgerPrompts({
+        attendanceLogs,
+        stats,
+        favoriteTeamName: favoriteTeam?.name,
+        latestLogId: latestLog?.id,
+        latestGameTitle: latestGameLabel?.title,
+        hasFriends: friends.length > 0,
+        storageMode
+      }),
+    [attendanceLogs, favoriteTeam?.name, friends.length, latestGameLabel?.title, latestLog?.id, stats, storageMode]
+  );
+  const ledgerQuality = useMemo(
+    () =>
+      buildLedgerQualitySummary({
+        attendanceLogs,
+        favoriteTeamId: profile.favoriteTeamId
+      }),
+    [attendanceLogs, profile.favoriteTeamId]
+  );
+  const insightCards = useMemo(
+    () =>
+      buildInsightCards({
+        attendanceLogs,
+        attendedGames,
+        stats,
+        favoriteTeamName: favoriteTeam?.name,
+        latestLogId: latestLog?.id,
+        latestGameTitle: latestGameLabel?.title,
+        nextMilestone,
+        levelProgress,
+        ledgerQuality
+      }).filter((card) => !dismissedInsightKeys.includes(card.key)),
+    [
+      attendanceLogs,
+      attendedGames,
+      dismissedInsightKeys,
+      favoriteTeam?.name,
+      latestGameLabel?.title,
+      latestLog?.id,
+      ledgerQuality,
+      levelProgress,
+      nextMilestone,
+      stats
+    ]
+  );
   const favoriteRecord = stats.favoriteTeamSplit
     ? `${stats.favoriteTeamSplit.wins}-${stats.favoriteTeamSplit.losses}`
     : `${stats.wins}-${stats.losses}`;
@@ -407,13 +824,13 @@ export function HomeScreen() {
         : "success";
 
   return (
-    <Screen title="Home" subtitle="Your MLB ledger, latest memories, and the next best move.">
+    <Screen title="Home" subtitle={`Your MLB ledger inside ${APP_NAME}: latest memories, unlocked progress, and the next best move.`}>
       <HeroCard>
         {isHydrated ? (
           <View style={styles.heroStack}>
             <View style={[styles.heroTopRow, !shouldStackHeroRail ? styles.heroTopRowWide : null]}>
               <View style={styles.heroLead}>
-                <StatusPill label="Your MLB Ledger" tone="dark" />
+                <StatusPill label={`Your ${APP_NAME} Ledger`} tone="dark" />
                 <Text style={styles.heroName}>{profile.displayName}</Text>
                 <Text style={[styles.heroTitle, responsive.isCompact ? styles.heroTitleCompact : null]}>
                   {hasLogs ? levelProgress.currentLevel.title : "Build your fan record"}
@@ -429,7 +846,7 @@ export function HomeScreen() {
                   ) : (
                     <PrimaryButton label="Retry Storage" onPress={retryHydration} />
                   )}
-                  <PrimaryButton label="View History" variant="secondary" onPress={() => router.push("/(tabs)/history")} />
+                  <PrimaryButton label="View Fan Résumé" variant="secondary" onPress={() => router.push("/(tabs)/stats")} />
                 </View>
               </View>
 
@@ -447,8 +864,13 @@ export function HomeScreen() {
                   </View>
                 </View>
                 <View style={styles.heroRailCard}>
-                  <Text style={styles.heroRailLabel}>Next best action</Text>
-                  <Text style={styles.heroRailBody}>{nextAction.summary}</Text>
+                  <Text style={styles.heroRailLabel}>{hasLogs ? "Latest unlock" : "What this unlocks"}</Text>
+                  <Text style={styles.heroRailBody}>
+                    {hasLogs
+                      ? insightCards[0]?.title ?? nextAction.summary
+                      : "Log one game to unlock your personal record, your favorite-team split, and the first version of your Fan Résumé."}
+                  </Text>
+                  {hasLogs && insightCards[0] ? <Text style={styles.heroRailMeta}>{insightCards[0].body}</Text> : null}
                   <StatusPill label={heroStatusLabel} tone={heroStatusTone} />
                 </View>
               </View>
@@ -476,10 +898,54 @@ export function HomeScreen() {
         <EmptyState
           eyebrow="First game"
           title="Log your first MLB game"
-          body="The first save unlocks your home dashboard, personal stats, and the game-by-game memory trail that makes the product feel like your own baseball ledger."
+          body="The first save unlocks your home dashboard, your Fan Résumé, and example insights like stadium count, favorite-team record, and the loudest game you have seen in person."
           action={<PrimaryButton label="Log First Game" onPress={() => router.push("/(tabs)/log-game")} />}
         />
       ) : null}
+
+      <SectionCard
+        title="Continue Building Your Ledger"
+        subtitle="A short list of the highest-value next moves based on what your record already has and what it is still missing."
+      >
+        <View style={[styles.promptGrid, isWide ? styles.promptGridWide : null]}>
+          {ledgerPrompts.map((prompt) => (
+            <View key={prompt.key} style={styles.promptCard}>
+              <Text style={styles.promptEyebrow}>{prompt.eyebrow}</Text>
+              <Text style={styles.promptTitle}>{prompt.title}</Text>
+              <Text style={styles.promptBody}>{prompt.body}</Text>
+              <PrimaryButton label={prompt.actionLabel} onPress={() => router.push(prompt.route)} variant="secondary" />
+            </View>
+          ))}
+        </View>
+      </SectionCard>
+
+      <SectionCard
+        title="For You"
+        subtitle="Fresh signals from your ledger so the next action is obvious without digging through tables."
+      >
+        {insightCards.length ? (
+          <View style={styles.insightFeedStack}>
+            {insightCards.map((card) => (
+              <View key={card.key} style={styles.insightFeedCard}>
+                <View style={styles.insightFeedHeader}>
+                  <Text style={styles.promptEyebrow}>{card.eyebrow}</Text>
+                  <Pressable onPress={() => setDismissedInsightKeys((current) => [...current, card.key])}>
+                    <Text style={styles.dismissText}>Hide</Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.promptTitle}>{card.title}</Text>
+                <Text style={styles.promptBody}>{card.body}</Text>
+                <PrimaryButton label={card.actionLabel} variant="secondary" onPress={() => router.push(card.route)} />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <PlaceholderPanel
+            title="Your next insights will appear here"
+            body="As soon as you log more games or complete more memory details, this feed rotates in the strongest reasons to come back."
+          />
+        )}
+      </SectionCard>
 
       <View style={[styles.grid, isWide ? styles.gridWide : null]}>
         <View style={styles.mainColumn}>
@@ -594,6 +1060,46 @@ export function HomeScreen() {
         </View>
 
         <View style={styles.sideColumn}>
+          <SectionCard title="Ledger Quality" subtitle="A simple completeness score that nudges the archive to feel richer over time.">
+            <View style={styles.qualityHero}>
+              <Text style={styles.qualityScore}>{ledgerQuality.score}</Text>
+              <Text style={styles.qualityScoreLabel}>Archive completeness</Text>
+              <Text style={styles.secondaryText}>
+                Preserve the story behind the stats with a few more memories, seat details, and profile choices.
+              </Text>
+            </View>
+            <View style={styles.qualityChipRow}>
+              <StatusPill label={`${toPercent(ledgerQuality.memoryCoverage)}% memories`} tone="default" />
+              <StatusPill label={`${toPercent(ledgerQuality.seatCoverage)}% seat details`} tone="default" />
+              <StatusPill label={`${toPercent(ledgerQuality.detailsCoverage)}% extra details`} tone="default" />
+            </View>
+            <View style={styles.qualityPromptStack}>
+              {ledgerQuality.missingMemoryCount > 0 ? (
+                <View style={styles.qualityPromptCard}>
+                  <Text style={styles.promptEyebrow}>Make it richer</Text>
+                  <Text style={styles.promptBody}>
+                    Add memories to {ledgerQuality.missingMemoryCount} game{ledgerQuality.missingMemoryCount === 1 ? "" : "s"}.
+                  </Text>
+                </View>
+              ) : null}
+              {ledgerQuality.missingSeatCount > 0 ? (
+                <View style={styles.qualityPromptCard}>
+                  <Text style={styles.promptEyebrow}>Fill in seats</Text>
+                  <Text style={styles.promptBody}>
+                    Finish seat details for {ledgerQuality.missingSeatCount} game{ledgerQuality.missingSeatCount === 1 ? "" : "s"}.
+                  </Text>
+                </View>
+              ) : null}
+              {!profile.favoriteTeamId ? (
+                <View style={styles.qualityPromptCard}>
+                  <Text style={styles.promptEyebrow}>Favorite team</Text>
+                  <Text style={styles.promptBody}>Pick a favorite team to unlock cleaner record splits across Home and Fan Résumé.</Text>
+                </View>
+              ) : null}
+            </View>
+            <PrimaryButton label="Open Profile" variant="secondary" onPress={() => router.push("/(tabs)/profile")} />
+          </SectionCard>
+
           <SectionCard title="Top teams seen" subtitle="The clubs most attached to your ledger.">
             {topTeams.length ? (
               <View style={styles.teamSummaryStack}>
@@ -678,6 +1184,65 @@ const styles = StyleSheet.create({
   gridWide: {
     flexDirection: "row",
     alignItems: "flex-start"
+  },
+  promptGrid: {
+    gap: spacing.md
+  },
+  promptGridWide: {
+    flexDirection: "row",
+    flexWrap: "wrap"
+  },
+  promptCard: {
+    flex: 1,
+    minWidth: 220,
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.lineSoft,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    ...shadows.subtle
+  },
+  promptEyebrow: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1.1,
+    color: colors.clay,
+    fontWeight: "800"
+  },
+  promptTitle: {
+    fontSize: 18,
+    lineHeight: 23,
+    fontWeight: "900",
+    color: colors.text
+  },
+  promptBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.textMuted
+  },
+  insightFeedStack: {
+    gap: spacing.md
+  },
+  insightFeedCard: {
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.lineSoft,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    ...shadows.subtle
+  },
+  insightFeedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm
+  },
+  dismissText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: colors.textSoft
   },
   mainColumn: {
     flex: 1.15,
@@ -835,6 +1400,38 @@ const styles = StyleSheet.create({
   },
   progressGrid: {
     gap: spacing.md
+  },
+  qualityHero: {
+    gap: spacing.xs
+  },
+  qualityScore: {
+    fontSize: 42,
+    lineHeight: 46,
+    fontWeight: "900",
+    color: colors.primary
+  },
+  qualityScoreLabel: {
+    fontSize: 13,
+    textTransform: "uppercase",
+    letterSpacing: 1.1,
+    color: colors.clay,
+    fontWeight: "800"
+  },
+  qualityChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs
+  },
+  qualityPromptStack: {
+    gap: spacing.sm
+  },
+  qualityPromptCard: {
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.lineSoft,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    gap: spacing.xs
   },
   teamSummaryStack: {
     gap: spacing.md

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import type { Href } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { EmptyState } from "../../components/common/EmptyState";
 import { FilterChip } from "../../components/common/FilterChip";
 import { Screen } from "../../components/common/Screen";
@@ -15,23 +15,55 @@ import { colors, radii, shadows, spacing } from "../../styles/tokens";
 import { formatGameLabel } from "../../lib/formatters";
 import type { Game } from "@mlb-attendance/domain";
 import { MEMORY_CHIPS, applyMemoryChip } from "../history/gameDetailHelpers";
+import { APP_DESIGN_PRINCIPLE, APP_NAME, APP_TAGLINE } from "../../config/brand";
 
 type StatusTone = "idle" | "info" | "success" | "error";
+type SeatRecallMode = "remember" | "unknown" | "later";
 
-function buildGameNotes(game: Game) {
-  const notes = [];
+function buildGameBadges(game: Game, favoriteTeamId?: string) {
+  const totalRuns = game.homeScore + game.awayScore;
+  const badges = [];
 
-  if (game.walkOff) {
-    notes.push("Walk-off finish");
+  if (favoriteTeamId && (game.homeTeamId === favoriteTeamId || game.awayTeamId === favoriteTeamId)) {
+    badges.push("Favorite team");
   }
-  if (game.innings && game.innings > 9) {
-    notes.push(`${game.innings} innings`);
+  if (totalRuns >= 10) {
+    badges.push("High scoring");
+  }
+  if ((game.innings ?? 0) > 9) {
+    badges.push("Extra innings");
   }
   if (game.featuredPlayerHomeRun) {
-    notes.push(`${game.featuredPlayerHomeRun} homer`);
+    badges.push("Home run");
+  }
+  if (game.walkOff) {
+    badges.push("Walk-off");
   }
 
-  return notes;
+  return badges;
+}
+
+function getTopBatterPreview(game: Game) {
+  return [...(game.battersUsed ?? [])]
+    .sort((left, right) => {
+      if (right.homeRuns !== left.homeRuns) {
+        return right.homeRuns - left.homeRuns;
+      }
+      if (right.hits !== left.hits) {
+        return right.hits - left.hits;
+      }
+      return right.rbis - left.rbis;
+    })[0];
+}
+
+function getTopPitcherPreview(game: Game) {
+  return [...(game.pitchersUsed ?? [])]
+    .sort((left, right) => {
+      if ((right.strikeouts ?? 0) !== (left.strikeouts ?? 0)) {
+        return (right.strikeouts ?? 0) - (left.strikeouts ?? 0);
+      }
+      return (right.inningsPitched ?? 0) - (left.inningsPitched ?? 0);
+    })[0];
 }
 
 export function LogGameScreen() {
@@ -51,30 +83,52 @@ export function LogGameScreen() {
   const [section, setSection] = useState("");
   const [row, setRow] = useState("");
   const [seatNumber, setSeatNumber] = useState("");
+  const [seatRecallMode, setSeatRecallMode] = useState<SeatRecallMode>("later");
   const [memorableMoment, setMemorableMoment] = useState("");
   const [companion, setCompanion] = useState("");
   const [giveaway, setGiveaway] = useState("");
   const [weather, setWeather] = useState("");
   const [searchError, setSearchError] = useState("");
-  const [seatError, setSeatError] = useState("");
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [searchStatus, setSearchStatus] = useState<{ tone: StatusTone; message: string } | null>(null);
   const [saveStatus, setSaveStatus] = useState<{ tone: StatusTone; message: string } | null>(null);
   const selectedGameLabel = selectedGame ? formatGameLabel(selectedGame, teamsById, venuesById) : null;
-  const latestSeason = useMemo(() => {
-    const years = games
-      .map((game) => Number(game.startDate.slice(0, 4)))
-      .filter((year) => Number.isFinite(year));
-    return years.length ? String(Math.max(...years)) : "";
-  }, [games]);
+  const seasonChips = useMemo(
+    () =>
+      [...new Set(games.map((game) => game.startDate.slice(0, 4)).filter(Boolean))]
+        .sort((left, right) => Number(right) - Number(left))
+        .slice(0, 3),
+    [games]
+  );
+  const venueChips = useMemo(() => {
+    const favoriteVenueIds = favoriteTeam
+      ? [...new Set(games.filter((game) => game.homeTeamId === favoriteTeam.id).map((game) => game.venueId))]
+      : [];
+    const recentVenueIds = [...new Set(games.slice(0, 20).map((game) => game.venueId))];
+    return [...new Set([...favoriteVenueIds, ...recentVenueIds])]
+      .map((venueId) => venuesById.get(venueId))
+      .filter((venue): venue is NonNullable<typeof venue> => Boolean(venue))
+      .slice(0, 3);
+  }, [favoriteTeam, games, venuesById]);
+  const selectedTopBatter = useMemo(
+    () => (selectedGame ? getTopBatterPreview(selectedGame) : undefined),
+    [selectedGame]
+  );
+  const selectedTopPitcher = useMemo(
+    () => (selectedGame ? getTopPitcherPreview(selectedGame) : undefined),
+    [selectedGame]
+  );
 
-  const quickFinds = [
-    favoriteTeam ? { label: favoriteTeam.abbreviation, action: () => applyQuickSearch({ query: favoriteTeam.abbreviation }) } : null,
-    latestSeason ? { label: latestSeason, action: () => applyQuickSearch({ date: latestSeason }) } : null,
+  const quickFinds: Array<{ label: string; action: () => Promise<void> }> = [
+    ...(favoriteTeam
+      ? [{ label: favoriteTeam.abbreviation, action: () => applyQuickSearch({ query: favoriteTeam.abbreviation }) }]
+      : []),
+    ...seasonChips.map((season) => ({ label: season, action: () => applyQuickSearch({ date: season }) })),
+    ...venueChips.map((venue) => ({ label: venue.name, action: () => applyQuickSearch({ stadium: venue.name }) })),
     { label: "Recent games", action: () => applyQuickSearch({}) }
-  ].filter(Boolean) as Array<{ label: string; action: () => void }>;
+  ];
 
   async function handleSearch() {
     setIsSearching(true);
@@ -112,6 +166,7 @@ export function LogGameScreen() {
             }
       );
       setSelectedGame(null);
+      setSeatRecallMode("later");
     } catch {
       setSearchStatus({
         tone: "error",
@@ -140,6 +195,7 @@ export function LogGameScreen() {
       const visibleMatches = next.query || next.date || next.stadium ? orderedMatches : orderedMatches.slice(0, 12);
       setResults(visibleMatches);
       setSelectedGame(null);
+      setSeatRecallMode("later");
       setSearchError(visibleMatches.length ? "" : "No games matched that quick find. Try a manual search.");
       setSearchStatus(
         visibleMatches.length
@@ -172,15 +228,6 @@ export function LogGameScreen() {
       return;
     }
 
-    if (!section.trim()) {
-      setSeatError("Section is required. Row and seat can stay blank.");
-      setSaveStatus({
-        tone: "error",
-        message: "Section is required before save."
-      });
-      return;
-    }
-
     setIsSaving(true);
     setSaveStatus({
       tone: "info",
@@ -192,7 +239,7 @@ export function LogGameScreen() {
         userId: profile.id,
         gameId: selectedGame.id,
         seat: {
-          section,
+          section: section.trim() || "Unknown",
           row,
           seatNumber
         },
@@ -202,10 +249,9 @@ export function LogGameScreen() {
         weather
       });
 
-      setSeatError("");
       setSearchError("");
       setConfirmation(
-        `Saved ${savedLog.attendedOn} in section ${savedLog.seat.section}. You can review it in History and Stats now.`
+        `Saved ${savedLog.attendedOn} in section ${savedLog.seat.section}. You can review it in History and Fan Résumé now.`
       );
       setSaveStatus({
         tone: "success",
@@ -216,6 +262,7 @@ export function LogGameScreen() {
       setSection("");
       setRow("");
       setSeatNumber("");
+      setSeatRecallMode("later");
       setMemorableMoment("");
       setCompanion("");
       setGiveaway("");
@@ -237,197 +284,239 @@ export function LogGameScreen() {
   return (
     <Screen
       title="Log a Game"
-      subtitle="Find the matchup fast, confirm the exact game, and save the memory without fighting a form."
+      subtitle={`${APP_NAME} is built to collect the night fast: find the matchup, confirm the memory, and save without getting trapped in a long form.`}
+      scrollable={false}
     >
-      <View style={styles.stepRow}>
-        <StatusPill label="1 Find" tone="info" />
-        <StatusPill label="2 Confirm" tone={selectedGame ? "success" : "default"} />
-        <StatusPill label="3 Save" tone={section.trim() ? "success" : "default"} />
-        <StatusPill label="4 Details" tone="default" />
-      </View>
-
-      <View style={[styles.topGrid, isWide ? styles.topGridWide : null]}>
-        <SectionCard title="1. Find the game" subtitle="Start broad, then narrow only if you need to.">
-          <View style={styles.quickFindHeader}>
-            <Text style={styles.helperText}>Large search first, then quick filters for team, season, or recent games.</Text>
-            <View style={styles.quickFindRow}>
-              {quickFinds.map((quickFind) => (
-                <FilterChip key={quickFind.label} label={quickFind.label} onPress={quickFind.action} />
-              ))}
-            </View>
+      <View style={styles.page}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.stepRow}>
+            <StatusPill label="Find" tone="info" />
+            <StatusPill label="Confirm" tone={selectedGame ? "success" : "default"} />
+            <StatusPill label="Save" tone={selectedGame ? "warning" : "default"} />
+            <StatusPill label="Relive it later" tone="default" />
           </View>
-          <View style={[styles.formGrid, isWide ? styles.formGridWide : null]}>
-            <View style={styles.formColumn}>
-              <LabeledInput
-                label="Team or matchup"
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Yankees, Mets, Red Sox, BAL..."
-                returnKeyType="search"
-                onSubmitEditing={() => {
-                  void handleSearch();
-                }}
-              />
-              <LabeledInput
-                label="Date"
-                value={date}
-                onChangeText={setDate}
-                placeholder="07/20/2025, 07-20-2025, July 20, 2025, or 2025"
-                autoCapitalize="none"
-                returnKeyType="search"
-                onSubmitEditing={() => {
-                  void handleSearch();
-                }}
-              />
-            </View>
-            <View style={styles.formColumn}>
-              <LabeledInput
-                label="Stadium"
-                value={stadium}
-                onChangeText={setStadium}
-                placeholder="Fenway, Yankee Stadium..."
-                returnKeyType="search"
-                onSubmitEditing={() => {
-                  void handleSearch();
-                }}
-              />
-              <View style={styles.searchMetaCard}>
-                <Text style={styles.searchMetaLabel}>MLB catalog</Text>
-                <Text style={styles.searchMetaValue}>{games.length} MLB finals ready to log</Text>
-                <Text style={styles.searchMetaCopy}>No filter also works. We will show the most recent games first.</Text>
+
+          <SectionCard title="Find a game you attended" subtitle={APP_TAGLINE}>
+            <View style={styles.searchHero}>
+              <View style={styles.quickFindHeader}>
+                <Text style={styles.heroSearchTitle}>Start with the matchup. Narrow only if you need to.</Text>
+                <Text style={styles.helperText}>{APP_DESIGN_PRINCIPLE}</Text>
               </View>
-            </View>
-          </View>
-          <PrimaryButton label={isSearching ? "Searching..." : "Search Games"} onPress={handleSearch} disabled={isSearching} />
-          {searchStatus ? (
-            <View style={[styles.statusCard, searchStatus.tone === "success" ? styles.statusCardSuccess : null, searchStatus.tone === "error" ? styles.statusCardError : null]}>
-              <Text style={[styles.statusText, searchStatus.tone === "success" ? styles.statusTextSuccess : null, searchStatus.tone === "error" ? styles.statusTextError : null]}>
-                {searchStatus.message}
-              </Text>
-            </View>
-          ) : null}
-          {searchError ? <Text style={styles.errorText}>{searchError}</Text> : null}
-        </SectionCard>
-
-        <SectionCard title="2. Confirm the game" subtitle="Make sure the exact matchup, date, and result look right.">
-          {selectedGame && selectedGameLabel ? (
-            <View style={styles.selectedGameCard}>
-              <Text style={styles.gameTitle}>{selectedGameLabel.title}</Text>
-              <Text style={styles.gameSubtitle}>{selectedGameLabel.subtitle}</Text>
-              <Text style={styles.gameScore}>Final: {selectedGameLabel.score}</Text>
-              <View style={styles.noteRow}>
-                {buildGameNotes(selectedGame).map((note) => (
-                  <StatusPill key={note} label={note} tone="info" />
+              <View style={styles.quickFindRow}>
+                {quickFinds.map((quickFind) => (
+                  <FilterChip key={quickFind.label} label={quickFind.label} onPress={quickFind.action} />
                 ))}
               </View>
-              <Text style={styles.helperText}>
-                Save with just the seat section now. You can add or edit the memory details later in History.
-              </Text>
+              <View style={[styles.formGrid, isWide ? styles.formGridWide : null]}>
+                <View style={[styles.formColumn, styles.searchLeadColumn]}>
+                  <LabeledInput
+                    label="Search MLB matchups"
+                    value={query}
+                    onChangeText={setQuery}
+                    placeholder="Yankees at Mets, Dodgers, Red Sox, BAL..."
+                    returnKeyType="search"
+                    onSubmitEditing={() => {
+                      void handleSearch();
+                    }}
+                  />
+                </View>
+                <View style={styles.formColumn}>
+                  <LabeledInput
+                    label="Season or date"
+                    value={date}
+                    onChangeText={setDate}
+                    placeholder="2025, 07/20/2025, or July 20, 2025"
+                    autoCapitalize="none"
+                    returnKeyType="search"
+                    onSubmitEditing={() => {
+                      void handleSearch();
+                    }}
+                  />
+                </View>
+                <View style={styles.formColumn}>
+                  <LabeledInput
+                    label="Venue"
+                    value={stadium}
+                    onChangeText={setStadium}
+                    placeholder="Fenway Park, Yankee Stadium..."
+                    returnKeyType="search"
+                    onSubmitEditing={() => {
+                      void handleSearch();
+                    }}
+                  />
+                </View>
+              </View>
+              <View style={styles.searchActionRow}>
+                <PrimaryButton label={isSearching ? "Searching..." : "Search Games"} onPress={handleSearch} disabled={isSearching} />
+                <View style={styles.searchMetaCard}>
+                  <Text style={styles.searchMetaLabel}>Catalog ready</Text>
+                  <Text style={styles.searchMetaValue}>{games.length} MLB finals in the archive</Text>
+                  <Text style={styles.searchMetaCopy}>No filter also works. FandomHub will show the most recent finals first.</Text>
+                </View>
+              </View>
+              {searchStatus ? (
+                <View style={[styles.statusCard, searchStatus.tone === "success" ? styles.statusCardSuccess : null, searchStatus.tone === "error" ? styles.statusCardError : null]}>
+                  <Text style={[styles.statusText, searchStatus.tone === "success" ? styles.statusTextSuccess : null, searchStatus.tone === "error" ? styles.statusTextError : null]}>
+                    {searchStatus.message}
+                  </Text>
+                </View>
+              ) : null}
+              {searchError ? <Text style={styles.errorText}>{searchError}</Text> : null}
             </View>
-          ) : (
-            <EmptyState
-              eyebrow="Select a matchup"
-              title="No game selected yet"
-              body="Use quick find or search, then choose the exact attended game before you save."
-            />
-          )}
-        </SectionCard>
-      </View>
+          </SectionCard>
 
-      {results.length ? (
-        <SectionCard title={`Select a result (${results.length})`} subtitle="Most recent matching games appear first.">
-          <Text style={styles.helperText}>
-            Pick the exact game you attended. Most recent matching games show first.
-          </Text>
-          <View style={[styles.resultsGrid, !isCompact ? styles.resultsGridWide : null]}>
-            {results.map((game) => {
-              const label = formatGameLabel(game, teamsById, venuesById);
-              const isSelected = selectedGame?.id === game.id;
+          {results.length ? (
+            <SectionCard title={`Search results (${results.length})`} subtitle="Visual cards make it easier to find the exact night fast.">
+              <View style={[styles.resultsGrid, !isCompact ? styles.resultsGridWide : null]}>
+                {results.map((game) => {
+                  const label = formatGameLabel(game, teamsById, venuesById);
+                  const isSelected = selectedGame?.id === game.id;
+                  const badges = buildGameBadges(game, favoriteTeam?.id);
 
-              return (
-                <Pressable
-                  key={game.id}
-                  onPress={() => {
-                    setSelectedGame(game);
-                    setSearchError("");
-                    setConfirmation(null);
-                  }}
-                  style={[styles.gameOption, !isCompact ? styles.gameOptionWide : null, isSelected ? styles.gameOptionSelected : null]}
-                >
-                  <Text style={styles.gameTitle}>{label.title}</Text>
-                  <Text style={styles.gameSubtitle}>{label.subtitle}</Text>
-                  <Text style={styles.gameScore}>Final: {label.score}</Text>
+                  return (
+                    <Pressable
+                      key={game.id}
+                      onPress={() => {
+                        setSelectedGame(game);
+                        setSearchError("");
+                        setConfirmation(null);
+                      }}
+                      style={[styles.gameOption, !isCompact ? styles.gameOptionWide : null, isSelected ? styles.gameOptionSelected : null]}
+                    >
+                      <Text style={styles.gameTitle}>{label.title}</Text>
+                      <Text style={styles.gameSubtitle}>{label.subtitle}</Text>
+                      <Text style={styles.gameScore}>Final: {label.score}</Text>
+                      <View style={styles.noteRow}>
+                        {badges.map((badge) => (
+                          <StatusPill key={`${game.id}_${badge}`} label={badge} tone={badge === "Favorite team" ? "success" : "default"} />
+                        ))}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </SectionCard>
+          ) : null}
+
+          <View style={[styles.topGrid, isWide ? styles.topGridWide : null]}>
+            <SectionCard title="This is the one" subtitle="Confirm the exact matchup before you save it to your ledger.">
+              {selectedGame && selectedGameLabel ? (
+                <View style={styles.selectedGameCard}>
+                  <Text style={styles.confirmEyebrow}>Selected game</Text>
+                  <Text style={styles.gameTitle}>{selectedGameLabel.title}</Text>
+                  <Text style={styles.gameSubtitle}>{selectedGameLabel.subtitle}</Text>
+                  <Text style={styles.gameScore}>Final: {selectedGameLabel.score}</Text>
                   <View style={styles.noteRow}>
-                    {buildGameNotes(game).slice(0, 3).map((note) => (
-                      <StatusPill key={`${game.id}_${note}`} label={note} tone="default" />
+                    {buildGameBadges(selectedGame, favoriteTeam?.id).map((badge) => (
+                      <StatusPill key={badge} label={badge} tone={badge === "Favorite team" ? "success" : "info"} />
                     ))}
                   </View>
-                </Pressable>
-              );
-            })}
+                  {selectedTopBatter ? (
+                    <Text style={styles.helperText}>
+                      Top hitter preview: {selectedTopBatter.playerName} with {selectedTopBatter.hits} hit{selectedTopBatter.hits === 1 ? "" : "s"}
+                      {selectedTopBatter.homeRuns ? ` and ${selectedTopBatter.homeRuns} HR` : ""}.
+                    </Text>
+                  ) : null}
+                  {selectedTopPitcher ? (
+                    <Text style={styles.helperText}>
+                      Pitching preview: {selectedTopPitcher.pitcherName} with {selectedTopPitcher.strikeouts ?? 0} strikeouts.
+                    </Text>
+                  ) : null}
+                </View>
+              ) : (
+                <EmptyState
+                  eyebrow="Select a matchup"
+                  title="No game selected yet"
+                  body="Use search or chips above, then pick the exact attended game before you save."
+                />
+              )}
+            </SectionCard>
+
+            <SectionCard title="Seat details are optional" subtitle="Capture what you remember now and leave the rest for later if needed.">
+              <Text style={styles.helperText}>You are never blocked by missing row or seat details. If you skip everything, FandomHub saves the seat as unknown.</Text>
+              <View style={styles.quickFindRow}>
+                <FilterChip
+                  label="I remember my seat"
+                  selected={seatRecallMode === "remember"}
+                  onPress={() => setSeatRecallMode("remember")}
+                />
+                <FilterChip
+                  label="I don't remember"
+                  selected={seatRecallMode === "unknown"}
+                  onPress={() => {
+                    setSeatRecallMode("unknown");
+                    setSection("Unknown");
+                    setRow("");
+                    setSeatNumber("");
+                  }}
+                />
+                <FilterChip
+                  label="Add later"
+                  selected={seatRecallMode === "later"}
+                  onPress={() => {
+                    setSeatRecallMode("later");
+                    setSection("");
+                    setRow("");
+                    setSeatNumber("");
+                  }}
+                />
+              </View>
+              <LabeledInput
+                label="Section"
+                value={section}
+                onChangeText={(value) => {
+                  setSection(value);
+                  setSeatRecallMode("remember");
+                }}
+                placeholder="214A"
+                autoCapitalize="characters"
+              />
+              <View style={[styles.formGrid, styles.formGridWide]}>
+                <View style={styles.formColumn}>
+                  <LabeledInput
+                    label="Row (optional)"
+                    value={row}
+                    onChangeText={(value) => {
+                      setRow(value);
+                      setSeatRecallMode("remember");
+                    }}
+                    placeholder="5"
+                    autoCapitalize="characters"
+                  />
+                </View>
+                <View style={styles.formColumn}>
+                  <LabeledInput
+                    label="Seat (optional)"
+                    value={seatNumber}
+                    onChangeText={(value) => {
+                      setSeatNumber(value);
+                      setSeatRecallMode("remember");
+                    }}
+                    placeholder="7"
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </View>
+              {!isCompact ? (
+                <PrimaryButton
+                  label={isSaving ? "Saving..." : "Save Game"}
+                  onPress={handleSave}
+                  disabled={!selectedGame || isSaving}
+                />
+              ) : null}
+              {saveStatus ? (
+                <View style={[styles.statusCard, saveStatus.tone === "success" ? styles.statusCardSuccess : null, saveStatus.tone === "error" ? styles.statusCardError : null]}>
+                  <Text style={[styles.statusText, saveStatus.tone === "success" ? styles.statusTextSuccess : null, saveStatus.tone === "error" ? styles.statusTextError : null]}>
+                    {saveStatus.message}
+                  </Text>
+                </View>
+              ) : null}
+            </SectionCard>
           </View>
-        </SectionCard>
-      ) : null}
 
-      <View style={[styles.bottomGrid, isWide ? styles.bottomGridWide : null]}>
-        <View style={styles.formColumn}>
-          <SectionCard title="3. Save it fast" subtitle="Seat section helps memory later, but row and seat can stay blank.">
+          <SectionCard title="Add a memory if you want" subtitle="These details make the save feel richer later, but every field can be skipped.">
             <Text style={styles.helperText}>
-              If you do not remember the section, save it as unknown and clean it up later.
-            </Text>
-            <View style={styles.quickFindRow}>
-              <FilterChip label="I don't remember" selected={section.trim().toLowerCase() === "unknown"} onPress={() => {
-                setSection("Unknown");
-                setSeatError("");
-              }} />
-            </View>
-            <LabeledInput
-              label="Section"
-              value={section}
-              onChangeText={setSection}
-              placeholder="214A"
-              autoCapitalize="characters"
-              error={seatError}
-            />
-            <View style={[styles.formGrid, styles.formGridWide]}>
-              <View style={styles.formColumn}>
-                <LabeledInput
-                  label="Row (optional)"
-                  value={row}
-                  onChangeText={setRow}
-                  placeholder="5"
-                  autoCapitalize="characters"
-                />
-              </View>
-              <View style={styles.formColumn}>
-                <LabeledInput
-                  label="Seat (optional)"
-                  value={seatNumber}
-                  onChangeText={setSeatNumber}
-                  placeholder="7"
-                  autoCapitalize="characters"
-                />
-              </View>
-            </View>
-            <PrimaryButton
-              label={isSaving ? "Saving..." : "Save Attendance Log"}
-              onPress={handleSave}
-              disabled={!selectedGame || isSaving}
-            />
-            {saveStatus ? (
-              <View style={[styles.statusCard, saveStatus.tone === "success" ? styles.statusCardSuccess : null, saveStatus.tone === "error" ? styles.statusCardError : null]}>
-                <Text style={[styles.statusText, saveStatus.tone === "success" ? styles.statusTextSuccess : null, saveStatus.tone === "error" ? styles.statusTextError : null]}>
-                  {saveStatus.message}
-                </Text>
-              </View>
-            ) : null}
-          </SectionCard>
-        </View>
-
-        <View style={styles.formColumn}>
-          <SectionCard title="4. Add memory details" subtitle="Optional now. Useful later.">
-            <Text style={styles.helperText}>
-              These prompts are optional. A quick line now makes the game feel personal later, but you can skip every one.
+              A quick line now makes the game feel personal later. Skip everything if you just want the save in your ledger.
             </Text>
             <LabeledInput
               label="What do you remember most?"
@@ -471,9 +560,6 @@ export function LogGameScreen() {
                 />
               </View>
             </View>
-            <Text style={styles.helperText}>
-              Other good memory angles: where you sat, whether it was part of a trip, and if a big play changed the night.
-            </Text>
             <Pressable
               onPress={() => {
                 setMemorableMoment("");
@@ -485,20 +571,37 @@ export function LogGameScreen() {
               <Text style={styles.skipText}>Skip for now</Text>
             </Pressable>
           </SectionCard>
-        </View>
-      </View>
 
-      {confirmation ? (
-        <SectionCard title="Saved" subtitle="Your log is in the ledger and ready for review.">
-          <Text style={styles.successText}>{confirmation}</Text>
-          <PrimaryButton label="View History" onPress={() => router.push("/(tabs)/history")} />
-        </SectionCard>
-      ) : null}
+          {confirmation ? (
+            <SectionCard title="Saved" subtitle="Your log is in the ledger and ready for review.">
+              <Text style={styles.successText}>{confirmation}</Text>
+              <PrimaryButton label="View History" onPress={() => router.push("/(tabs)/history")} />
+            </SectionCard>
+          ) : null}
+        </ScrollView>
+
+        {isCompact ? (
+          <View style={styles.mobileSaveBar}>
+            <PrimaryButton
+              label={isSaving ? "Saving..." : "Save Game"}
+              onPress={handleSave}
+              disabled={!selectedGame || isSaving}
+            />
+          </View>
+        ) : null}
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  page: {
+    flex: 1
+  },
+  scrollContent: {
+    gap: spacing.lg,
+    paddingBottom: spacing.xxxl
+  },
   topGrid: {
     gap: spacing.lg
   },
@@ -523,11 +626,26 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.md
   },
+  searchLeadColumn: {
+    flex: 1.4
+  },
+  searchHero: {
+    gap: spacing.md
+  },
+  heroSearchTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: "900",
+    color: colors.text
+  },
+  searchActionRow: {
+    gap: spacing.md
+  },
   searchMetaCard: {
-    backgroundColor: colors.slate050,
+    backgroundColor: colors.surfaceAccent,
     borderWidth: 1,
-    borderColor: colors.slate200,
-    borderRadius: 14,
+    borderColor: colors.lineSoft,
+    borderRadius: radii.lg,
     padding: spacing.lg,
     gap: spacing.xs
   },
@@ -591,7 +709,15 @@ const styles = StyleSheet.create({
   },
   gameOptionSelected: {
     borderColor: colors.primary,
-    backgroundColor: colors.surfaceAccent
+    backgroundColor: colors.surfaceAccent,
+    transform: [{ translateY: -1 }]
+  },
+  confirmEyebrow: {
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 1.1,
+    fontWeight: "800",
+    color: colors.clay
   },
   gameTitle: {
     fontSize: 16,
@@ -613,7 +739,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   selectedGameCard: {
-    gap: spacing.sm
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceAccent,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.lineSoft,
+    padding: spacing.lg
   },
   errorText: {
     fontSize: 13,
@@ -650,5 +781,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: colors.textMuted
+  },
+  mobileSaveBar: {
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+    backgroundColor: "rgba(244,236,223,0.96)"
   }
 });

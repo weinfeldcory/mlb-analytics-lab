@@ -27,7 +27,7 @@ export default function PrivacyScreen() {
         {
           title: "Affiliation and data handling",
           body: [
-            "Ballpark Ledger is not affiliated with MLB or any MLB club unless that changes and is stated explicitly. Historical game references may come from third-party or public sports data sources, and those records should not be treated as official league data."
+            "FandomHub is not affiliated with MLB, any MLB club, any concert promoter, or any venue operator unless that changes and is stated explicitly. Historical game references may come from third-party or public sports data sources, and those records should not be treated as official league data."
           ]
         },
         {
@@ -40,4 +40,3 @@ export default function PrivacyScreen() {
     />
   );
 }
-

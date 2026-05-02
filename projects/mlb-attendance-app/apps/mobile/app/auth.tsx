@@ -108,7 +108,7 @@ export default function AuthScreen() {
         <View style={styles.shell}>
           <View style={styles.hero}>
             <Text style={styles.title}>
-              {mode === "signin" ? "Track every MLB game you&apos;ve attended." : "Create your baseball ledger."}
+              {mode === "signin" ? "Track every MLB game you've attended." : "Create your baseball ledger."}
             </Text>
             <Text style={styles.subtitle}>
               {mode === "signin" ? "Log in to continue." : "Save your games and build your attendance history."}

@@ -5,6 +5,7 @@ import type { Href } from "expo-router";
 import { useAppData } from "../../providers/AppDataProvider";
 import { useResponsiveLayout } from "../../styles/responsive";
 import { colors, radii, shadows, spacing } from "../../styles/tokens";
+import { APP_EYEBROW, APP_NAME } from "../../config/brand";
 import { PageHeader } from "./PageHeader";
 import { StatusPill } from "./StatusPill";
 
@@ -19,7 +20,7 @@ const navItems: { href: Href; label: string; shortLabel: string }[] = [
   { href: "/(tabs)", label: "Home", shortLabel: "Home" },
   { href: "/(tabs)/log-game", label: "Log Game", shortLabel: "Log Game" },
   { href: "/(tabs)/history", label: "History", shortLabel: "History" },
-  { href: "/(tabs)/stats", label: "Stats", shortLabel: "Stats" },
+  { href: "/(tabs)/stats", label: "Fan Résumé", shortLabel: "Résumé" },
   { href: "/(tabs)/profile", label: "Profile", shortLabel: "Profile" }
 ];
 
@@ -73,11 +74,11 @@ export function AppShell({ title, subtitle, children, scrollable = true }: AppSh
     >
       <View style={styles.brandCluster}>
         <Pressable onPress={() => router.push("/(tabs)")} style={styles.brandMark}>
-          <Text style={styles.brandMarkText}>BL</Text>
+          <Text style={styles.brandMarkText}>FH</Text>
         </Pressable>
         <View style={styles.brandCopy}>
-          <Text style={styles.brandEyebrow}>Personal MLB Record</Text>
-          <Text style={styles.brandTitle}>Ballpark Ledger</Text>
+          <Text style={styles.brandEyebrow}>{APP_EYEBROW}</Text>
+          <Text style={styles.brandTitle}>{APP_NAME}</Text>
         </View>
       </View>
 
@@ -86,8 +87,18 @@ export function AppShell({ title, subtitle, children, scrollable = true }: AppSh
           {navItems.map((item) => {
             const active = pathname === item.href;
             return (
-              <Pressable key={item.label} onPress={() => router.push(item.href)} style={[styles.navItem, active ? styles.navItemActive : null]}>
-                <Text style={[styles.navItemLabel, active ? styles.navItemLabelActive : null]}>{item.label}</Text>
+              <Pressable
+                key={item.label}
+                onPress={() => router.push(item.href)}
+                style={({ pressed }) => [
+                  styles.navItem,
+                  active ? styles.navItemActive : null,
+                  pressed ? styles.navItemPressed : null
+                ]}
+              >
+                <Text style={[styles.navItemLabel, active ? styles.navItemLabelActive : null, !active ? styles.navItemLabelInactive : null]}>
+                  {item.label}
+                </Text>
               </Pressable>
             );
           })}
@@ -98,7 +109,11 @@ export function AppShell({ title, subtitle, children, scrollable = true }: AppSh
         <StatusPill label={statusLabel} tone={statusTone} />
         <Pressable
           onPress={() => router.push("/(tabs)/profile")}
-          style={[styles.accountButton, responsive.isCompact ? styles.accountButtonCompact : null]}
+          style={({ pressed }) => [
+            styles.accountButton,
+            responsive.isCompact ? styles.accountButtonCompact : null,
+            pressed ? styles.accountButtonPressed : null
+          ]}
         >
           <Text style={styles.accountButtonLabel}>
             {profile.displayName || currentAccountLabel || "Profile"}
@@ -119,7 +134,7 @@ export function AppShell({ title, subtitle, children, scrollable = true }: AppSh
 
   const body = (
     <>
-      {title ? <PageHeader eyebrow="App" title={title} subtitle={subtitle} /> : null}
+      {title ? <PageHeader eyebrow={APP_NAME} title={title} subtitle={subtitle} /> : null}
       <View style={styles.body}>{children}</View>
     </>
   );
@@ -265,10 +280,17 @@ const styles = StyleSheet.create({
   navItemActive: {
     backgroundColor: colors.primary
   },
+  navItemPressed: {
+    backgroundColor: colors.surfaceAccent,
+    transform: [{ translateY: 1 }]
+  },
   navItemLabel: {
     fontSize: 14,
     fontWeight: "800",
     color: colors.textMuted
+  },
+  navItemLabelInactive: {
+    color: colors.primary
   },
   navItemLabelActive: {
     color: colors.textInverse
@@ -295,6 +317,10 @@ const styles = StyleSheet.create({
   accountButtonCompact: {
     flex: 1,
     minWidth: 180
+  },
+  accountButtonPressed: {
+    backgroundColor: colors.surfaceAccent,
+    transform: [{ translateY: 1 }]
   },
   accountButtonLabel: {
     fontSize: 13,
