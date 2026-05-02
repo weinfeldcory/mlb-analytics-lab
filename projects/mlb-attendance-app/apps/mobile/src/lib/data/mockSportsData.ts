@@ -247,26 +247,6 @@ function buildAttendanceLog(game: Game): AttendanceLog {
   };
 }
 
-function buildFriendAttendanceLog(params: {
-  friendId: string;
-  game: Game;
-  note: string;
-  section: string;
-}): AttendanceLog {
-  return {
-    id: `${params.game.id}_${params.friendId}`,
-    userId: params.friendId,
-    gameId: params.game.id,
-    venueId: params.game.venueId,
-    attendedOn: params.game.startDate,
-    seat: {
-      section: params.section
-    },
-    witnessedEvents: [],
-    memorableMoment: params.note
-  };
-}
-
 const userGameLogs = rawGameLogs as RawGameLog[];
 const catalogGameLogs = rawCatalogGames as RawCatalogGame[];
 
@@ -360,32 +340,3 @@ export const games: Game[] = [
 ];
 
 export const attendanceLogs: AttendanceLog[] = seededGames.map(buildAttendanceLog);
-
-const gamesByDate = new Map(seededGames.map((game) => [game.startDate, game]));
-
-export const friendAttendanceLogs: AttendanceLog[] = [
-  buildFriendAttendanceLog({
-    friendId: "friend_ava",
-    game: gamesByDate.get("2024-10-08")!,
-    note: "Could not believe the Mets took NLDS Game 3 in that atmosphere.",
-    section: "Upper Deck 6"
-  }),
-  buildFriendAttendanceLog({
-    friendId: "friend_ava",
-    game: gamesByDate.get("2024-10-09")!,
-    note: "Stayed for every pitch of NLDS Game 4 and the crowd never sat down.",
-    section: "Upper Deck 6"
-  }),
-  buildFriendAttendanceLog({
-    friendId: "friend_miles",
-    game: gamesByDate.get("2025-05-21")!,
-    note: "deGrom vs the Yankees in person was the entire reason I bought this ticket.",
-    section: "Terrace 15"
-  }),
-  buildFriendAttendanceLog({
-    friendId: "friend_jules",
-    game: gamesByDate.get("2024-06-20")!,
-    note: "Rickwood Field was too weird and historic to miss.",
-    section: "Grandstand 3"
-  })
-];

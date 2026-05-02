@@ -25,7 +25,6 @@ interface AppDataContextValue {
   venues: Venue[];
   games: Game[];
   attendanceLogs: AttendanceLog[];
-  friendAttendanceLogs: AttendanceLog[];
   stats: PersonalStats;
   isHydrated: boolean;
   persistenceStatus: "idle" | "loading" | "saving" | "saved" | "error";
@@ -589,7 +588,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     venues,
     games,
     attendanceLogs,
-    friendAttendanceLogs: [],
     stats,
     isHydrated,
     persistenceStatus,

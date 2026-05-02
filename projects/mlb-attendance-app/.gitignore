@@ -13,4 +13,5 @@ supabase/.temp
 supabase/.temp/
 apps/mobile/.expo
 apps/mobile/dist
+apps/mobile/dist-web
 apps/mobile/web-build

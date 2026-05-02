@@ -1,6 +1,6 @@
 # MLB Attendance App Product Roadmap
 
-Last updated: 2026-04-29
+Last updated: 2026-05-01
 
 ## Product Thesis
 
@@ -15,17 +15,22 @@ The product wins if:
 
 ## Current Product Baseline
 
-As of 2026-04-29, the app is no longer just a prototype shell. The local single-user loop is real:
+As of 2026-05-01, the app is no longer just a prototype shell. The core beta loop is real:
 
 - Expo Router app with five tabs: Home, Log Game, History, Stats, Profile
 - responsive web-first shell that still supports the mobile app surface
-- onboarding flow with favorite-team setup and product explanation
+- multi-step onboarding with favorite-team setup and a guided first-run path
 - local persistence through `AsyncStorage`
+- optional hosted auth and hosted persistence through Supabase
 - storage versioning and migration-aware repository state
 - create, edit, and delete flows for attendance logs
 - duplicate prevention for the same user and game
 - import, export, retry-load, and reset controls
+- post-log recap flow and dedicated logged-game detail pages
+- guided memory prompts and richer history/game-detail editing
 - seeded MLB teams, venues, games, line scores, hitters, pitchers, and attendance history
+- full 2021-present MLB catalog for logging/search
+- hosted social MVP foundation: searchable user profiles, follow requests, privacy-safe friend profiles
 - shared `packages/domain` logic for attendance creation and stat derivation
 - first test floor in the domain package
 
@@ -33,14 +38,14 @@ As of 2026-04-29, the app is no longer just a prototype shell. The local single-
 
 The product is still constrained in ways that matter for roadmap sequencing:
 
-- all product data is still local and seeded; there is no live MLB catalog or account system
-- game search is still limited to text filters over a fixed local dataset
+- canonical MLB reference data is still JSON-backed; there is no hosted canonical games table yet
+- game search is still local/static even though the catalog is much larger
 - there is no manual fallback path for unresolved or missing games
 - no split views yet in Stats beyond aggregate player and team totals
-- Home is feature-rich but still lacks a single dominant hero and clearest possible next action
-- History is editable but not yet optimized for larger backfill sessions
-- repository and UI persistence behavior are only lightly tested outside the domain package
-- follow/friend surfaces are still decorative and should not drive roadmap priority
+- Stats still lacks narrative summary modules and split-heavy exploration
+- History is much richer now, but still not optimized for larger backfill sessions
+- repository and UI persistence behavior are still lightly tested outside the domain package
+- hosted social is only MVP-level and should stay privacy-first
 
 ## Strategy
 
@@ -49,8 +54,8 @@ The next sequence should reflect what already exists:
 1. Polish the local ledger so the current product feels trustworthy and intentional.
 2. Expand catalog quality and backfill tooling so real multi-season use becomes practical.
 3. Turn the logbook into a collectible stats and memories product.
-4. Add accounts, sync, and backup only after the local experience is already strong.
-5. Keep social and live context optional until they clearly strengthen the personal ledger.
+4. Harden hosted accounts, sync, and social only where they strengthen the personal ledger.
+5. Keep live context optional until it clearly improves logging or revisitation.
 
 ## Product Principles
 
@@ -101,7 +106,7 @@ This release moved the product from demo-only toward a usable local journal:
 
 ## Release 0.3: Product Quality Pass
 
-Status: current focus
+Status: active
 
 Target window: April 29, 2026 to June 15, 2026
 
@@ -112,10 +117,11 @@ Goal:
 Must-have outcomes:
 
 - Home has one dominant hero and one obvious next action
-- Stats feels explorable instead of dense
-- Log Game communicates save state clearly and handles search better
-- History feels safe and scalable for real backfill work
-- Profile explains local ownership, reset risk, and import/export semantics clearly
+- onboarding and first-run experience feel intentional
+- Log Game communicates save state clearly and rewards a successful save
+- History feels safe and revisitable through real game detail pages
+- Profile clearly separates identity, follows, sync trust, and data controls
+- hosted/local mode is legible enough for beta debugging
 
 Core workstreams:
 
@@ -127,13 +133,13 @@ Core workstreams:
 
 Ticket candidates:
 
-- Rework `Home` so progress, latest record, and next-best action live in one stronger top module.
+- Finish the `Home` hierarchy so progress, latest record, next-best action, and early friend context read clearly.
 - Add split views to `Stats` for season, stadium, opponent, weekday, and home-vs-away questions.
 - Add narrative summary modules above the Stats tables so the page is not just two grids.
-- Add explicit save-state feedback in `Log Game` for saving, saved, duplicate blocked, and failed states.
-- Improve search matching in `Log Game` for abbreviations, venue aliases, and date handling.
-- Add stronger unsaved-change and bulk-review affordances in `History`.
-- Clarify reset, import, export, and storage copy in `Profile`.
+- Keep tightening search matching and save-state feedback in `Log Game`.
+- Finish the recap -> detail -> history review loop and add stronger unsaved-change affordances in `History`.
+- Clarify reset, import, export, storage, and social copy in `Profile`.
+- Finish the hosted social MVP with request management and privacy-safe shared stats.
 - Add tests around repository migrations, persistence failure handling, and UI-adjacent domain assumptions.
 
 Exit criteria:

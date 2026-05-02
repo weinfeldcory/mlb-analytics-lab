@@ -1,6 +1,6 @@
 # MLB Attendance App Page Roadmaps
 
-Last updated: 2026-04-29
+Last updated: 2026-05-01
 
 This file is the page-level companion to `PRODUCT_ROADMAP_MOBILE.md`.
 
@@ -28,13 +28,12 @@ Home is the front door to the ledger. It should explain the state of the user’
 
 ### Current state
 
-- summary cards for games attended, favorite-team record, hits seen, and pitchers seen
-- level/progression framing tied to games, parks, and home runs
-- latest-game recap
+- dominant ledger hero with progress, next-best action, and clearer top-of-page hierarchy
+- level/progression framing tied to games, parks, home runs, and streaks
+- latest-game recap with direct path into a logged-game detail page
 - attendance-pattern grid by weekday and first-pitch time
 - sortable team summary table
-- followed-friend feed and follow suggestions
-- next-action logic already exists, but it is not yet the dominant visual idea
+- hosted friend/follow surfaces are now starting to replace the decorative local mock cards
 
 ### What great looks like
 
@@ -45,10 +44,10 @@ Home is the front door to the ledger. It should explain the state of the user’
 
 ### Near-term roadmap
 
-1. Collapse the current top modules into one stronger hero that combines progress, latest state, and next-best action.
-2. Tighten the dashboard hierarchy so only one or two modules compete for attention above the fold.
-3. Make friend cards comparative by showing overlap, shared parks, same games, or favorite-team record deltas.
-4. Improve sparse-history behavior for the attendance-pattern view so low-volume users still understand it.
+1. Keep tightening the hierarchy so the hero, latest game, top truths, and momentum modules read in one deliberate sequence.
+2. Make friend cards comparative instead of generic once hosted follows are fully live.
+3. Improve sparse-history behavior for the attendance-pattern view so low-volume users still understand it.
+4. Add better zero-log and early-ledger empty states as beta users arrive with no backfill.
 
 ### Later roadmap
 
@@ -73,9 +72,9 @@ Log Game is the core capture flow. It should get the user from memory to saved r
 - seeded local catalog search by team, date, and stadium
 - selected-game summary before save
 - required seat section and optional row/seat
-- optional memory metadata for companion, giveaway, weather, and memorable moment
+- optional guided memory prompts with quick chips and skip-for-now path
 - duplicate prevention
-- success confirmation after save
+- recap screen after save that leads into dashboard, detail editing, or another log
 
 ### What great looks like
 
@@ -86,11 +85,10 @@ Log Game is the core capture flow. It should get the user from memory to saved r
 
 ### Near-term roadmap
 
-1. Improve search quality for abbreviations, venue aliases, fuzzy team recall, and date handling.
-2. Add clearer save-state messaging for saving, saved, duplicate blocked, and failed.
-3. Add season and opponent filters once the local catalog grows.
+1. Keep improving search quality for abbreviations, venue aliases, fuzzy team recall, and date handling.
+2. Add season and opponent filters now that the catalog is much larger.
+3. Add repeat-entry helpers such as recent seat patterns, common companions, or note fragments.
 4. Add a manual fallback path for unresolved games so the ledger is not blocked by catalog gaps.
-5. Add repeat-entry helpers such as recent seat patterns, common companions, or note fragments.
 
 ### Later roadmap
 
@@ -113,10 +111,11 @@ History is the editable source of truth for the ledger. It should make saved att
 ### Current state
 
 - filterable logbook
-- sort and view controls
+- sort, grouping, and view controls
 - edit flow for seat and memory metadata
 - delete flow with an in-card confirmation step
 - richer game artifacts including line score, R/H/E, starters, top hitters, and witnessed-event pills
+- dedicated logged-game detail page for revisiting one saved game as a memory artifact
 
 ### What great looks like
 
@@ -128,7 +127,7 @@ History is the editable source of truth for the ledger. It should make saved att
 ### Near-term roadmap
 
 1. Add stronger unsaved-change signaling while editing.
-2. Improve card density and hierarchy so score, performers, notes, and actions feel balanced.
+2. Improve card density and hierarchy so score, performers, notes, and actions feel balanced between History and the dedicated game page.
 3. Add faster bulk-review or repeat-edit affordances for backfill sessions.
 4. Prepare season-focused views and exports once larger histories become common.
 
@@ -193,7 +192,7 @@ Profile is the control center for identity, storage trust, and data portability.
 
 - onboarding-complete profile state
 - display name and favorite-team controls
-- friend follow toggles
+- hosted follow discovery, requests, accepted follows, and privacy-safe profile navigation
 - storage status messaging
 - import, export, retry-load, and reset controls
 
@@ -205,10 +204,10 @@ Profile is the control center for identity, storage trust, and data portability.
 
 ### Near-term roadmap
 
-1. Clarify storage and reset copy so browser/device-local ownership is unmistakable.
-2. Make import/export success and failure states more explicit and calmer.
-3. Separate identity, follows, and data-management sections more strongly.
-4. Add a small set of real product preferences such as timezone handling or default stats behavior.
+1. Clarify storage and reset copy so local vs hosted ownership is unmistakable.
+2. Keep import/export success and failure states explicit and calmer.
+3. Finish separating identity, follows, and data-management sections more strongly.
+4. Add explicit profile visibility controls and shared-profile settings.
 
 ### Later roadmap
 

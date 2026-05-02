@@ -1,6 +1,6 @@
 # MLB Attendance App Page Backlog
 
-Last updated: 2026-04-29
+Last updated: 2026-05-01
 
 This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term execution. It assumes the current product priority is a quality pass on the local ledger before major catalog expansion.
 
@@ -12,11 +12,11 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 
 ## Current Recommended Build Order
 
-1. Home: build a single hero and clearer next-best-action experience
-2. Stats: add first split views and narrative summary modules
-3. Log Game: improve search matching and save-state trust
-4. History: add unsaved-change signaling and better bulk-review ergonomics
-5. Profile: clarify storage, import/export, and reset semantics
+1. Stats: add first split views and narrative summary modules
+2. History: finish unsaved-change signaling and better bulk-review ergonomics
+3. Profile: finish hosted social MVP and clarify local vs hosted ownership
+4. Log Game: add season/opponent narrowing and repeat-entry helpers
+5. Home: make real friend context comparative instead of descriptive
 6. Cross-page: expand repository and migration test coverage
 
 ## Backlog By Page
@@ -25,12 +25,8 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 
 ### `P0`
 
-- Build one dominant hero module that combines current state, progress, and the next-best action.
-  - Why now: Home is information-rich but visually fragmented.
-  - Acceptance: the top third has one clear module and one clear CTA.
-
-- Tighten the dashboard hierarchy so secondary modules stop competing with the main story.
-  - Acceptance: the page reads in one deliberate sequence instead of several equal-weight cards.
+- Keep refining the dominant hero module so the latest game, next-best action, and top truths remain easy to scan.
+  - Acceptance: the top third still feels like one product story, not separate cards.
 
 ### `P1`
 
@@ -75,25 +71,19 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 
 ### `P0`
 
-- Improve game search matching quality.
-  - Scope: abbreviations, venue aliases, fuzzy team recall, stronger date handling.
-  - Acceptance: common queries resolve the intended game without retries.
-
-- Add explicit save-state feedback.
-  - States: saving, saved, duplicate blocked, failed.
-  - Acceptance: the user always knows whether the record actually persisted.
-
-### `P1`
-
 - Add season and opponent filters.
   - Acceptance: larger result sets can be narrowed without leaning on raw text search alone.
+
+- Add repeat-entry helpers for seats, companions, and note fragments.
+  - Acceptance: backfilling several games in one sitting gets faster over time.
+
+### `P1`
 
 - Add a manual fallback game flow for catalog gaps.
   - Acceptance: unresolved games can still be logged without pretending they are canonical.
 
 ### `P2`
 
-- Add repeat-entry helpers for seats, companions, and note fragments.
 - Add guided batch backfill mode.
 
 ## History
@@ -103,7 +93,7 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 - Add unsaved-change signaling while editing.
   - Acceptance: users can tell when they have modified a record before saving or canceling.
 
-- Improve card hierarchy and density in the game detail artifact.
+- Improve card hierarchy and density across History and logged-game detail artifacts.
   - Acceptance: score, line score, performers, notes, and actions feel balanced rather than stacked.
 
 ### `P1`
@@ -123,16 +113,17 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 
 ### `P0`
 
-- Clarify local-storage ownership, export coverage, and reset consequences.
-  - Acceptance: users understand exactly what is local, portable, and destructible.
+- Clarify local-vs-hosted ownership, export coverage, and reset consequences.
+  - Acceptance: users understand exactly what is local, hosted, portable, and destructible.
 
-- Improve import/export success and failure guidance.
-  - Acceptance: malformed payloads fail clearly and successful imports feel trustworthy.
+- Finish hosted social MVP.
+  - Scope: searchable people, pending requests, accepted follows, privacy-safe friend profile pages.
+  - Acceptance: real users can find and follow each other without exposing private log details.
 
 ### `P1`
 
-- Separate identity, follows, and data-management sections more strongly.
-  - Acceptance: Profile reads like a control center instead of a mixed settings page.
+- Improve import/export success and failure guidance.
+  - Acceptance: malformed payloads fail clearly and successful imports feel trustworthy.
 
 - Add meaningful app preferences.
   - Candidates: timezone handling, default stats split, display density.
@@ -166,8 +157,8 @@ This backlog is derived from `PAGE_ROADMAPS.md` and is ordered for near-term exe
 
 If work is batched into one focused sprint, the best bundle now is:
 
-1. Home hero plus next-best-action redesign
-2. Stats split views plus top-of-page summary modules
-3. Log Game search-quality and save-state improvements
+1. Stats split views plus top-of-page summary modules
+2. History edit-state and backfill ergonomics
+3. Profile hosted social MVP polish and privacy controls
 
-That bundle improves the three most visible product surfaces without depending on accounts, backend work, or a full catalog rebuild.
+That bundle improves the most important remaining beta gaps without taking on a full canonical-backend rebuild.
