@@ -21,6 +21,16 @@ export function getSupabaseEnv() {
   };
 }
 
+export function buildHostedRedirectUrl(path: string) {
+  if (Platform.OS !== "web" || typeof window === "undefined") {
+    return undefined;
+  }
+
+  const basePath = process.env.EXPO_PUBLIC_BASE_URL?.trim()?.replace(/\/$/, "") || "";
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${window.location.origin}${basePath}${normalizedPath}`;
+}
+
 const { url, anonKey, isConfigured } = getSupabaseEnv();
 
 export const supabase = isConfigured

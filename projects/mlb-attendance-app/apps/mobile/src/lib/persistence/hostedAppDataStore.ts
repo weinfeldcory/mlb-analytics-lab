@@ -10,7 +10,7 @@ import type {
   SignOutParams,
   SignUpParams
 } from "./appDataStore";
-import { getSupabaseEnv, supabase } from "./supabaseClient";
+import { buildHostedRedirectUrl, getSupabaseEnv, supabase } from "./supabaseClient";
 
 type AttendanceLogRow = {
   id: string;
@@ -31,16 +31,28 @@ type AttendanceLogRow = {
 type ProfileRow = {
   id: string;
   email: string;
-  username: string | null;
+  username?: string | null;
   display_name: string;
   favorite_team_id: string | null;
-  avatar_url: string | null;
-  profile_visibility: "public" | "followers_only" | "private";
+  avatar_url?: string | null;
+  profile_visibility?: "public" | "followers_only" | "private";
   following_ids: string[] | null;
   has_completed_onboarding: boolean;
   shared_games_logged?: number | null;
   shared_stadiums_visited?: number | null;
 };
+
+const PROFILE_SELECT_BASE = "id, email, display_name, favorite_team_id, following_ids, has_completed_onboarding";
+const PROFILE_SELECT_EXTENDED = `${PROFILE_SELECT_BASE}, username, avatar_url, profile_visibility, shared_games_logged, shared_stadiums_visited`;
+
+function isMissingProfileSchemaError(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("profiles.username")
+    || normalized.includes("profiles.avatar_url")
+    || normalized.includes("profiles.profile_visibility")
+    || normalized.includes("shared_games_logged")
+    || normalized.includes("shared_stadiums_visited");
+}
 
 type AttendanceLogUpsertRow = Omit<AttendanceLogRow, "id">;
 
@@ -74,7 +86,7 @@ function mapProfileRowToProfile(row: ProfileRow): UserProfile {
     displayName: row.display_name,
     favoriteTeamId: row.favorite_team_id ?? undefined,
     avatarUrl: row.avatar_url ?? undefined,
-    profileVisibility: row.profile_visibility,
+    profileVisibility: row.profile_visibility ?? "followers_only",
     followingIds: row.following_ids ?? [],
     hasCompletedOnboarding: row.has_completed_onboarding
   };
@@ -152,17 +164,83 @@ function buildAccount(userId: string, email: string): AppSessionAccount {
   };
 }
 
-async function ensureHostedProfile(userId: string, email: string, fallbackDisplayName?: string) {
+async function fetchProfileRowForUser(userId: string) {
   const client = requireSupabaseClient();
-  const { data: existingProfile, error: fetchError } = await client
+  const extendedQuery = await client
     .from("profiles")
-    .select("id, email, username, display_name, favorite_team_id, avatar_url, profile_visibility, following_ids, has_completed_onboarding, shared_games_logged, shared_stadiums_visited")
+    .select(PROFILE_SELECT_EXTENDED)
     .eq("id", userId)
     .maybeSingle<ProfileRow>();
 
-  if (fetchError) {
-    throw new Error(fetchError.message);
+  if (!extendedQuery.error) {
+    return extendedQuery.data ?? null;
   }
+
+  if (!isMissingProfileSchemaError(extendedQuery.error.message)) {
+    throw new Error(extendedQuery.error.message);
+  }
+
+  const fallbackQuery = await client
+    .from("profiles")
+    .select(PROFILE_SELECT_BASE)
+    .eq("id", userId)
+    .maybeSingle<ProfileRow>();
+
+  if (fallbackQuery.error) {
+    throw new Error(fallbackQuery.error.message);
+  }
+
+  return fallbackQuery.data ?? null;
+}
+
+async function upsertHostedProfile(params: {
+  userId: string;
+  email: string;
+  profile: UserProfile;
+  attendanceLogsCount: number;
+  stadiumsVisitedCount: number;
+}) {
+  const client = requireSupabaseClient();
+  const fullRow = {
+    id: params.userId,
+    email: params.email,
+    username: params.profile.username?.trim().toLowerCase() || buildDefaultUsername(params.email, params.userId),
+    display_name: params.profile.displayName.trim(),
+    favorite_team_id: params.profile.favoriteTeamId ?? null,
+    avatar_url: params.profile.avatarUrl?.trim() || null,
+    profile_visibility: params.profile.profileVisibility ?? "followers_only",
+    following_ids: params.profile.followingIds ?? [],
+    has_completed_onboarding: params.profile.hasCompletedOnboarding ?? false,
+    shared_games_logged: params.attendanceLogsCount,
+    shared_stadiums_visited: params.stadiumsVisitedCount
+  };
+
+  const { error: fullError } = await client.from("profiles").upsert(fullRow);
+  if (!fullError) {
+    return;
+  }
+
+  if (!isMissingProfileSchemaError(fullError.message)) {
+    throw new Error(fullError.message);
+  }
+
+  const { error: fallbackError } = await client.from("profiles").upsert({
+    id: params.userId,
+    email: params.email,
+    display_name: params.profile.displayName.trim(),
+    favorite_team_id: params.profile.favoriteTeamId ?? null,
+    following_ids: params.profile.followingIds ?? [],
+    has_completed_onboarding: params.profile.hasCompletedOnboarding ?? false
+  });
+
+  if (fallbackError) {
+    throw new Error(fallbackError.message);
+  }
+}
+
+async function ensureHostedProfile(userId: string, email: string, fallbackDisplayName?: string) {
+  const client = requireSupabaseClient();
+  const existingProfile = await fetchProfileRowForUser(userId);
 
   if (existingProfile) {
     return existingProfile;
@@ -182,17 +260,15 @@ async function ensureHostedProfile(userId: string, email: string, fallbackDispla
     shared_stadiums_visited: 0
   };
 
-  const { data: insertedProfile, error: insertError } = await client
-    .from("profiles")
-    .upsert(seedProfile)
-    .select("id, email, username, display_name, favorite_team_id, avatar_url, profile_visibility, following_ids, has_completed_onboarding, shared_games_logged, shared_stadiums_visited")
-    .single<ProfileRow>();
+  await upsertHostedProfile({
+    userId,
+    email,
+    profile: mapProfileRowToProfile(seedProfile),
+    attendanceLogsCount: 0,
+    stadiumsVisitedCount: 0
+  });
 
-  if (insertError) {
-    throw new Error(insertError.message);
-  }
-
-  return insertedProfile;
+  return (await fetchProfileRowForUser(userId)) ?? seedProfile;
 }
 
 async function fetchHydratedStateForUser(userId: string, email: string, fallbackDisplayName?: string) {
@@ -244,23 +320,13 @@ async function syncHostedState(params: PersistCurrentUserParams) {
     throw new Error("Hosted account is missing an email address.");
   }
 
-  const { error: profileError } = await client.from("profiles").upsert({
-    id: session.user.id,
+  await upsertHostedProfile({
+    userId: session.user.id,
     email,
-    username: params.profile.username?.trim().toLowerCase() || buildDefaultUsername(email, session.user.id),
-    display_name: params.profile.displayName.trim(),
-    favorite_team_id: params.profile.favoriteTeamId ?? null,
-    avatar_url: params.profile.avatarUrl?.trim() || null,
-    profile_visibility: params.profile.profileVisibility ?? "followers_only",
-    following_ids: params.profile.followingIds ?? [],
-    has_completed_onboarding: params.profile.hasCompletedOnboarding ?? false,
-    shared_games_logged: params.attendanceLogs.length,
-    shared_stadiums_visited: new Set(params.attendanceLogs.map((log) => log.venueId)).size
+    profile: params.profile,
+    attendanceLogsCount: params.attendanceLogs.length,
+    stadiumsVisitedCount: new Set(params.attendanceLogs.map((log) => log.venueId)).size
   });
-
-  if (profileError) {
-    throw new Error(profileError.message);
-  }
 
   const nextRows = params.attendanceLogs.map((log) =>
     mapLogToAttendanceUpsertRow({
@@ -394,7 +460,9 @@ export const hostedAppDataStore: AppDataStore = {
       throw new Error("Enter your email first.");
     }
 
-    const { error } = await client.auth.resetPasswordForEmail(email);
+    const { error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo: buildHostedRedirectUrl("/reset-password")
+    });
     if (error) {
       throw new Error(error.message);
     }

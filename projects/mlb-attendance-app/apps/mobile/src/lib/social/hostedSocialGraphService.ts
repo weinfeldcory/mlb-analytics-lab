@@ -40,6 +40,17 @@ function requireSupabaseClient() {
   return supabase;
 }
 
+function isHostedSocialUnavailable(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("profiles.username")
+    || normalized.includes("function public.search_profiles")
+    || normalized.includes("function public.get_following_profiles")
+    || normalized.includes("function public.get_follower_profiles")
+    || normalized.includes("function public.get_pending_follow_requests")
+    || normalized.includes("function public.get_friend_profile")
+    || normalized.includes("relation \"user_follows\" does not exist");
+}
+
 async function requireAuthenticatedUserId() {
   const client = requireSupabaseClient();
   const {
@@ -105,6 +116,9 @@ export const hostedSocialGraphService: SocialGraphService = {
     });
 
     if (error) {
+      if (isHostedSocialUnavailable(error.message)) {
+        return [];
+      }
       throw new Error(error.message);
     }
 
@@ -117,6 +131,9 @@ export const hostedSocialGraphService: SocialGraphService = {
     const { data, error } = await client.rpc("get_following_profiles");
 
     if (error) {
+      if (isHostedSocialUnavailable(error.message)) {
+        return [];
+      }
       throw new Error(error.message);
     }
 
@@ -127,6 +144,9 @@ export const hostedSocialGraphService: SocialGraphService = {
     const { data, error } = await client.rpc("get_follower_profiles");
 
     if (error) {
+      if (isHostedSocialUnavailable(error.message)) {
+        return [];
+      }
       throw new Error(error.message);
     }
 
@@ -138,6 +158,9 @@ export const hostedSocialGraphService: SocialGraphService = {
     const { data, error } = await client.rpc("get_pending_follow_requests");
 
     if (error) {
+      if (isHostedSocialUnavailable(error.message)) {
+        return [];
+      }
       throw new Error(error.message);
     }
 
@@ -264,6 +287,9 @@ export const hostedSocialGraphService: SocialGraphService = {
     });
 
     if (error) {
+      if (isHostedSocialUnavailable(error.message)) {
+        return null;
+      }
       throw new Error(error.message);
     }
 

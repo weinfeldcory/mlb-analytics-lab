@@ -118,18 +118,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const [nextFriends, nextFollowers, nextPendingRequests] = await Promise.all([
-      socialGraphService.getFollowing({
-        currentUserId: nextCurrentUserId,
-        followingIds: nextProfile.followingIds
-      }),
-      socialGraphService.getFollowers({
-        currentUserId: nextCurrentUserId
-      }),
-      socialGraphService.getPendingFollowRequests({
-        currentUserId: nextCurrentUserId
-      })
-    ]);
+    let nextFriends: FriendProfile[] = [];
+    let nextFollowers: FriendProfile[] = [];
+    let nextPendingRequests: FollowRequest[] = [];
+
+    try {
+      [nextFriends, nextFollowers, nextPendingRequests] = await Promise.all([
+        socialGraphService.getFollowing({
+          currentUserId: nextCurrentUserId,
+          followingIds: nextProfile.followingIds
+        }),
+        socialGraphService.getFollowers({
+          currentUserId: nextCurrentUserId
+        }),
+        socialGraphService.getPendingFollowRequests({
+          currentUserId: nextCurrentUserId
+        })
+      ]);
+    } catch {
+      clearSocialGraph();
+      return;
+    }
 
     setFriends(nextFriends);
     setFollowers(nextFollowers);
