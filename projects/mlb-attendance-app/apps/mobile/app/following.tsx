@@ -17,6 +17,24 @@ export default function FollowingScreen() {
   const [isSearchingPeople, setIsSearchingPeople] = useState(false);
   const [hasSearchedPeople, setHasSearchedPeople] = useState(false);
   const [peopleErrorMessage, setPeopleErrorMessage] = useState<string | null>(null);
+  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
+  const [pendingActionIds, setPendingActionIds] = useState<string[]>([]);
+  const [optimisticFollowedIds, setOptimisticFollowedIds] = useState<string[]>([]);
+  const [optimisticUnfollowedIds, setOptimisticUnfollowedIds] = useState<string[]>([]);
+
+  const canonicalFollowingIds = friends.map((friend) => friend.id);
+  const effectiveFollowingIds = new Set([
+    ...canonicalFollowingIds.filter((id) => !optimisticUnfollowedIds.includes(id)),
+    ...optimisticFollowedIds
+  ]);
+  const optimisticFollowingCards = peopleResults.filter((friend) => (
+    optimisticFollowedIds.includes(friend.id)
+    && !friends.some((existingFriend) => existingFriend.id === friend.id)
+  ));
+  const followingCards = [
+    ...optimisticFollowingCards,
+    ...friends.filter((friend) => !optimisticUnfollowedIds.includes(friend.id))
+  ];
 
   useEffect(() => {
     const trimmedQuery = peopleQuery.trim();
@@ -61,6 +79,51 @@ export default function FollowingScreen() {
     };
   }, [peopleQuery, searchProfiles]);
 
+  useEffect(() => {
+    setOptimisticFollowedIds((current) => current.filter((id) => !canonicalFollowingIds.includes(id)));
+    setOptimisticUnfollowedIds((current) => current.filter((id) => canonicalFollowingIds.includes(id)));
+  }, [canonicalFollowingIds]);
+
+  async function handleFollow(friendId: string) {
+    setActionErrorMessage(null);
+    setPendingActionIds((current) => [...current, friendId]);
+    setOptimisticFollowedIds((current) => (current.includes(friendId) ? current : [...current, friendId]));
+
+    try {
+      await requestFollow(friendId);
+      setPeopleResults((current) => current.map((friend) => (
+        friend.id === friendId
+          ? { ...friend, relationshipStatus: "accepted" }
+          : friend
+      )));
+    } catch (error) {
+      setOptimisticFollowedIds((current) => current.filter((id) => id !== friendId));
+      setActionErrorMessage(error instanceof Error ? error.message : "Could not follow that user right now.");
+    } finally {
+      setPendingActionIds((current) => current.filter((id) => id !== friendId));
+    }
+  }
+
+  async function handleUnfollow(friendId: string) {
+    setActionErrorMessage(null);
+    setPendingActionIds((current) => [...current, friendId]);
+    setOptimisticUnfollowedIds((current) => (current.includes(friendId) ? current : [...current, friendId]));
+
+    try {
+      await unfollowUser(friendId);
+      setPeopleResults((current) => current.map((friend) => (
+        friend.id === friendId
+          ? { ...friend, relationshipStatus: "not_following" }
+          : friend
+      )));
+    } catch (error) {
+      setOptimisticUnfollowedIds((current) => current.filter((id) => id !== friendId));
+      setActionErrorMessage(error instanceof Error ? error.message : "Could not unfollow that user right now.");
+    } finally {
+      setPendingActionIds((current) => current.filter((id) => id !== friendId));
+    }
+  }
+
   return (
     <Screen
       title="Following"
@@ -78,6 +141,7 @@ export default function FollowingScreen() {
             {isSearchingPeople ? <Text style={styles.helperText}>Searching…</Text> : null}
             {!peopleQuery.trim() ? <Text style={styles.helperText}>Search for people to follow</Text> : null}
             {peopleErrorMessage ? <Text style={styles.errorText}>{peopleErrorMessage}</Text> : null}
+            {actionErrorMessage ? <Text style={styles.errorText}>{actionErrorMessage}</Text> : null}
             {!isSearchingPeople && hasSearchedPeople && !peopleErrorMessage && peopleResults.length === 0 ? (
               <Text style={styles.helperText}>No users found</Text>
             ) : null}
@@ -87,7 +151,8 @@ export default function FollowingScreen() {
                 friend.sharedGamesLogged !== null && friend.sharedGamesLogged !== undefined ? `${friend.sharedGamesLogged} games` : null,
                 favoriteTeam?.name ?? null
               ].filter(Boolean).join(" · ");
-              const isFollowing = friend.relationshipStatus === "accepted";
+              const isFollowing = effectiveFollowingIds.has(friend.id);
+              const isActing = pendingActionIds.includes(friend.id);
 
               return (
                 <View key={friend.id} style={styles.personCard}>
@@ -97,9 +162,9 @@ export default function FollowingScreen() {
                     {statLine ? <Text style={styles.personMeta}>{statLine}</Text> : null}
                   </Pressable>
                   {isFollowing ? (
-                    <PrimaryButton label="Following" onPress={() => router.push((`/friends/${friend.id}`) as Href)} />
+                    <PrimaryButton label={isActing ? "Following..." : "Following"} onPress={() => router.push((`/friends/${friend.id}`) as Href)} disabled={isActing} />
                   ) : (
-                    <PrimaryButton label="Follow" onPress={() => void requestFollow(friend.id)} />
+                    <PrimaryButton label={isActing ? "Following..." : "Follow"} onPress={() => void handleFollow(friend.id)} disabled={isActing} />
                   )}
                 </View>
               );
@@ -113,12 +178,13 @@ export default function FollowingScreen() {
 
         <SectionCard title="Following" subtitle="The people whose baseball ledgers you can revisit right now.">
           <View style={styles.stack}>
-            {friends.length ? friends.map((friend) => {
+            {followingCards.length ? followingCards.map((friend) => {
               const favoriteTeam = teams.find((team) => team.id === friend.favoriteTeamId);
               const statLine = [
                 friend.sharedGamesLogged !== null && friend.sharedGamesLogged !== undefined ? `${friend.sharedGamesLogged} games` : null,
                 favoriteTeam?.name ?? null
               ].filter(Boolean).join(" · ");
+              const isActing = pendingActionIds.includes(friend.id);
 
               return (
                 <View key={friend.id} style={styles.personCard}>
@@ -129,7 +195,7 @@ export default function FollowingScreen() {
                   </Pressable>
                   <View style={styles.actionStack}>
                     <PrimaryButton label="View" onPress={() => router.push((`/friends/${friend.id}`) as Href)} />
-                    <Pressable onPress={() => void unfollowUser(friend.id)}>
+                    <Pressable onPress={() => void handleUnfollow(friend.id)} disabled={isActing}>
                       <Text style={styles.linkText}>Unfollow</Text>
                     </Pressable>
                   </View>
