@@ -20,6 +20,7 @@ const navItems: { href: Href; label: string; shortLabel: string }[] = [
   { href: "/(tabs)", label: "Home", shortLabel: "Home" },
   { href: "/(tabs)/log-game", label: "Log Game", shortLabel: "Log Game" },
   { href: "/(tabs)/history", label: "History", shortLabel: "History" },
+  { href: "/(tabs)/following" as Href, label: "Following", shortLabel: "Following" },
   { href: "/(tabs)/stats", label: "Fan Résumé", shortLabel: "Résumé" },
   { href: "/(tabs)/profile", label: "Profile", shortLabel: "Profile" }
 ];

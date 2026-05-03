@@ -6,6 +6,7 @@ import { LabeledInput } from "../src/components/common/LabeledInput";
 import { PrimaryButton } from "../src/components/common/PrimaryButton";
 import { SectionCard } from "../src/components/common/SectionCard";
 import { APP_NAME } from "../src/config/brand";
+import { buildUsernamePreview } from "../src/lib/social/username";
 import { useAppData } from "../src/providers/AppDataProvider";
 import { colors, spacing } from "../src/styles/tokens";
 
@@ -52,6 +53,7 @@ export default function AuthScreen() {
   const identifierLabel = isHosted ? "Email" : "Username";
   const identifierPlaceholder = isHosted ? "fan@example.com" : "cory";
   const loadingCopy = "Loading account...";
+  const usernamePreview = buildUsernamePreview(displayName || identifier.split("@")[0] || "fan");
 
   if (!isHydrated) {
     return (
@@ -126,12 +128,19 @@ export default function AuthScreen() {
             <View style={[styles.cardWrap, isWide ? styles.cardWrapWide : null]}>
               <SectionCard title={mode === "signin" ? "Log In" : "Create Account"}>
                 {mode === "signup" ? (
-                  <LabeledInput
-                    label="Display name"
-                    value={displayName}
-                    onChangeText={setDisplayName}
-                    placeholder="Cory"
-                  />
+                  <View style={styles.identityStack}>
+                    <LabeledInput
+                      label="Display name"
+                      value={displayName}
+                      onChangeText={setDisplayName}
+                      placeholder="Cory Weinfeld"
+                    />
+                    <View style={styles.usernamePreviewCard}>
+                      <Text style={styles.usernamePreviewLabel}>Generated username</Text>
+                      <Text style={styles.usernamePreviewValue}>{usernamePreview}</Text>
+                      <Text style={styles.usernamePreviewMeta}>We reserve the closest available username automatically.</Text>
+                    </View>
+                  </View>
                 ) : null}
                 <LabeledInput
                   label={identifierLabel}
@@ -294,6 +303,34 @@ const styles = StyleSheet.create({
   cardWrapWide: {
     alignSelf: "center",
     maxWidth: 520
+  },
+  identityStack: {
+    gap: spacing.sm
+  },
+  usernamePreviewCard: {
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    borderRadius: 14,
+    padding: spacing.md,
+    backgroundColor: colors.slate050
+  },
+  usernamePreviewLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: colors.slate500,
+    fontWeight: "700"
+  },
+  usernamePreviewValue: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: colors.navy
+  },
+  usernamePreviewMeta: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.slate500
   },
   secondaryActionRow: {
     flexDirection: "row",

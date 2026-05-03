@@ -63,11 +63,11 @@ export default function FollowingScreen() {
 
   return (
     <Screen
-      title="Following Hub"
-      subtitle="Find fans by username or name, open the people you follow, and manage your baseball network from one place."
+      title="Following"
+      subtitle="Find friends, follow their baseball history, and see what they’re logging."
     >
       <View style={styles.layout}>
-        <SectionCard title="Find people">
+        <SectionCard title="Find people" subtitle="Search by username, display name, or exact email to grow your social circle.">
           <View style={styles.stack}>
             <LabeledInput
               label="Search for people to follow"
@@ -107,6 +107,10 @@ export default function FollowingScreen() {
           </View>
         </SectionCard>
 
+        <SectionCard title="Activity" subtitle="A lightweight feed of what people you follow are adding to their ledger.">
+          <Text style={styles.helperText}>Follow people to see their activity.</Text>
+        </SectionCard>
+
         <SectionCard title="Following" subtitle="The people whose baseball ledgers you can revisit right now.">
           <View style={styles.stack}>
             {friends.length ? friends.map((friend) => {
@@ -135,7 +139,7 @@ export default function FollowingScreen() {
           </View>
         </SectionCard>
 
-        <SectionCard title="Followers">
+        <SectionCard title="Followers" subtitle="The fans who already follow your baseball history.">
           <View style={styles.stack}>
             {followers.length ? followers.map((friend) => {
               const favoriteTeam = teams.find((team) => team.id === friend.favoriteTeamId);

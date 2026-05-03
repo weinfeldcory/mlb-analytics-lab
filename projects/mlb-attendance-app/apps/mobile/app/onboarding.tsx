@@ -5,6 +5,7 @@ import { KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, St
 import { PrimaryButton } from "../src/components/common/PrimaryButton";
 import { LabeledInput } from "../src/components/common/LabeledInput";
 import { SectionCard } from "../src/components/common/SectionCard";
+import { buildUsernamePreview } from "../src/lib/social/username";
 import { useAppData } from "../src/providers/AppDataProvider";
 import { colors, spacing } from "../src/styles/tokens";
 
@@ -18,6 +19,7 @@ export default function OnboardingScreen() {
   const [favoriteTeamId, setFavoriteTeamId] = useState(profile.favoriteTeamId ?? "");
   const [error, setError] = useState<string | null>(null);
   const totalSteps = 4;
+  const usernamePreview = buildUsernamePreview(displayName);
 
   if (!isHydrated) {
     return (
@@ -114,6 +116,11 @@ export default function OnboardingScreen() {
                       placeholder="Your name"
                       error={error ?? undefined}
                     />
+                    <View style={styles.usernamePreviewCard}>
+                      <Text style={styles.usernamePreviewLabel}>Generated username</Text>
+                      <Text style={styles.usernamePreviewValue}>{usernamePreview}</Text>
+                      <Text style={styles.usernamePreviewMeta}>We’ll keep the closest available version of this username.</Text>
+                    </View>
                   </View>
                 ) : null}
 
@@ -320,6 +327,31 @@ const styles = StyleSheet.create({
   },
   stepStack: {
     gap: spacing.md
+  },
+  usernamePreviewCard: {
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    borderRadius: 14,
+    padding: spacing.md,
+    backgroundColor: colors.slate050
+  },
+  usernamePreviewLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: colors.slate500,
+    fontWeight: "700"
+  },
+  usernamePreviewValue: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: colors.navy
+  },
+  usernamePreviewMeta: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.slate500
   },
   stepTitle: {
     fontSize: 22,

@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { games, mockUser, teams, venues } from "../data/mockSportsData";
 import { calculatePersonalStats, type AttendanceLog, type UserProfile, type WitnessedEvent } from "@mlb-attendance/domain";
+import { normalizeDisplayNameToUsername } from "../social/username";
 import type {
   AppDataStore,
   AppSessionAccount,
@@ -221,15 +222,9 @@ function mapProfileRowToProfile(row: ProfileRow): UserProfile {
   };
 }
 
-function buildDefaultUsername(email: string, userId: string) {
-  const base = email
-    .split("@")[0]
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  return `${base || "fan"}-${userId.replace(/-/g, "").slice(0, 6)}`;
+function buildDefaultUsername(seed: string, userId: string) {
+  const base = normalizeDisplayNameToUsername(seed);
+  return `${base}${userId.replace(/-/g, "").slice(0, 6)}`;
 }
 
 const SOCIAL_LEVEL_RULES = {
@@ -384,7 +379,7 @@ async function upsertHostedProfile(params: {
   const fullRow = {
     id: params.userId,
     email: params.email,
-    username: params.profile.username?.trim().toLowerCase() || buildDefaultUsername(params.email, params.userId),
+    username: params.profile.username?.trim().toLowerCase() || buildDefaultUsername(params.profile.displayName, params.userId),
     display_name: params.profile.displayName.trim(),
     favorite_team_id: params.profile.favoriteTeamId ?? null,
     avatar_url: params.profile.avatarUrl?.trim() || null,
@@ -431,7 +426,7 @@ async function ensureHostedProfile(userId: string, email: string, fallbackDispla
   const seedProfile = {
     id: userId,
     email,
-    username: buildDefaultUsername(email, userId),
+    username: buildDefaultUsername(fallbackDisplayName?.trim() || email.split("@")[0] || "Fan", userId),
     display_name: fallbackDisplayName?.trim() || email.split("@")[0] || "Fan",
     favorite_team_id: null,
     avatar_url: null,
