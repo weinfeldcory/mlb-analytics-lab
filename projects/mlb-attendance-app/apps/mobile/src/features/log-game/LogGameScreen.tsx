@@ -20,6 +20,25 @@ import { APP_DESIGN_PRINCIPLE, APP_NAME, APP_TAGLINE } from "../../config/brand"
 type StatusTone = "idle" | "info" | "success" | "error";
 type SeatRecallMode = "remember" | "unknown" | "later";
 
+function getFavoriteTeamResult(game: Game, favoriteTeamId?: string) {
+  if (!favoriteTeamId) {
+    return null;
+  }
+
+  const favoriteIsHome = game.homeTeamId === favoriteTeamId;
+  const favoriteIsAway = game.awayTeamId === favoriteTeamId;
+
+  if (!favoriteIsHome && !favoriteIsAway) {
+    return null;
+  }
+
+  const favoriteWon = favoriteIsHome
+    ? game.homeScore > game.awayScore
+    : game.awayScore > game.homeScore;
+
+  return favoriteWon ? "Favorite team won" : "Favorite team lost";
+}
+
 function buildGameBadges(game: Game, favoriteTeamId?: string) {
   const totalRuns = game.homeScore + game.awayScore;
   const badges = [];
@@ -89,6 +108,7 @@ export function LogGameScreen() {
   const [companion, setCompanion] = useState("");
   const [giveaway, setGiveaway] = useState("");
   const [weather, setWeather] = useState("");
+  const [showOptionalDetails, setShowOptionalDetails] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -269,6 +289,7 @@ export function LogGameScreen() {
       setCompanion("");
       setGiveaway("");
       setWeather("");
+      setShowOptionalDetails(false);
       router.push((`/log-recap?logId=${encodeURIComponent(savedLog.id)}`) as Href);
     } catch (error) {
       setConfirmation(null);
@@ -379,6 +400,7 @@ export function LogGameScreen() {
                   const label = formatGameLabel(game, teamsById, venuesById);
                   const isSelected = selectedGame?.id === game.id;
                   const badges = buildGameBadges(game, favoriteTeam?.id);
+                  const favoriteTeamResult = getFavoriteTeamResult(game, favoriteTeam?.id);
 
                   return (
                     <Pressable
@@ -390,9 +412,14 @@ export function LogGameScreen() {
                       }}
                       style={[styles.gameOption, !isCompact ? styles.gameOptionWide : null, isSelected ? styles.gameOptionSelected : null]}
                     >
+                      <View style={styles.resultHeaderRow}>
+                        <Text style={styles.resultDateText}>{label.subtitle.split("•")[0]?.trim() ?? label.subtitle}</Text>
+                        {isSelected ? <StatusPill label="This is the game" tone="success" /> : null}
+                      </View>
                       <Text style={styles.gameTitle}>{label.title}</Text>
-                      <Text style={styles.gameSubtitle}>{label.subtitle}</Text>
+                      <Text style={styles.gameSubtitle}>{label.subtitle.split("•")[1]?.trim() ?? label.subtitle}</Text>
                       <Text style={styles.gameScore}>Final: {label.score}</Text>
+                      {favoriteTeamResult ? <Text style={styles.favoriteTeamResult}>{favoriteTeamResult}</Text> : null}
                       <View style={styles.noteRow}>
                         {badges.map((badge) => (
                           <StatusPill key={`${game.id}_${badge}`} label={badge} tone={badge === "Favorite team" ? "success" : "default"} />
@@ -409,10 +436,13 @@ export function LogGameScreen() {
             <SectionCard title="This is the one" subtitle="Confirm the exact matchup before you save it to your ledger.">
               {selectedGame && selectedGameLabel ? (
                 <View style={styles.selectedGameCard}>
-                  <Text style={styles.confirmEyebrow}>This is the one</Text>
+                  <Text style={styles.confirmEyebrow}>This is the game</Text>
                   <Text style={styles.gameTitle}>{selectedGameLabel.title}</Text>
                   <Text style={styles.gameSubtitle}>{selectedGameLabel.subtitle}</Text>
                   <Text style={styles.gameScore}>Final: {selectedGameLabel.score}</Text>
+                  {getFavoriteTeamResult(selectedGame, favoriteTeam?.id) ? (
+                    <Text style={styles.favoriteTeamResult}>{getFavoriteTeamResult(selectedGame, favoriteTeam?.id)}</Text>
+                  ) : null}
                   <View style={styles.noteRow}>
                     {buildGameBadges(selectedGame, favoriteTeam?.id).map((badge) => (
                       <StatusPill key={badge} label={badge} tone={badge === "Favorite team" ? "success" : "info"} />
@@ -514,62 +544,74 @@ export function LogGameScreen() {
             </SectionCard>
           </View>
 
-          <SectionCard title="Add a memory if you want" subtitle="These details make the save feel richer later, but every field can be skipped.">
-            <Text style={styles.helperText}>
-              A quick line now makes the game feel personal later. Skip everything if you just want the save in your ledger.
-            </Text>
-            <LabeledInput
-              label="What do you remember most?"
-              value={memorableMoment}
-              onChangeText={setMemorableMoment}
-              placeholder="Big play, rivalry feel, birthday trip, or whatever still sticks."
-              multiline
-              numberOfLines={4}
-            />
-            <Text style={styles.helperText}>Quick memory sparks</Text>
-            <View style={styles.memoryChipRow}>
-              {MEMORY_CHIPS.map((chip) => (
-                <FilterChip
-                  key={chip}
-                  label={chip}
-                  onPress={() => setMemorableMoment((current) => applyMemoryChip(current, chip))}
-                />
-              ))}
+          <SectionCard title="Optional details" subtitle="Companion, weather, and memory can wait until after the first save.">
+            <View style={styles.optionalHeaderRow}>
+              <Text style={styles.helperText}>
+                You can log the game with only the selected matchup. Open this section only if you want to capture extra context now.
+              </Text>
+              <PrimaryButton
+                label={showOptionalDetails ? "Hide Optional Details" : "Add Memory Or Details"}
+                variant="secondary"
+                onPress={() => setShowOptionalDetails((current) => !current)}
+              />
             </View>
-            <LabeledInput
-              label="Who did you go with?"
-              value={companion}
-              onChangeText={setCompanion}
-              placeholder="Friend, family, date, coworkers..."
-            />
-            <View style={[styles.formGrid, !isCompact ? styles.formGridWide : null]}>
-              <View style={styles.formColumn}>
+            {showOptionalDetails ? (
+              <View style={styles.optionalDetailsStack}>
                 <LabeledInput
-                  label="Giveaway or souvenir"
-                  value={giveaway}
-                  onChangeText={setGiveaway}
-                  placeholder="Bobblehead, jersey, cap..."
+                  label="What do you remember most?"
+                  value={memorableMoment}
+                  onChangeText={setMemorableMoment}
+                  placeholder="Big play, rivalry feel, birthday trip, or whatever still sticks."
+                  multiline
+                  numberOfLines={4}
                 />
-              </View>
-              <View style={styles.formColumn}>
+                <Text style={styles.helperText}>Quick memory sparks</Text>
+                <View style={styles.memoryChipRow}>
+                  {MEMORY_CHIPS.map((chip) => (
+                    <FilterChip
+                      key={chip}
+                      label={chip}
+                      onPress={() => setMemorableMoment((current) => applyMemoryChip(current, chip))}
+                    />
+                  ))}
+                </View>
                 <LabeledInput
-                  label="Weather"
-                  value={weather}
-                  onChangeText={setWeather}
-                  placeholder="Warm, cold, rain delay..."
+                  label="Who did you go with?"
+                  value={companion}
+                  onChangeText={setCompanion}
+                  placeholder="Friend, family, date, coworkers..."
                 />
+                <View style={[styles.formGrid, !isCompact ? styles.formGridWide : null]}>
+                  <View style={styles.formColumn}>
+                    <LabeledInput
+                      label="Giveaway or souvenir"
+                      value={giveaway}
+                      onChangeText={setGiveaway}
+                      placeholder="Bobblehead, jersey, cap..."
+                    />
+                  </View>
+                  <View style={styles.formColumn}>
+                    <LabeledInput
+                      label="Weather"
+                      value={weather}
+                      onChangeText={setWeather}
+                      placeholder="Warm, cold, rain delay..."
+                    />
+                  </View>
+                </View>
+                <Pressable
+                  onPress={() => {
+                    setMemorableMoment("");
+                    setCompanion("");
+                    setGiveaway("");
+                    setWeather("");
+                    setShowOptionalDetails(false);
+                  }}
+                >
+                  <Text style={styles.skipText}>Clear optional details</Text>
+                </Pressable>
               </View>
-            </View>
-            <Pressable
-              onPress={() => {
-                setMemorableMoment("");
-                setCompanion("");
-                setGiveaway("");
-                setWeather("");
-              }}
-            >
-              <Text style={styles.skipText}>Skip for now</Text>
-            </Pressable>
+            ) : null}
           </SectionCard>
 
           {confirmation ? (
@@ -664,6 +706,7 @@ export function LogGameScreen() {
                   const label = formatGameLabel(game, teamsById, venuesById);
                   const isSelected = selectedGame?.id === game.id;
                   const badges = buildGameBadges(game, favoriteTeam?.id);
+                  const favoriteTeamResult = getFavoriteTeamResult(game, favoriteTeam?.id);
 
                   return (
                     <Pressable
@@ -675,9 +718,14 @@ export function LogGameScreen() {
                       }}
                       style={[styles.gameOption, !isCompact ? styles.gameOptionWide : null, isSelected ? styles.gameOptionSelected : null]}
                     >
+                      <View style={styles.resultHeaderRow}>
+                        <Text style={styles.resultDateText}>{label.subtitle.split("•")[0]?.trim() ?? label.subtitle}</Text>
+                        {isSelected ? <StatusPill label="This is the game" tone="success" /> : null}
+                      </View>
                       <Text style={styles.gameTitle}>{label.title}</Text>
-                      <Text style={styles.gameSubtitle}>{label.subtitle}</Text>
+                      <Text style={styles.gameSubtitle}>{label.subtitle.split("•")[1]?.trim() ?? label.subtitle}</Text>
                       <Text style={styles.gameScore}>Final: {label.score}</Text>
+                      {favoriteTeamResult ? <Text style={styles.favoriteTeamResult}>{favoriteTeamResult}</Text> : null}
                       <View style={styles.noteRow}>
                         {badges.map((badge) => (
                           <StatusPill key={`${game.id}_${badge}`} label={badge} tone={badge === "Favorite team" ? "success" : "default"} />
@@ -694,10 +742,13 @@ export function LogGameScreen() {
             <SectionCard title="This is the one" subtitle="Confirm the exact matchup before you save it to your ledger.">
               {selectedGame && selectedGameLabel ? (
                 <View style={styles.selectedGameCard}>
-                  <Text style={styles.confirmEyebrow}>This is the one</Text>
+                  <Text style={styles.confirmEyebrow}>This is the game</Text>
                   <Text style={styles.gameTitle}>{selectedGameLabel.title}</Text>
                   <Text style={styles.gameSubtitle}>{selectedGameLabel.subtitle}</Text>
                   <Text style={styles.gameScore}>Final: {selectedGameLabel.score}</Text>
+                  {getFavoriteTeamResult(selectedGame, favoriteTeam?.id) ? (
+                    <Text style={styles.favoriteTeamResult}>{getFavoriteTeamResult(selectedGame, favoriteTeam?.id)}</Text>
+                  ) : null}
                   <View style={styles.noteRow}>
                     {buildGameBadges(selectedGame, favoriteTeam?.id).map((badge) => (
                       <StatusPill key={badge} label={badge} tone={badge === "Favorite team" ? "success" : "info"} />
@@ -806,62 +857,74 @@ export function LogGameScreen() {
             </SectionCard>
           </View>
 
-          <SectionCard title="Add a memory if you want" subtitle="These details make the save feel richer later, but every field can be skipped.">
-            <Text style={styles.helperText}>
-              A quick line now makes the game feel personal later. Skip everything if you just want the save in your ledger.
-            </Text>
-            <LabeledInput
-              label="What do you remember most?"
-              value={memorableMoment}
-              onChangeText={setMemorableMoment}
-              placeholder="Big play, rivalry feel, birthday trip, or whatever still sticks."
-              multiline
-              numberOfLines={4}
-            />
-            <Text style={styles.helperText}>Quick memory sparks</Text>
-            <View style={styles.memoryChipRow}>
-              {MEMORY_CHIPS.map((chip) => (
-                <FilterChip
-                  key={chip}
-                  label={chip}
-                  onPress={() => setMemorableMoment((current) => applyMemoryChip(current, chip))}
-                />
-              ))}
+          <SectionCard title="Optional details" subtitle="Companion, weather, and memory can wait until after the first save.">
+            <View style={styles.optionalHeaderRow}>
+              <Text style={styles.helperText}>
+                You can log the game with only the selected matchup. Open this section only if you want to capture extra context now.
+              </Text>
+              <PrimaryButton
+                label={showOptionalDetails ? "Hide Optional Details" : "Add Memory Or Details"}
+                variant="secondary"
+                onPress={() => setShowOptionalDetails((current) => !current)}
+              />
             </View>
-            <LabeledInput
-              label="Who did you go with?"
-              value={companion}
-              onChangeText={setCompanion}
-              placeholder="Friend, family, date, coworkers..."
-            />
-            <View style={[styles.formGrid, styles.formGridWide]}>
-              <View style={styles.formColumn}>
+            {showOptionalDetails ? (
+              <View style={styles.optionalDetailsStack}>
                 <LabeledInput
-                  label="Giveaway or souvenir"
-                  value={giveaway}
-                  onChangeText={setGiveaway}
-                  placeholder="Bobblehead, jersey, cap..."
+                  label="What do you remember most?"
+                  value={memorableMoment}
+                  onChangeText={setMemorableMoment}
+                  placeholder="Big play, rivalry feel, birthday trip, or whatever still sticks."
+                  multiline
+                  numberOfLines={4}
                 />
-              </View>
-              <View style={styles.formColumn}>
+                <Text style={styles.helperText}>Quick memory sparks</Text>
+                <View style={styles.memoryChipRow}>
+                  {MEMORY_CHIPS.map((chip) => (
+                    <FilterChip
+                      key={chip}
+                      label={chip}
+                      onPress={() => setMemorableMoment((current) => applyMemoryChip(current, chip))}
+                    />
+                  ))}
+                </View>
                 <LabeledInput
-                  label="Weather"
-                  value={weather}
-                  onChangeText={setWeather}
-                  placeholder="Warm, cold, rain delay..."
+                  label="Who did you go with?"
+                  value={companion}
+                  onChangeText={setCompanion}
+                  placeholder="Friend, family, date, coworkers..."
                 />
+                <View style={[styles.formGrid, !isCompact ? styles.formGridWide : null]}>
+                  <View style={styles.formColumn}>
+                    <LabeledInput
+                      label="Giveaway or souvenir"
+                      value={giveaway}
+                      onChangeText={setGiveaway}
+                      placeholder="Bobblehead, jersey, cap..."
+                    />
+                  </View>
+                  <View style={styles.formColumn}>
+                    <LabeledInput
+                      label="Weather"
+                      value={weather}
+                      onChangeText={setWeather}
+                      placeholder="Warm, cold, rain delay..."
+                    />
+                  </View>
+                </View>
+                <Pressable
+                  onPress={() => {
+                    setMemorableMoment("");
+                    setCompanion("");
+                    setGiveaway("");
+                    setWeather("");
+                    setShowOptionalDetails(false);
+                  }}
+                >
+                  <Text style={styles.skipText}>Clear optional details</Text>
+                </Pressable>
               </View>
-            </View>
-            <Pressable
-              onPress={() => {
-                setMemorableMoment("");
-                setCompanion("");
-                setGiveaway("");
-                setWeather("");
-              }}
-            >
-              <Text style={styles.skipText}>Skip for now</Text>
-            </Pressable>
+            ) : null}
           </SectionCard>
 
           {confirmation ? (
@@ -986,6 +1049,12 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: spacing.sm
   },
+  optionalHeaderRow: {
+    gap: spacing.md
+  },
+  optionalDetailsStack: {
+    gap: spacing.md
+  },
   stepRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1017,6 +1086,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceRaised,
     ...shadows.card
   },
+  resultHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    flexWrap: "wrap"
+  },
+  resultDateText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.clay,
+    textTransform: "uppercase",
+    letterSpacing: 0.8
+  },
   gameOptionWide: {
     width: "48%"
   },
@@ -1045,6 +1128,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     color: colors.primary
+  },
+  favoriteTeamResult: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "700",
+    color: colors.green
   },
   noteRow: {
     flexDirection: "row",
