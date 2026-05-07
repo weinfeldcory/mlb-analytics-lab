@@ -9,10 +9,12 @@ import { PrimaryButton } from "../src/components/common/PrimaryButton";
 import { SectionCard } from "../src/components/common/SectionCard";
 import { useAppData } from "../src/providers/AppDataProvider";
 import { formatDisplayDate, formatGameLabel } from "../src/lib/formatters";
+import { useResponsiveLayout } from "../src/styles/responsive";
 import { colors, spacing } from "../src/styles/tokens";
 
 export default function FollowingScreen() {
   const router = useRouter();
+  const responsive = useResponsiveLayout();
   const { teams, venues, games, currentUserId, profile, attendanceLogs, followingActivity, friends, followers, searchProfiles, requestFollow, unfollowUser } = useAppData();
   const [peopleQuery, setPeopleQuery] = useState("");
   const [peopleResults, setPeopleResults] = useState<typeof friends>([]);
@@ -232,16 +234,20 @@ export default function FollowingScreen() {
               const isActing = pendingActionIds.includes(friend.id);
 
               return (
-                <View key={friend.id} style={styles.personCard}>
+                <View key={friend.id} style={[styles.personCard, responsive.isCompact ? styles.personCardCompact : null]}>
                   <Pressable style={styles.personCopy} onPress={() => router.push((`/friends/${friend.id}`) as Href)}>
                     <Text style={styles.personName}>{friend.displayName}</Text>
                     <Text style={styles.personMeta}>{friend.username ? `@${friend.username}` : "@fan"}</Text>
                     {statLine ? <Text style={styles.personMeta}>{statLine}</Text> : null}
                   </Pressable>
                   {isFollowing ? (
-                    <PrimaryButton label={isActing ? "Following..." : "Following"} onPress={() => router.push((`/friends/${friend.id}`) as Href)} disabled={isActing} />
+                    <View style={[styles.actionStack, responsive.isCompact ? styles.actionStackCompact : null]}>
+                      <PrimaryButton label={isActing ? "Following..." : "Following"} onPress={() => router.push((`/friends/${friend.id}`) as Href)} disabled={isActing} />
+                    </View>
                   ) : (
-                    <PrimaryButton label={isActing ? "Following..." : "Follow"} onPress={() => void handleFollow(friend.id)} disabled={isActing} />
+                    <View style={[styles.actionStack, responsive.isCompact ? styles.actionStackCompact : null]}>
+                      <PrimaryButton label={isActing ? "Following..." : "Follow"} onPress={() => void handleFollow(friend.id)} disabled={isActing} />
+                    </View>
                   )}
                 </View>
               );
@@ -271,7 +277,7 @@ export default function FollowingScreen() {
               return (
                 <Pressable
                   key={activity.id}
-                  style={styles.activityCard}
+                  style={[styles.activityCard, responsive.isCompact ? styles.activityCardCompact : null]}
                   onPress={() => {
                     if (activity.actorUserId === currentUserId) {
                       const ownLog = attendanceLogs.find((log) => log.gameId === activity.gameId && log.attendedOn === activity.attendedOn);
@@ -309,13 +315,13 @@ export default function FollowingScreen() {
               const isActing = pendingActionIds.includes(friend.id);
 
               return (
-                <View key={friend.id} style={styles.personCard}>
+                <View key={friend.id} style={[styles.personCard, responsive.isCompact ? styles.personCardCompact : null]}>
                   <Pressable style={styles.personCopy} onPress={() => router.push((`/friends/${friend.id}`) as Href)}>
                     <Text style={styles.personName}>{friend.displayName}</Text>
                     <Text style={styles.personMeta}>{friend.username ? `@${friend.username}` : "@fan"}</Text>
                     {statLine ? <Text style={styles.personMeta}>{statLine}</Text> : null}
                   </Pressable>
-                  <View style={styles.actionStack}>
+                  <View style={[styles.actionStack, responsive.isCompact ? styles.actionStackCompact : null]}>
                     <PrimaryButton label="View" onPress={() => router.push((`/friends/${friend.id}`) as Href)} />
                     <Pressable onPress={() => void handleUnfollow(friend.id)} disabled={isActing}>
                       <Text style={styles.linkText}>Unfollow</Text>
@@ -333,7 +339,7 @@ export default function FollowingScreen() {
               const favoriteTeam = teams.find((team) => team.id === friend.favoriteTeamId);
 
               return (
-                <Pressable key={friend.id} style={styles.personCard} onPress={() => router.push((`/friends/${friend.id}`) as Href)}>
+                <Pressable key={friend.id} style={[styles.personCard, responsive.isCompact ? styles.personCardCompact : null]} onPress={() => router.push((`/friends/${friend.id}`) as Href)}>
                   <View style={styles.personCopy}>
                     <Text style={styles.personName}>{friend.displayName}</Text>
                     <Text style={styles.personMeta}>
@@ -370,6 +376,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     backgroundColor: colors.slate050
   },
+  personCardCompact: {
+    flexDirection: "column"
+  },
   activityCard: {
     gap: spacing.xs,
     borderWidth: 1,
@@ -377,6 +386,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: spacing.md,
     backgroundColor: colors.surfaceRaised
+  },
+  activityCardCompact: {
+    padding: spacing.sm
   },
   personCopy: {
     flex: 1,
@@ -423,6 +435,10 @@ const styles = StyleSheet.create({
   actionStack: {
     alignItems: "flex-end",
     gap: spacing.sm
+  },
+  actionStackCompact: {
+    width: "100%",
+    alignItems: "stretch"
   },
   linkText: {
     fontSize: 14,

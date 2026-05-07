@@ -8,6 +8,7 @@ import { LabeledInput } from "../../components/common/LabeledInput";
 import { PrimaryButton } from "../../components/common/PrimaryButton";
 import { SectionCard } from "../../components/common/SectionCard";
 import { useAppData } from "../../providers/AppDataProvider";
+import { useResponsiveLayout } from "../../styles/responsive";
 import { colors, spacing } from "../../styles/tokens";
 import { formatGameLabel } from "../../lib/formatters";
 import type { AttendanceLog } from "@mlb-attendance/domain";
@@ -16,8 +17,10 @@ import { createDraft, formatHitterLine, formatPitcherLine, getDerivedHistoryMome
 export function HistoryScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const responsive = useResponsiveLayout();
   const { attendanceLogs, games, teams, venues, profile, updateAttendanceLog, deleteAttendanceLog } = useAppData();
   const isWide = width >= 1024;
+  const isCompact = responsive.isCompact;
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const venuesById = useMemo(() => new Map(venues.map((venue) => [venue.id, venue])), [venues]);
   const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
@@ -525,41 +528,58 @@ export function HistoryScreen() {
                     {log.seat.row ? ` • Row ${log.seat.row}` : ""}
                     {log.seat.seatNumber ? ` • Seat ${log.seat.seatNumber}` : ""}
                   </Text>
-                  <View style={styles.boxscoreCard}>
-                    <View style={styles.boxscoreHeader}>
-                      <Text style={[styles.boxscoreHeaderLabel, styles.boxscoreTeamCol]}>Team</Text>
-                      {innings.map((inning) => (
-                        <Text key={`${game.id}_inning_${inning.inning}`} style={styles.boxscoreHeaderLabel}>
-                          {inning.inning}
-                        </Text>
-                      ))}
-                      <Text style={styles.boxscoreHeaderLabel}>R</Text>
-                      <Text style={styles.boxscoreHeaderLabel}>H</Text>
-                      <Text style={styles.boxscoreHeaderLabel}>E</Text>
+                  {isCompact ? (
+                    <View style={styles.compactLinescoreCard}>
+                      <Text style={styles.compactLinescoreTitle}>Line score summary</Text>
+                      <View style={styles.compactLinescoreRow}>
+                        <Text style={styles.compactLinescoreTeam}>{awayTeam?.abbreviation ?? "AWY"}</Text>
+                        <Text style={styles.compactLinescoreMeta}>R {game.awayScore} · H {game.awayHits} · E {game.awayErrors ?? 0}</Text>
+                      </View>
+                      <View style={styles.compactLinescoreRow}>
+                        <Text style={styles.compactLinescoreTeam}>{homeTeam?.abbreviation ?? "HME"}</Text>
+                        <Text style={styles.compactLinescoreMeta}>R {game.homeScore} · H {game.homeHits} · E {game.homeErrors ?? 0}</Text>
+                      </View>
+                      <Text style={styles.helperText}>
+                        {game.innings && game.innings > 9 ? `${game.innings} innings played.` : "Open the full game page for inning-by-inning detail."}
+                      </Text>
                     </View>
-                    <View style={styles.boxscoreRow}>
-                      <Text style={[styles.boxscoreTeam, styles.boxscoreTeamCol]}>{awayTeam?.abbreviation ?? "AWY"}</Text>
-                      {innings.map((inning) => (
-                        <Text key={`${game.id}_away_${inning.inning}`} style={styles.boxscoreCell}>
-                          {inning.awayRuns >= 0 ? inning.awayRuns : "-"}
-                        </Text>
-                      ))}
-                      <Text style={styles.boxscoreCellStrong}>{game.awayScore}</Text>
-                      <Text style={styles.boxscoreCellStrong}>{game.awayHits}</Text>
-                      <Text style={styles.boxscoreCellStrong}>{game.awayErrors ?? 0}</Text>
+                  ) : (
+                    <View style={styles.boxscoreCard}>
+                      <View style={styles.boxscoreHeader}>
+                        <Text style={[styles.boxscoreHeaderLabel, styles.boxscoreTeamCol]}>Team</Text>
+                        {innings.map((inning) => (
+                          <Text key={`${game.id}_inning_${inning.inning}`} style={styles.boxscoreHeaderLabel}>
+                            {inning.inning}
+                          </Text>
+                        ))}
+                        <Text style={styles.boxscoreHeaderLabel}>R</Text>
+                        <Text style={styles.boxscoreHeaderLabel}>H</Text>
+                        <Text style={styles.boxscoreHeaderLabel}>E</Text>
+                      </View>
+                      <View style={styles.boxscoreRow}>
+                        <Text style={[styles.boxscoreTeam, styles.boxscoreTeamCol]}>{awayTeam?.abbreviation ?? "AWY"}</Text>
+                        {innings.map((inning) => (
+                          <Text key={`${game.id}_away_${inning.inning}`} style={styles.boxscoreCell}>
+                            {inning.awayRuns >= 0 ? inning.awayRuns : "-"}
+                          </Text>
+                        ))}
+                        <Text style={styles.boxscoreCellStrong}>{game.awayScore}</Text>
+                        <Text style={styles.boxscoreCellStrong}>{game.awayHits}</Text>
+                        <Text style={styles.boxscoreCellStrong}>{game.awayErrors ?? 0}</Text>
+                      </View>
+                      <View style={styles.boxscoreRow}>
+                        <Text style={[styles.boxscoreTeam, styles.boxscoreTeamCol]}>{homeTeam?.abbreviation ?? "HME"}</Text>
+                        {innings.map((inning) => (
+                          <Text key={`${game.id}_home_${inning.inning}`} style={styles.boxscoreCell}>
+                            {inning.homeRuns >= 0 ? inning.homeRuns : "-"}
+                          </Text>
+                        ))}
+                        <Text style={styles.boxscoreCellStrong}>{game.homeScore}</Text>
+                        <Text style={styles.boxscoreCellStrong}>{game.homeHits}</Text>
+                        <Text style={styles.boxscoreCellStrong}>{game.homeErrors ?? 0}</Text>
+                      </View>
                     </View>
-                    <View style={styles.boxscoreRow}>
-                      <Text style={[styles.boxscoreTeam, styles.boxscoreTeamCol]}>{homeTeam?.abbreviation ?? "HME"}</Text>
-                      {innings.map((inning) => (
-                        <Text key={`${game.id}_home_${inning.inning}`} style={styles.boxscoreCell}>
-                          {inning.homeRuns >= 0 ? inning.homeRuns : "-"}
-                        </Text>
-                      ))}
-                      <Text style={styles.boxscoreCellStrong}>{game.homeScore}</Text>
-                      <Text style={styles.boxscoreCellStrong}>{game.homeHits}</Text>
-                      <Text style={styles.boxscoreCellStrong}>{game.homeErrors ?? 0}</Text>
-                    </View>
-                  </View>
+                  )}
                   <View style={[styles.performerGrid, isWide ? styles.performerGridWide : null]}>
                     <View style={styles.performerCard}>
                       <Text style={styles.performerTeam}>{awayTeam?.city} {awayTeam?.name}</Text>
@@ -725,6 +745,33 @@ const styles = StyleSheet.create({
     backgroundColor: colors.slate050,
     padding: spacing.md,
     gap: spacing.xs
+  },
+  compactLinescoreCard: {
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    borderRadius: 14,
+    backgroundColor: colors.slate050,
+    padding: spacing.md,
+    gap: spacing.sm
+  },
+  compactLinescoreTitle: {
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: colors.slate500,
+    fontWeight: "700"
+  },
+  compactLinescoreRow: {
+    gap: 2
+  },
+  compactLinescoreTeam: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: colors.slate900
+  },
+  compactLinescoreMeta: {
+    fontSize: 13,
+    color: colors.slate700
   },
   boxscoreHeader: {
     flexDirection: "row",

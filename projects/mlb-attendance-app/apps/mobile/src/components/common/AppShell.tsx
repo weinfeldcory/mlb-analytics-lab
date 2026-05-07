@@ -84,7 +84,11 @@ export function AppShell({ title, subtitle, children, scrollable = true }: AppSh
       </View>
 
       {showTopNav ? (
-        <View style={styles.navRow}>
+        <ScrollView
+          horizontal={responsive.isCompact}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.navRow, responsive.isCompact ? styles.navRowCompact : null]}
+        >
           {navItems.map((item) => {
             const active = pathname === item.href;
             return (
@@ -98,12 +102,12 @@ export function AppShell({ title, subtitle, children, scrollable = true }: AppSh
                 ]}
               >
                 <Text style={[styles.navItemLabel, active ? styles.navItemLabelActive : null, !active ? styles.navItemLabelInactive : null]}>
-                  {item.label}
+                  {responsive.isCompact ? item.shortLabel : item.label}
                 </Text>
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
       ) : null}
 
       <View style={[styles.accountCluster, responsive.isCompact ? styles.accountClusterCompact : null]}>
@@ -286,8 +290,10 @@ const styles = StyleSheet.create({
   },
   navRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: spacing.xs
+  },
+  navRowCompact: {
+    paddingRight: spacing.sm
   },
   navItem: {
     minHeight: 42,

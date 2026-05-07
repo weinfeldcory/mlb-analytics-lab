@@ -478,7 +478,7 @@ export function LogGameScreen() {
                 placeholder="214A"
                 autoCapitalize="characters"
               />
-              <View style={[styles.formGrid, styles.formGridWide]}>
+              <View style={[styles.formGrid, !isCompact ? styles.formGridWide : null]}>
                 <View style={styles.formColumn}>
                   <LabeledInput
                     label="Row (optional)"
@@ -542,7 +542,7 @@ export function LogGameScreen() {
               onChangeText={setCompanion}
               placeholder="Friend, family, date, coworkers..."
             />
-            <View style={[styles.formGrid, styles.formGridWide]}>
+            <View style={[styles.formGrid, !isCompact ? styles.formGridWide : null]}>
               <View style={styles.formColumn}>
                 <LabeledInput
                   label="Giveaway or souvenir"
