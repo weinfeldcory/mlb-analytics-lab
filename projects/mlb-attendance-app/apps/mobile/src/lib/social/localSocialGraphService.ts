@@ -37,6 +37,9 @@ export const localSocialGraphService: SocialGraphService = {
   async getFollowers() {
     return [];
   },
+  async getFollowingActivity() {
+    return [];
+  },
   async getPendingFollowRequests() {
     return [];
   },

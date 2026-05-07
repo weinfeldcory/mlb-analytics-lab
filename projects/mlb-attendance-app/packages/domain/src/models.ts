@@ -41,6 +41,22 @@ export interface FollowRequest {
   profile: FriendProfile;
 }
 
+export type SocialActivityType = "logged_game" | "added_memory" | "milestone_reached";
+
+export interface SocialActivityItem {
+  id: string;
+  actorUserId: string;
+  actorDisplayName: string;
+  actorUsername?: string;
+  gameId: string;
+  venueId: string;
+  attendedOn: string;
+  activityAt: string;
+  activityType: SocialActivityType;
+  memoryPreview?: string | null;
+  milestoneLabel?: string | null;
+}
+
 export interface Team {
   id: string;
   sport: SportCode;

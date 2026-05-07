@@ -1,4 +1,4 @@
-import type { FollowRequest, FollowStatus, FriendProfile, ProfileVisibility } from "@mlb-attendance/domain";
+import type { FollowRequest, FollowStatus, FriendProfile, ProfileVisibility, SocialActivityItem, SocialActivityType } from "@mlb-attendance/domain";
 import { getSupabaseEnv, supabase } from "../persistence/supabaseClient";
 import type { SocialGraphService } from "./socialGraphService";
 
@@ -35,6 +35,20 @@ type PendingFollowRow = {
   shared_level_title: string | null;
 };
 
+type SocialActivityRow = {
+  activity_id: string;
+  actor_user_id: string;
+  actor_display_name: string;
+  actor_username: string | null;
+  game_id: string;
+  venue_id: string;
+  attended_on: string;
+  activity_at: string;
+  activity_type: SocialActivityType;
+  memory_preview: string | null;
+  milestone_label: string | null;
+};
+
 function requireSupabaseClient() {
   const env = getSupabaseEnv();
   if (!env.isConfigured || !supabase) {
@@ -64,6 +78,7 @@ function isHostedSocialUnavailable(message: string) {
     "function public.search_profiles",
     "function public.get_following_profiles",
     "function public.get_follower_profiles",
+    "function public.get_following_activity_feed",
     "function public.get_pending_follow_requests",
     "function public.get_friend_profile",
     "relation \"user_follows\" does not exist",
@@ -102,6 +117,22 @@ function mapProfileRow(row: PublicProfileRow): FriendProfile {
     sharedHomeRunsWitnessed: row.shared_home_runs_witnessed ?? null,
     sharedLevelTitle: row.shared_level_title ?? null,
     relationshipStatus: row.relationship_status ?? "not_following"
+  };
+}
+
+function mapSocialActivityRow(row: SocialActivityRow): SocialActivityItem {
+  return {
+    id: row.activity_id,
+    actorUserId: row.actor_user_id,
+    actorDisplayName: row.actor_display_name,
+    actorUsername: row.actor_username ?? undefined,
+    gameId: row.game_id,
+    venueId: row.venue_id,
+    attendedOn: row.attended_on,
+    activityAt: row.activity_at,
+    activityType: row.activity_type,
+    memoryPreview: row.memory_preview,
+    milestoneLabel: row.milestone_label
   };
 }
 
@@ -175,6 +206,25 @@ export const hostedSocialGraphService: SocialGraphService = {
     }
 
     return ((data ?? []) as PublicProfileRow[]).map(mapProfileRow);
+  },
+  async getFollowingActivity(params) {
+    const client = requireSupabaseClient();
+    const currentUserId = await requireAuthenticatedUserId();
+
+    if (currentUserId !== params.currentUserId) {
+      throw new Error("Your account context is out of date. Refresh and try again.");
+    }
+
+    const { data, error } = await client.rpc("get_following_activity_feed");
+
+    if (error) {
+      if (isHostedSocialUnavailable(error.message)) {
+        return [];
+      }
+      throw new Error(error.message);
+    }
+
+    return ((data ?? []) as SocialActivityRow[]).map(mapSocialActivityRow);
   },
   async getPendingFollowRequests(params) {
     const client = requireSupabaseClient();

@@ -1,17 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { Href } from "expo-router";
+import type { SocialActivityItem } from "@mlb-attendance/domain";
 import { Screen } from "../src/components/common/Screen";
 import { LabeledInput } from "../src/components/common/LabeledInput";
 import { PrimaryButton } from "../src/components/common/PrimaryButton";
 import { SectionCard } from "../src/components/common/SectionCard";
 import { useAppData } from "../src/providers/AppDataProvider";
+import { formatDisplayDate, formatGameLabel } from "../src/lib/formatters";
 import { colors, spacing } from "../src/styles/tokens";
 
 export default function FollowingScreen() {
   const router = useRouter();
-  const { teams, friends, followers, searchProfiles, requestFollow, unfollowUser } = useAppData();
+  const { teams, venues, games, currentUserId, profile, attendanceLogs, followingActivity, friends, followers, searchProfiles, requestFollow, unfollowUser } = useAppData();
   const [peopleQuery, setPeopleQuery] = useState("");
   const [peopleResults, setPeopleResults] = useState<typeof friends>([]);
   const [isSearchingPeople, setIsSearchingPeople] = useState(false);
@@ -35,6 +37,81 @@ export default function FollowingScreen() {
     ...optimisticFollowingCards,
     ...friends.filter((friend) => !optimisticUnfollowedIds.includes(friend.id))
   ];
+  const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
+  const venuesById = useMemo(() => new Map(venues.map((venue) => [venue.id, venue])), [venues]);
+  const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
+  const ownActivity = useMemo<SocialActivityItem[]>(() => {
+    if (!currentUserId) {
+      return [];
+    }
+
+    const milestoneThresholds = new Map<number, string>([
+      [1, "Reached 1 logged game"],
+      [5, "Reached 5 logged games"],
+      [10, "Reached 10 logged games"],
+      [25, "Reached 25 logged games"],
+      [50, "Reached 50 logged games"]
+    ]);
+
+    return [...attendanceLogs]
+      .sort((left, right) => left.attendedOn.localeCompare(right.attendedOn))
+      .flatMap((log, index) => {
+        const activityAt = `${log.attendedOn}T12:00:00.000Z`;
+        const baseId = `${currentUserId}:${log.id}`;
+        const items: SocialActivityItem[] = [
+          {
+            id: `${baseId}:log`,
+            actorUserId: currentUserId,
+            actorDisplayName: profile.displayName,
+            actorUsername: profile.username,
+            gameId: log.gameId,
+            venueId: log.venueId,
+            attendedOn: log.attendedOn,
+            activityAt,
+            activityType: "logged_game"
+          }
+        ];
+
+        if (log.memorableMoment?.trim()) {
+          items.push({
+            id: `${baseId}:memory`,
+            actorUserId: currentUserId,
+            actorDisplayName: profile.displayName,
+            actorUsername: profile.username,
+            gameId: log.gameId,
+            venueId: log.venueId,
+            attendedOn: log.attendedOn,
+            activityAt,
+            activityType: "added_memory",
+            memoryPreview: log.memorableMoment.trim()
+          });
+        }
+
+        const milestoneLabel = milestoneThresholds.get(index + 1);
+        if (milestoneLabel) {
+          items.push({
+            id: `${baseId}:milestone:${index + 1}`,
+            actorUserId: currentUserId,
+            actorDisplayName: profile.displayName,
+            actorUsername: profile.username,
+            gameId: log.gameId,
+            venueId: log.venueId,
+            attendedOn: log.attendedOn,
+            activityAt,
+            activityType: "milestone_reached",
+            milestoneLabel
+          });
+        }
+
+        return items;
+      });
+  }, [attendanceLogs, currentUserId, profile.displayName, profile.username]);
+
+  const activityFeed = useMemo(() => {
+    return [...ownActivity, ...followingActivity.filter((item) => item.actorUserId !== currentUserId)]
+      .sort((left, right) => right.activityAt.localeCompare(left.activityAt))
+      .slice(0, 20);
+  }, [currentUserId, followingActivity, ownActivity]);
 
   useEffect(() => {
     const trimmedQuery = peopleQuery.trim();
@@ -172,8 +249,53 @@ export default function FollowingScreen() {
           </View>
         </SectionCard>
 
-        <SectionCard title="Activity" subtitle="A lightweight feed of what people you follow are adding to their history.">
-          <Text style={styles.helperText}>Follow people to see their activity.</Text>
+        <SectionCard title="Activity" subtitle="Recent baseball activity from your account and the people you follow.">
+          <View style={styles.stack}>
+            {!activityFeed.length ? (
+              <Text style={styles.helperText}>
+                {friends.length ? "No baseball activity yet." : "Follow people to see their baseball activity here."}
+              </Text>
+            ) : activityFeed.map((activity) => {
+              const game = gamesById.get(activity.gameId);
+              const label = game ? formatGameLabel(game, teamsById, venuesById) : null;
+              const venueName = venuesById.get(activity.venueId)?.name ?? "Unknown venue";
+              const actorHandle = activity.actorUsername ? `@${activity.actorUsername}` : "@fan";
+              const actionCopy =
+                activity.activityType === "added_memory"
+                  ? "added a memory"
+                  : activity.activityType === "milestone_reached"
+                    ? activity.milestoneLabel ?? "reached a milestone"
+                    : "logged a game";
+              const preview = activity.memoryPreview?.trim();
+
+              return (
+                <Pressable
+                  key={activity.id}
+                  style={styles.activityCard}
+                  onPress={() => {
+                    if (activity.actorUserId === currentUserId) {
+                      const ownLog = attendanceLogs.find((log) => log.gameId === activity.gameId && log.attendedOn === activity.attendedOn);
+                      if (ownLog) {
+                        router.push((`/logged-game/${ownLog.id}`) as Href);
+                        return;
+                      }
+                    }
+
+                    router.push((`/friends/${activity.actorUserId}`) as Href);
+                  }}
+                >
+                  <Text style={styles.activityEyebrow}>{activity.actorDisplayName} · {actorHandle}</Text>
+                  <Text style={styles.activityTitle}>{actionCopy}</Text>
+                  {label ? <Text style={styles.personName}>{label.title}</Text> : null}
+                  <Text style={styles.personMeta}>
+                    {formatDisplayDate(activity.attendedOn)} · {label ? label.score : venueName}
+                  </Text>
+                  <Text style={styles.personMeta}>{label ? label.subtitle.split("•")[1]?.trim() ?? venueName : venueName}</Text>
+                  {preview ? <Text style={styles.activityPreview}>“{preview.length > 120 ? `${preview.slice(0, 117)}...` : preview}”</Text> : null}
+                </Pressable>
+              );
+            })}
+          </View>
         </SectionCard>
 
         <SectionCard title="Following" subtitle="The people whose baseball history you can revisit right now.">
@@ -248,6 +370,14 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     backgroundColor: colors.slate050
   },
+  activityCard: {
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    borderRadius: 16,
+    padding: spacing.md,
+    backgroundColor: colors.surfaceRaised
+  },
   personCopy: {
     flex: 1,
     gap: spacing.xs
@@ -261,6 +391,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     color: colors.slate500
+  },
+  activityEyebrow: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "800",
+    color: colors.green,
+    textTransform: "uppercase",
+    letterSpacing: 0.6
+  },
+  activityTitle: {
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "700",
+    color: colors.slate700
+  },
+  activityPreview: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.slate700
   },
   helperText: {
     fontSize: 14,

@@ -10,7 +10,7 @@ import { appDataStore } from "../lib/persistence";
 import { socialGraphService } from "../lib/social";
 import type { AppSessionAccount, HydratedAppDataState } from "../lib/persistence/appDataStore";
 import { calculatePersonalStats } from "@mlb-attendance/domain";
-import type { AttendanceLog, CreateAttendanceInput, FollowRequest, FriendProfile, Game, PersonalStats, Team, UserProfile, Venue } from "@mlb-attendance/domain";
+import type { AttendanceLog, CreateAttendanceInput, FollowRequest, FriendProfile, Game, PersonalStats, SocialActivityItem, Team, UserProfile, Venue } from "@mlb-attendance/domain";
 
 interface AppDataContextValue {
   storageMode: "local" | "hosted";
@@ -20,6 +20,7 @@ interface AppDataContextValue {
   profile: UserProfile;
   friends: FriendProfile[];
   followers: FriendProfile[];
+  followingActivity: SocialActivityItem[];
   pendingFollowRequests: FollowRequest[];
   teams: Team[];
   venues: Venue[];
@@ -78,6 +79,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>(sortAttendanceLogs(seededAttendanceLogs));
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [followers, setFollowers] = useState<FriendProfile[]>([]);
+  const [followingActivity, setFollowingActivity] = useState<SocialActivityItem[]>([]);
   const [pendingFollowRequests, setPendingFollowRequests] = useState<FollowRequest[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState<"idle" | "loading" | "saving" | "saved" | "error">("loading");
@@ -109,6 +111,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   function clearSocialGraph() {
     setFriends([]);
     setFollowers([]);
+    setFollowingActivity([]);
     setPendingFollowRequests([]);
   }
 
@@ -120,15 +123,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     let nextFriends: FriendProfile[] = [];
     let nextFollowers: FriendProfile[] = [];
+    let nextFollowingActivity: SocialActivityItem[] = [];
     let nextPendingRequests: FollowRequest[] = [];
 
     try {
-      [nextFriends, nextFollowers, nextPendingRequests] = await Promise.all([
+      [nextFriends, nextFollowers, nextFollowingActivity, nextPendingRequests] = await Promise.all([
         socialGraphService.getFollowing({
           currentUserId: nextCurrentUserId,
           followingIds: nextProfile.followingIds
         }),
         socialGraphService.getFollowers({
+          currentUserId: nextCurrentUserId
+        }),
+        socialGraphService.getFollowingActivity({
           currentUserId: nextCurrentUserId
         }),
         socialGraphService.getPendingFollowRequests({
@@ -145,6 +152,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     setFriends(nextFriends);
     setFollowers(nextFollowers);
+    setFollowingActivity(nextFollowingActivity);
     setPendingFollowRequests(nextPendingRequests);
 
     const acceptedFollowingIds = nextFriends.map((friend) => friend.id);
@@ -617,6 +625,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     profile,
     friends,
     followers,
+    followingActivity,
     pendingFollowRequests,
     teams,
     venues,
