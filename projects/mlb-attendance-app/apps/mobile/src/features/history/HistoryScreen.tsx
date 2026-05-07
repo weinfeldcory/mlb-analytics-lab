@@ -287,7 +287,7 @@ export function HistoryScreen() {
   return (
     <Screen
       title="History"
-      subtitle="Search, review, and edit the logbook behind your personal MLB attendance record."
+      subtitle="Search, review, and edit the games and memories behind your Witnessed baseball history."
     >
       <View style={[styles.summaryGrid, isWide ? styles.summaryGridWide : null]}>
         <SectionCard title="Search Logbook">

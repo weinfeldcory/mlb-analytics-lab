@@ -1,4 +1,4 @@
-# MLB Attendance App Product Roadmap
+# Witnessed Product Roadmap
 
 Last updated: 2026-05-01
 
@@ -12,7 +12,7 @@ Last updated: 2026-05-01
 
 ## Product Thesis
 
-This product should become the easiest way for a baseball fan to build and keep a durable personal record of every MLB game they attended.
+Witnessed should become the easiest way for a baseball fan to build and keep a durable personal record of every MLB game they attended.
 
 The product wins if:
 

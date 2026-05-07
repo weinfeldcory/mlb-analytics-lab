@@ -1,4 +1,4 @@
-# MLB Attendance App Beta Ticket Backlog
+# Witnessed Beta Ticket Backlog
 
 Last updated: 2026-05-01
 

@@ -9,7 +9,7 @@ export default function BetaDisclaimerScreen() {
         {
           title: "What to expect",
           body: [
-            "This beta is intended for early feedback on account flows, attendance logging, and personal stats. Some features may be incomplete, rough, or occasionally inconsistent while the product is still being hardened."
+            "This beta is intended for early feedback on account flows, baseball game logging, and personal stats. Some features may be incomplete, rough, or occasionally inconsistent while the product is still being hardened."
           ]
         },
         {
@@ -21,7 +21,7 @@ export default function BetaDisclaimerScreen() {
         {
           title: "No official relationship",
           body: [
-            "The app is an independent fan product. It should not be presented as an official MLB, team, or venue product."
+            "Witnessed is an independent fan project and is not affiliated with, endorsed by, or sponsored by Major League Baseball, MLB Advanced Media, or any MLB club."
           ]
         },
         {

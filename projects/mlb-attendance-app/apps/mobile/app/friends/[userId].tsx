@@ -80,7 +80,7 @@ export default function FriendProfileScreen() {
   return (
     <Screen
       title={friend?.displayName ?? "Fan Profile"}
-      subtitle="A privacy-safe baseball profile that shares only the résumé-level parts of someone’s attendance ledger."
+      subtitle="A privacy-safe baseball profile that shares only the résumé-level parts of someone’s Witnessed history."
     >
       <SectionCard title="Profile">
         {isLoading ? <Text style={styles.helperText}>Loading fan profile...</Text> : null}

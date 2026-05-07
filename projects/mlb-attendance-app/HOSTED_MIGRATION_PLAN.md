@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make the MLB Attendance App usable across devices and by multiple people without losing the current strengths:
+Make Witnessed usable across devices and by multiple people without losing the current strengths:
 - fast local-feeling game entry
 - rich stats and levels
 - browser-first usability

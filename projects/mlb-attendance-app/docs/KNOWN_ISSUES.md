@@ -1,4 +1,4 @@
-# MLB Attendance App Known Issues
+# Witnessed Known Issues
 
 Last updated: 2026-05-02
 

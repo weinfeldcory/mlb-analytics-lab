@@ -111,11 +111,11 @@ export default function LogRecapScreen() {
   return (
     <Screen
       title="Game Added"
-      subtitle="What that save just unlocked in your ledger."
+      subtitle="Here is what that save just added to your baseball story."
     >
       <SectionCard title="You added this game">
         <View style={styles.heroCard}>
-          <Text style={styles.successTitle}>Added to your MLB ledger</Text>
+          <Text style={styles.successTitle}>Added to your Witnessed history</Text>
           <Text style={styles.primaryText}>{label.title}</Text>
           <Text style={styles.secondaryText}>{label.subtitle}</Text>
           <Text style={styles.secondaryText}>Final score: {label.score}</Text>

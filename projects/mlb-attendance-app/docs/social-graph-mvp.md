@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-01
 
-This document describes the first hosted social layer for the MLB Attendance App.
+This document describes the first hosted social layer for Witnessed.
 
 ## Goal
 

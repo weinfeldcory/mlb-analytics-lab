@@ -130,7 +130,7 @@ export default function FollowingScreen() {
       subtitle="Find friends, follow their baseball history, and see what they’re logging."
     >
       <View style={styles.layout}>
-        <SectionCard title="Find people" subtitle="Search by username, display name, or exact email to grow your social circle.">
+        <SectionCard title="Find people" subtitle="Search by username, display name, or exact email to grow your Witnessed network.">
           <View style={styles.stack}>
             <LabeledInput
               label="Search for people to follow"
@@ -172,11 +172,11 @@ export default function FollowingScreen() {
           </View>
         </SectionCard>
 
-        <SectionCard title="Activity" subtitle="A lightweight feed of what people you follow are adding to their ledger.">
+        <SectionCard title="Activity" subtitle="A lightweight feed of what people you follow are adding to their history.">
           <Text style={styles.helperText}>Follow people to see their activity.</Text>
         </SectionCard>
 
-        <SectionCard title="Following" subtitle="The people whose baseball ledgers you can revisit right now.">
+        <SectionCard title="Following" subtitle="The people whose baseball history you can revisit right now.">
           <View style={styles.stack}>
             {followingCards.length ? followingCards.map((friend) => {
               const favoriteTeam = teams.find((team) => team.id === friend.favoriteTeamId);

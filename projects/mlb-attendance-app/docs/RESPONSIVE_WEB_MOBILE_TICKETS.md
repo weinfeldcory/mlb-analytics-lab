@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-02
 
-This ticket stack is for making the MLB Attendance App render cleanly in:
+This ticket stack is for making Witnessed render cleanly in:
 
 - smaller desktop browser windows
 - tablet widths

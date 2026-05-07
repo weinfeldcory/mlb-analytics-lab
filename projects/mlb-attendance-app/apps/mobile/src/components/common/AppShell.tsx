@@ -75,7 +75,7 @@ export function AppShell({ title, subtitle, children, scrollable = true }: AppSh
     >
       <View style={styles.brandCluster}>
         <Pressable onPress={() => router.push("/(tabs)")} style={styles.brandMark}>
-          <Text style={styles.brandMarkText}>FH</Text>
+          <Text style={styles.brandMarkText}>W</Text>
         </Pressable>
         <View style={styles.brandCopy}>
           <Text style={styles.brandEyebrow}>{APP_EYEBROW}</Text>

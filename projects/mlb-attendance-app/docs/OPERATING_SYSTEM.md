@@ -1,8 +1,8 @@
-# MLB Attendance App Operating System
+# Witnessed Operating System
 
 Last updated: 2026-05-02
 
-This document defines the minimum product/engineering operating system for the MLB Attendance App as it moves through private beta.
+This document defines the minimum product/engineering operating system for Witnessed as it moves through private beta.
 
 ## Purpose
 

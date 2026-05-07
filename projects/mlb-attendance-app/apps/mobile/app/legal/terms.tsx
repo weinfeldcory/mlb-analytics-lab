@@ -4,12 +4,12 @@ export default function TermsScreen() {
   return (
     <PolicyScreen
       title="Terms of Service"
-      summary="These beta terms explain the ground rules for using FandomHub before public launch. They are placeholder product terms and need legal review."
+      summary="These beta terms explain the ground rules for using Witnessed before public launch. They are placeholder product terms and need legal review."
       sections={[
         {
           title: "Acceptable use",
           body: [
-            "Use the app for personal sports attendance logging, reasonable beta testing, and related feedback. Do not use the app to abuse the service, interfere with other users, probe for unauthorized access, or upload content you do not have the right to enter."
+            "Use the app for personal baseball history logging, reasonable beta testing, and related feedback. Do not use the app to abuse the service, interfere with other users, probe for unauthorized access, or upload content you do not have the right to enter."
           ]
         },
         {
@@ -21,7 +21,7 @@ export default function TermsScreen() {
         {
           title: "Accuracy and affiliation",
           body: [
-            "The app may include historical game references and derived stats, but no guarantee is made that those records are complete or perfectly accurate. FandomHub is not affiliated with MLB, any MLB club, any concert promoter, or any venue operator unless that changes in the future and is stated clearly."
+            "The app may include historical game references and derived stats, but no guarantee is made that those records are complete or perfectly accurate. Witnessed is an independent fan project and is not affiliated with, endorsed by, or sponsored by Major League Baseball, MLB Advanced Media, or any MLB club."
           ]
         },
         {

@@ -358,7 +358,7 @@ export function LogGameScreen() {
                 <View style={styles.searchMetaCard}>
                   <Text style={styles.searchMetaLabel}>Catalog ready</Text>
                   <Text style={styles.searchMetaValue}>{games.length} MLB finals in the archive</Text>
-                  <Text style={styles.searchMetaCopy}>No filter also works. FandomHub will show the most recent finals first.</Text>
+                  <Text style={styles.searchMetaCopy}>No filter also works. Witnessed will show the most recent finals first.</Text>
                 </View>
               </View>
               {searchStatus ? (
@@ -440,7 +440,7 @@ export function LogGameScreen() {
             </SectionCard>
 
             <SectionCard title="Seat details are optional" subtitle="Capture what you remember now and leave the rest for later if needed.">
-              <Text style={styles.helperText}>Game selection is the only thing required. If you skip everything here, FandomHub saves the seat as unknown.</Text>
+              <Text style={styles.helperText}>Game selection is the only thing required. If you skip everything here, Witnessed saves the seat as unknown.</Text>
               <View style={styles.quickFindRow}>
                 <FilterChip
                   label="I remember my seat"
@@ -643,7 +643,7 @@ export function LogGameScreen() {
                 <View style={styles.searchMetaCard}>
                   <Text style={styles.searchMetaLabel}>Catalog ready</Text>
                   <Text style={styles.searchMetaValue}>{games.length} MLB finals in the archive</Text>
-                  <Text style={styles.searchMetaCopy}>No filter also works. FandomHub will show the most recent finals first.</Text>
+                  <Text style={styles.searchMetaCopy}>No filter also works. Witnessed will show the most recent finals first.</Text>
                 </View>
               </View>
               {searchStatus ? (
@@ -725,7 +725,7 @@ export function LogGameScreen() {
             </SectionCard>
 
             <SectionCard title="Seat details are optional" subtitle="Capture what you remember now and leave the rest for later if needed.">
-              <Text style={styles.helperText}>Game selection is the only thing required. If you skip everything here, FandomHub saves the seat as unknown.</Text>
+              <Text style={styles.helperText}>Game selection is the only thing required. If you skip everything here, Witnessed saves the seat as unknown.</Text>
               <View style={styles.quickFindRow}>
                 <FilterChip
                   label="I remember my seat"

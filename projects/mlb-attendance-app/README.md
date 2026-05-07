@@ -1,10 +1,12 @@
-# MLB Attendance App
+# Witnessed
 
-Expo + TypeScript attendance tracker that now supports a browser-first web experience alongside the existing mobile shell.
+Witnessed is a baseball-first live-event history app that helps fans track the games they attended, preserve memories, and discover what they witnessed.
+
+The current MVP focuses on MLB/baseball game tracking. Broader sports and live-event support is future-facing and not yet implemented.
 
 Current product slice includes:
 - responsive navigation and page shell for web
-- attendance dashboard with seeded MLB history and derived stats
+- baseball dashboard with seeded MLB history and derived stats
 - game search and attendance logging flow
 - editable history logbook
 - profile preferences plus local import/export tools

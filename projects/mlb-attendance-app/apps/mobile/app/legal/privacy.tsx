@@ -4,7 +4,7 @@ export default function PrivacyScreen() {
   return (
     <PolicyScreen
       title="Privacy Policy"
-      summary="This policy explains in plain English what the beta may store about your account and attendance record. It is a placeholder privacy policy and needs attorney review."
+      summary="This policy explains in plain English what the Witnessed beta may store about your account and baseball history. It is a placeholder privacy policy and needs attorney review."
       sections={[
         {
           title: "What account data may be collected",
@@ -15,7 +15,7 @@ export default function PrivacyScreen() {
         {
           title: "What attendance data may be stored",
           body: [
-            "The app may store the games you log, the teams and venue tied to each game, your attended date, seat details, witnessed events, and derived attendance statistics based on those records."
+            "The app may store the games you log, the teams and venue tied to each game, your attended date, seat details, witnessed events, and derived baseball statistics based on those records."
           ]
         },
         {
@@ -27,13 +27,13 @@ export default function PrivacyScreen() {
         {
           title: "Affiliation and data handling",
           body: [
-            "FandomHub is not affiliated with MLB, any MLB club, any concert promoter, or any venue operator unless that changes and is stated explicitly. Historical game references may come from third-party or public sports data sources, and those records should not be treated as official league data."
+            "Witnessed is an independent fan project and is not affiliated with, endorsed by, or sponsored by Major League Baseball, MLB Advanced Media, or any MLB club. Historical game references may come from third-party or public sports data sources, and those records should not be treated as official league data."
           ]
         },
         {
           title: "Deletion requests",
           body: [
-            "If you want your hosted beta account or stored attendance records deleted, contact the app owner directly and include the email address used for the beta account. Before broader release, this process should be replaced with a clearer in-app or documented deletion workflow."
+            "If you want your hosted beta account or stored history deleted, contact the app owner directly and include the email address used for the beta account. Before broader release, this process should be replaced with a clearer in-app or documented deletion workflow."
           ]
         }
       ]}

@@ -82,9 +82,9 @@ export default function OnboardingScreen() {
           <View style={styles.shell}>
             <View style={[styles.hero, width < 640 ? styles.heroCompact : null]}>
               <Text style={styles.eyebrow}>First Run Setup</Text>
-              <Text style={styles.title}>Build your personal MLB attendance ledger.</Text>
+              <Text style={styles.title}>Build your Witnessed baseball history.</Text>
               <Text style={styles.subtitle}>
-                A fast setup now gives your first game a home, unlocks personal stats, and keeps the next step obvious.
+                Witnessed helps you track the games you attended, preserve the memories, and discover what you saw live. We are starting with baseball.
               </Text>
               <View style={styles.progressRow}>
                 {Array.from({ length: totalSteps }).map((_, index) => (
@@ -98,17 +98,17 @@ export default function OnboardingScreen() {
                 <SectionCard title={`Step ${step + 1} of ${totalSteps}`}>
                 {step === 0 ? (
                   <View style={styles.stepStack}>
-                    <Text style={styles.stepTitle}>Build your personal MLB attendance ledger.</Text>
+                    <Text style={styles.stepTitle}>Start your Witnessed history.</Text>
                     <Text style={styles.stepBody}>
-                      Save every game you attend, keep the memory details you care about, and turn that record into personal baseball stats.
+                      Save the games you attend, keep the memory details you care about, and turn that record into personal baseball insights.
                     </Text>
-                    <Text style={styles.stepHint}>This setup takes under a minute.</Text>
+                    <Text style={styles.stepHint}>This setup takes under a minute, and broader live-event support comes later.</Text>
                   </View>
                 ) : null}
 
                 {step === 1 ? (
                   <View style={styles.stepStack}>
-                    <Text style={styles.stepTitle}>What name should appear on your ledger?</Text>
+                    <Text style={styles.stepTitle}>What name should appear on your Witnessed history?</Text>
                     <LabeledInput
                       label="Display name"
                       value={displayName}

@@ -1,4 +1,4 @@
-# MLB Attendance App Beta Changelog
+# Witnessed Beta Changelog
 
 Last updated: 2026-05-02
 

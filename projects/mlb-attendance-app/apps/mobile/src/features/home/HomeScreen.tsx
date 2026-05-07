@@ -849,13 +849,13 @@ export function HomeScreen() {
   const heroInsight = insightCards[0];
 
   return (
-    <Screen title="Home" subtitle={`Your MLB ledger inside ${APP_NAME}: latest memories, unlocked progress, and the next best move.`}>
+    <Screen title="Home" subtitle={`Your Witnessed baseball history: latest memories, unlocked progress, and the next best move.`}>
       <HeroCard>
         {isHydrated ? (
           <View style={styles.heroStack}>
             <View style={[styles.heroTopRow, !shouldStackHeroRail ? styles.heroTopRowWide : null]}>
               <View style={styles.heroLead}>
-                <StatusPill label={`Your ${APP_NAME} Ledger`} tone="dark" />
+                <StatusPill label={`Your ${APP_NAME} History`} tone="dark" />
                 <Text style={styles.heroName}>{profile.displayName}</Text>
                 <Text style={[styles.heroTitle, responsive.isCompact ? styles.heroTitleCompact : null]}>
                   {hasLogs ? levelProgress.currentLevel.title : "Build your fan record"}
@@ -891,7 +891,7 @@ export function HomeScreen() {
                   <Text style={styles.heroRailBody}>
                     {hasLogs
                       ? heroInsight?.title ?? nextAction.summary
-                      : "Log one game to unlock your personal record, your favorite-team split, and the first version of your Fan Résumé."}
+                      : "Log one game to unlock your personal record, your favorite-team split, and the first version of your Witnessed Fan Résumé."}
                   </Text>
                   {hasLogs && heroInsight ? <Text style={styles.heroRailMeta}>{heroInsight.body}</Text> : null}
                   <StatusPill label={heroStatusLabel} tone={heroStatusTone} />
@@ -931,7 +931,7 @@ export function HomeScreen() {
         <EmptyState
           eyebrow="First game"
           title="Log your first MLB game"
-          body="The first save unlocks your home dashboard, your Fan Résumé, and example insights like stadium count, favorite-team record, and the loudest game you have seen in person."
+          body="The first save unlocks your home dashboard, your Witnessed Fan Résumé, and example insights like stadium count, favorite-team record, and the loudest game you have seen in person."
           action={<PrimaryButton label="Log First Game" onPress={() => router.push("/(tabs)/log-game")} />}
         />
       ) : null}

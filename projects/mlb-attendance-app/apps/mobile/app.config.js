@@ -2,7 +2,7 @@ const baseUrl = process.env.EXPO_PUBLIC_BASE_URL?.trim();
 
 module.exports = {
   expo: {
-    name: "FandomHub",
+    name: "Witnessed",
     slug: "fandomhub",
     scheme: "fandomhub",
     plugins: ["expo-router"],

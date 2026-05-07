@@ -120,8 +120,8 @@ export default function AuthScreen() {
               </Text>
               <Text style={styles.subtitle}>
                 {mode === "signin"
-                  ? "Your home for a personal fandom ledger. Log games, follow friends, and keep building your record."
-                  : "Start your personal fandom ledger and save the live events that define your fan story."}
+                  ? "Sign in to keep building your live-event history. Track the games you attended, follow friends, and discover what you witnessed."
+                  : "Start your baseball-first live-event history and save the games that define your story."}
               </Text>
             </View>
 

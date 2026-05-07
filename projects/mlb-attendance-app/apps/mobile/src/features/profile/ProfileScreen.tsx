@@ -107,8 +107,8 @@ export function ProfileScreen() {
       title="Profile And Network"
       subtitle={
         isHosted
-          ? "Set your identity, manage who you follow, and control the attendance ledger tied to your hosted account."
-          : "Set your identity, manage who you follow, and control the imported attendance ledger stored on this device."
+          ? "Set your identity, manage who you follow, and control the Witnessed history tied to your hosted account."
+          : "Set your identity, manage who you follow, and control the Witnessed history stored on this device."
       }
     >
       <View style={[styles.layout, isWide ? styles.layoutWide : null]}>
