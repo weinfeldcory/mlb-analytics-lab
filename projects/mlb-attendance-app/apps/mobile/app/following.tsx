@@ -86,7 +86,7 @@ export default function FollowingScreen() {
 
   async function handleFollow(friendId: string) {
     setActionErrorMessage(null);
-    setPendingActionIds((current) => [...current, friendId]);
+    setPendingActionIds((current) => (current.includes(friendId) ? current : [...current, friendId]));
     setOptimisticFollowedIds((current) => (current.includes(friendId) ? current : [...current, friendId]));
 
     try {
@@ -106,7 +106,7 @@ export default function FollowingScreen() {
 
   async function handleUnfollow(friendId: string) {
     setActionErrorMessage(null);
-    setPendingActionIds((current) => [...current, friendId]);
+    setPendingActionIds((current) => (current.includes(friendId) ? current : [...current, friendId]));
     setOptimisticUnfollowedIds((current) => (current.includes(friendId) ? current : [...current, friendId]));
 
     try {

@@ -202,6 +202,21 @@ export const hostedSocialGraphService: SocialGraphService = {
       throw new Error("You cannot follow yourself.");
     }
 
+    const { error: rpcError } = await client.rpc("follow_user", {
+      target_user_id: params.targetUserId
+    });
+
+    if (!rpcError) {
+      return;
+    }
+
+    if (
+      !rpcError.message.toLowerCase().includes("function public.follow_user")
+      && !rpcError.message.toLowerCase().includes("function follow_user")
+    ) {
+      throw new Error(rpcError.message);
+    }
+
     const { data: existing, error: existingError } = await client
       .from("user_follows")
       .select("id, status")
@@ -294,6 +309,21 @@ export const hostedSocialGraphService: SocialGraphService = {
 
     if (currentUserId !== params.currentUserId) {
       throw new Error("Your account context is out of date. Refresh and try again.");
+    }
+
+    const { error: rpcError } = await client.rpc("unfollow_user", {
+      target_user_id: params.targetUserId
+    });
+
+    if (!rpcError) {
+      return;
+    }
+
+    if (
+      !rpcError.message.toLowerCase().includes("function public.unfollow_user")
+      && !rpcError.message.toLowerCase().includes("function unfollow_user")
+    ) {
+      throw new Error(rpcError.message);
     }
 
     const { error } = await client

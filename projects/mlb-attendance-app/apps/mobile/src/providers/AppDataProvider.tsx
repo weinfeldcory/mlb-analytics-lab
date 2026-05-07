@@ -112,7 +112,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setPendingFollowRequests([]);
   }
 
-  async function refreshSocialGraph(nextCurrentUserId = currentUserId, nextProfile = profile) {
+  async function refreshSocialGraph(nextCurrentUserId = currentUserId, nextProfile = profile, options?: { throwOnError?: boolean }) {
     if (!nextCurrentUserId) {
       clearSocialGraph();
       return;
@@ -135,7 +135,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           currentUserId: nextCurrentUserId
         })
       ]);
-    } catch {
+    } catch (error) {
+      if (options?.throwOnError) {
+        throw error;
+      }
       clearSocialGraph();
       return;
     }
@@ -429,7 +432,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       currentUserId,
       targetUserId: userId
     });
-    await refreshSocialGraph(currentUserId, profile);
+    await refreshSocialGraph(currentUserId, profile, { throwOnError: true });
   }
 
   async function acceptFollowRequest(requestId: string) {
@@ -470,7 +473,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       currentUserId,
       targetUserId: userId
     });
-    await refreshSocialGraph(currentUserId, profile);
+    await refreshSocialGraph(currentUserId, profile, { throwOnError: true });
   }
 
   async function getFriendProfile(userId: string) {
