@@ -6,10 +6,15 @@ Date: 2026-05-01
 
 Every hosted account signs in through Supabase Auth and gets a unique authenticated user ID.
 
-Two user-owned tables matter here:
+Base user-owned tables:
 
 - `public.profiles`
 - `public.attendance_logs`
+
+The hosted social layer also uses:
+
+- `public.user_follows`
+- security-definer RPCs for safe profile discovery and follow actions
 
 Row Level Security is enabled on both tables. That means the database itself rejects reads and writes that do not belong to the authenticated user.
 
@@ -64,3 +69,4 @@ If you add new hosted tables later, they should be treated as unsafe by default 
 2. RLS is enabled
 3. policies are added and reviewed
 
+For the current social graph details, see [social-schema-rls.md](/Users/coryweinfeld/mlb-analytics-lab/projects/mlb-attendance-app/docs/social-schema-rls.md).

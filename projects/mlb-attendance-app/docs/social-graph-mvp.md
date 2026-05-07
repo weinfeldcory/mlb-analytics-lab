@@ -12,11 +12,10 @@ Replace mocked friends/following data with real authenticated app users, while k
 
 - one hosted profile row per authenticated user
 - searchable profile discovery by username and display name
-- follow requests
-- accept / reject flow
+- direct follow and unfollow
 - unfollow flow
-- pending request visibility
 - privacy-safe friend profile pages
+- fast facts for followed profiles
 
 ## What This MVP Does Not Include
 
@@ -107,11 +106,9 @@ Policies do not allow:
 1. User creates or signs into a hosted account.
 2. A hosted profile row is ensured automatically.
 3. User searches for people by username or display name.
-4. User requests a follow.
-5. Target user sees the pending request in Profile.
-6. Target user accepts or rejects.
-7. Accepted follows appear in the Friends/Following section.
-8. Friend profile pages show only privacy-safe shared stats.
+4. User follows directly.
+5. Accepted follows appear in the Following section immediately.
+6. Friend profile pages show only privacy-safe shared stats.
 
 ## Shared Stats In MVP
 
@@ -128,12 +125,14 @@ Future shared stats can expand later, but only if they can be exposed without le
 ## Manual Steps After Shipping
 
 1. Apply `supabase/migrations/20260501_social_graph_mvp.sql`.
-2. Verify new hosted signups get populated `username` and visibility defaults.
+2. Apply `supabase/migrations/20260502_prioritize_username_search.sql`.
+3. Apply `supabase/migrations/20260503_direct_follow_and_shared_profile_stats.sql`.
+4. Apply `supabase/migrations/20260504_unique_usernames_from_display_names.sql`.
+5. Apply `supabase/migrations/20260506_follow_persistence_rpc.sql`.
+6. Verify new hosted signups get populated `username` and visibility defaults.
 3. Test:
    - search
-   - request follow
-   - accept
-   - reject
+   - direct follow
    - unfollow
    - friend profile visibility
 
