@@ -1,6 +1,6 @@
 import { Redirect, useRouter } from "expo-router";
 import type { Href } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { PrimaryButton } from "../src/components/common/PrimaryButton";
 import { LabeledInput } from "../src/components/common/LabeledInput";
@@ -12,14 +12,65 @@ import { colors, spacing } from "../src/styles/tokens";
 export default function OnboardingScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { isHydrated, isAuthenticated, profile, teams, completeOnboarding } = useAppData();
+  const { isHydrated, isAuthenticated, profile, teams, completeOnboarding, previewUsername } = useAppData();
   const isWide = width >= 1024;
   const [step, setStep] = useState(0);
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [favoriteTeamId, setFavoriteTeamId] = useState(profile.favoriteTeamId ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [usernamePreview, setUsernamePreview] = useState(buildUsernamePreview(profile.displayName));
+  const [usernamePreviewMeta, setUsernamePreviewMeta] = useState("We’ll keep the closest available version of this username.");
+  const [isPreviewingUsername, setIsPreviewingUsername] = useState(false);
   const totalSteps = 4;
-  const usernamePreview = buildUsernamePreview(displayName);
+
+  useEffect(() => {
+    const trimmedDisplayName = displayName.trim();
+    if (!trimmedDisplayName) {
+      setUsernamePreview(buildUsernamePreview(displayName));
+      setUsernamePreviewMeta("We’ll keep the closest available version of this username.");
+      setIsPreviewingUsername(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsPreviewingUsername(true);
+
+    const timeoutId = setTimeout(() => {
+      void previewUsername(trimmedDisplayName)
+        .then((nextUsername) => {
+          if (isCancelled) {
+            return;
+          }
+
+          const basePreview = buildUsernamePreview(trimmedDisplayName);
+          const resolvedPreview = `@${nextUsername}`;
+          setUsernamePreview(resolvedPreview);
+          setUsernamePreviewMeta(
+            resolvedPreview === basePreview
+              ? "This username is available."
+              : "The closest available username will be reserved for you."
+          );
+        })
+        .catch(() => {
+          if (isCancelled) {
+            return;
+          }
+
+          setUsernamePreview(buildUsernamePreview(trimmedDisplayName));
+          setUsernamePreviewMeta("We’ll reserve the closest available username when you save.");
+        })
+        .finally(() => {
+          if (!isCancelled) {
+            setIsPreviewingUsername(false);
+          }
+        });
+    }, 180);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [displayName, previewUsername]);
 
   if (!isHydrated) {
     return (
@@ -47,6 +98,7 @@ export default function OnboardingScreen() {
 
     await completeOnboarding({
       displayName,
+      username: usernamePreview.replace(/^@/, ""),
       favoriteTeamId
     });
     setError(null);
@@ -119,7 +171,9 @@ export default function OnboardingScreen() {
                     <View style={styles.usernamePreviewCard}>
                       <Text style={styles.usernamePreviewLabel}>Generated username</Text>
                       <Text style={styles.usernamePreviewValue}>{usernamePreview}</Text>
-                      <Text style={styles.usernamePreviewMeta}>We’ll keep the closest available version of this username.</Text>
+                      <Text style={styles.usernamePreviewMeta}>
+                        {isPreviewingUsername ? "Checking availability..." : usernamePreviewMeta}
+                      </Text>
                     </View>
                   </View>
                 ) : null}

@@ -1,6 +1,7 @@
 import type { FollowRequest, FollowStatus, FriendProfile, ProfileVisibility, SocialActivityItem, SocialActivityType } from "@mlb-attendance/domain";
 import { getSupabaseEnv, supabase } from "../persistence/supabaseClient";
 import type { SocialGraphService } from "./socialGraphService";
+import { normalizeDisplayNameToUsername } from "./username";
 
 type PublicProfileRow = {
   user_id: string;
@@ -163,6 +164,30 @@ function mapPendingFollowRow(row: PendingFollowRow, currentUserId: string): Foll
 
 export const hostedSocialGraphService: SocialGraphService = {
   kind: "hosted",
+  async previewUsername(params) {
+    const client = requireSupabaseClient();
+    const currentUserId = await requireAuthenticatedUserId();
+
+    if (currentUserId !== params.currentUserId) {
+      throw new Error("Your account context is out of date. Refresh and try again.");
+    }
+
+    const { data, error } = await client.rpc("generate_unique_username", {
+      desired_display_name: params.displayName,
+      target_user_id: params.currentUserId
+    });
+
+    if (error) {
+      if (isHostedSocialUnavailable(error.message)) {
+        return normalizeDisplayNameToUsername(params.displayName);
+      }
+      throw new Error(error.message);
+    }
+
+    return typeof data === "string" && data.trim()
+      ? data.trim().toLowerCase()
+      : normalizeDisplayNameToUsername(params.displayName);
+  },
   async searchProfiles(params) {
     const client = requireSupabaseClient();
     const currentUserId = await requireAuthenticatedUserId();

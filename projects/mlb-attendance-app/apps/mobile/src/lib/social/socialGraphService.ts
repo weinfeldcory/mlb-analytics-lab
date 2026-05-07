@@ -2,6 +2,7 @@ import type { FollowRequest, FriendProfile, SocialActivityItem } from "@mlb-atte
 
 export interface SocialGraphService {
   kind: "local" | "hosted";
+  previewUsername: (params: { currentUserId: string; displayName: string }) => Promise<string>;
   searchProfiles: (params: { currentUserId: string; query: string }) => Promise<FriendProfile[]>;
   getFollowing: (params: { currentUserId: string; followingIds?: string[] }) => Promise<FriendProfile[]>;
   getFollowers: (params: { currentUserId: string }) => Promise<FriendProfile[]>;

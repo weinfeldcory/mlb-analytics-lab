@@ -9,6 +9,7 @@ import { SectionCard } from "../../components/common/SectionCard";
 import { useAppData } from "../../providers/AppDataProvider";
 import { colors, spacing } from "../../styles/tokens";
 import { formatTimestamp } from "../../lib/runtimeInfo";
+import { buildUsernamePreview } from "../../lib/social/username";
 
 export function ProfileScreen() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export function ProfileScreen() {
     followers,
     signOut,
     updateProfile,
+    previewUsername,
     unfollowUser,
     persistenceStatus,
     persistenceError,
@@ -46,6 +48,9 @@ export function ProfileScreen() {
   const [favoriteTeamId, setFavoriteTeamId] = useState(profile.favoriteTeamId ?? "");
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [usernamePreview, setUsernamePreview] = useState(buildUsernamePreview(profile.displayName));
+  const [usernamePreviewMeta, setUsernamePreviewMeta] = useState("We’ll keep the closest available version of this username.");
+  const [isPreviewingUsername, setIsPreviewingUsername] = useState(false);
   const [importExportText, setImportExportText] = useState("");
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -54,13 +59,64 @@ export function ProfileScreen() {
     setFavoriteTeamId(profile.favoriteTeamId ?? "");
   }, [profile.displayName, profile.favoriteTeamId]);
 
+  useEffect(() => {
+    const trimmedDisplayName = displayName.trim();
+    if (!trimmedDisplayName) {
+      setUsernamePreview(buildUsernamePreview(displayName));
+      setUsernamePreviewMeta("We’ll keep the closest available version of this username.");
+      setIsPreviewingUsername(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsPreviewingUsername(true);
+
+    const timeoutId = setTimeout(() => {
+      void previewUsername(trimmedDisplayName)
+        .then((nextUsername) => {
+          if (isCancelled) {
+            return;
+          }
+
+          const basePreview = buildUsernamePreview(trimmedDisplayName);
+          const resolvedPreview = `@${nextUsername}`;
+          setUsernamePreview(resolvedPreview);
+          setUsernamePreviewMeta(
+            resolvedPreview === basePreview
+              ? "This username is available."
+              : "The closest available username will be saved with your profile."
+          );
+        })
+        .catch(() => {
+          if (isCancelled) {
+            return;
+          }
+
+          setUsernamePreview(buildUsernamePreview(trimmedDisplayName));
+          setUsernamePreviewMeta("We’ll reserve the closest available username when you save.");
+        })
+        .finally(() => {
+          if (!isCancelled) {
+            setIsPreviewingUsername(false);
+          }
+        });
+    }, 180);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [displayName, previewUsername]);
+
   async function handleSave() {
     setErrorMessage(null);
+    setMessage(null);
     await updateProfile({
       displayName,
+      username: usernamePreview.replace(/^@/, ""),
       favoriteTeamId
     });
-    setMessage("Profile preferences saved on this device.");
+    setMessage("Profile preferences saved.");
   }
 
   function handleExport() {
@@ -123,8 +179,19 @@ export function ProfileScreen() {
               onChangeText={setDisplayName}
               placeholder="Your name"
             />
+            <View style={styles.usernamePreviewCard}>
+              <Text style={styles.usernamePreviewLabel}>Generated username</Text>
+              <Text style={styles.usernamePreviewValue}>{usernamePreview}</Text>
+              <Text style={styles.usernamePreviewMeta}>
+                {isPreviewingUsername ? "Checking availability..." : usernamePreviewMeta}
+              </Text>
+            </View>
             <View style={styles.actionStack}>
-              <PrimaryButton label="Save Profile" onPress={handleSave} />
+              <PrimaryButton
+                label={isPreviewingUsername ? "Checking..." : "Save Profile"}
+                onPress={handleSave}
+                disabled={isPreviewingUsername}
+              />
               <PrimaryButton
                 label={isSigningOut ? "Signing Out..." : "Sign Out"}
                 onPress={handleSignOut}
@@ -447,5 +514,31 @@ const styles = StyleSheet.create({
   },
   actionStack: {
     gap: spacing.sm
+  },
+  usernamePreviewCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    backgroundColor: colors.slate050,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    gap: spacing.xs
+  },
+  usernamePreviewLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    color: colors.slate500
+  },
+  usernamePreviewValue: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.slate900
+  },
+  usernamePreviewMeta: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.slate500
   }
 });

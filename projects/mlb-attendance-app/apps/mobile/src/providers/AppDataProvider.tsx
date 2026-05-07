@@ -9,7 +9,7 @@ import {
 import { appDataStore } from "../lib/persistence";
 import { socialGraphService } from "../lib/social";
 import type { AppSessionAccount, HydratedAppDataState } from "../lib/persistence/appDataStore";
-import { calculatePersonalStats } from "@mlb-attendance/domain";
+import { calculatePersonalStats, normalizeDisplayNameToUsername } from "@mlb-attendance/domain";
 import type { AttendanceLog, CreateAttendanceInput, FollowRequest, FriendProfile, Game, PersonalStats, SocialActivityItem, Team, UserProfile, Venue } from "@mlb-attendance/domain";
 
 interface AppDataContextValue {
@@ -36,9 +36,10 @@ interface AppDataContextValue {
   signUp: (params: { identifier: string; password: string; displayName?: string }) => Promise<void>;
   signOut: () => Promise<void>;
   requestPasswordReset: (identifier: string) => Promise<string>;
+  previewUsername: (displayName: string) => Promise<string>;
   addAttendanceLog: (input: CreateAttendanceInput) => Promise<AttendanceLog>;
-  updateProfile: (updates: { displayName?: string; favoriteTeamId?: string; followingIds?: string[] }) => Promise<UserProfile>;
-  completeOnboarding: (updates: { displayName?: string; favoriteTeamId?: string }) => Promise<UserProfile>;
+  updateProfile: (updates: { displayName?: string; username?: string; favoriteTeamId?: string; followingIds?: string[] }) => Promise<UserProfile>;
+  completeOnboarding: (updates: { displayName?: string; username?: string; favoriteTeamId?: string }) => Promise<UserProfile>;
   toggleFollowFriend: (friendId: string) => Promise<UserProfile>;
   searchProfiles: (query: string) => Promise<FriendProfile[]>;
   requestFollow: (userId: string) => Promise<void>;
@@ -338,6 +339,23 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return appDataStore.requestPasswordReset(identifier);
   }
 
+  async function previewUsername(displayName: string) {
+    const trimmedDisplayName = displayName.trim();
+
+    if (!trimmedDisplayName) {
+      return normalizeDisplayNameToUsername(displayName);
+    }
+
+    if (!currentUserId) {
+      return normalizeDisplayNameToUsername(trimmedDisplayName);
+    }
+
+    return socialGraphService.previewUsername({
+      currentUserId,
+      displayName: trimmedDisplayName
+    });
+  }
+
   async function addAttendanceLog(input: CreateAttendanceInput) {
     if (!currentUserId) {
       throw new Error("Log in to save a game.");
@@ -355,10 +373,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return log;
   }
 
-  async function updateProfile(updates: { displayName?: string; favoriteTeamId?: string; followingIds?: string[] }) {
+  async function updateProfile(updates: { displayName?: string; username?: string; favoriteTeamId?: string; followingIds?: string[] }) {
     const nextProfile: UserProfile = {
       ...profile,
       displayName: updates.displayName?.trim() || profile.displayName,
+      username: updates.username?.trim().toLowerCase() || profile.username,
       favoriteTeamId: updates.favoriteTeamId || undefined,
       followingIds: updates.followingIds ? [...new Set(updates.followingIds.filter(Boolean))] : profile.followingIds
     };
@@ -367,10 +386,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return nextProfile;
   }
 
-  async function completeOnboarding(updates: { displayName?: string; favoriteTeamId?: string }) {
+  async function completeOnboarding(updates: { displayName?: string; username?: string; favoriteTeamId?: string }) {
     const nextProfile: UserProfile = {
       ...profile,
       displayName: updates.displayName?.trim() || profile.displayName,
+      username: updates.username?.trim().toLowerCase() || profile.username,
       favoriteTeamId: updates.favoriteTeamId || undefined,
       hasCompletedOnboarding: true
     };
@@ -641,6 +661,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     signUp,
     signOut,
     requestPasswordReset,
+    previewUsername,
     addAttendanceLog,
     updateProfile,
     completeOnboarding,

@@ -1,5 +1,6 @@
 import { friends as seededFriends } from "../data/mockSportsData";
 import type { FollowRequest, FriendProfile } from "@mlb-attendance/domain";
+import { normalizeDisplayNameToUsername } from "./username";
 import type { SocialGraphService } from "./socialGraphService";
 
 function withDefaultStatus(profile: FriendProfile, status: FriendProfile["relationshipStatus"]) {
@@ -11,6 +12,9 @@ function withDefaultStatus(profile: FriendProfile, status: FriendProfile["relati
 
 export const localSocialGraphService: SocialGraphService = {
   kind: "local",
+  async previewUsername(params) {
+    return normalizeDisplayNameToUsername(params.displayName);
+  },
   async searchProfiles(params) {
     const query = params.query.trim().toLowerCase();
     return seededFriends
